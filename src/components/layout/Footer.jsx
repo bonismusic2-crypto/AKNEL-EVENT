@@ -1,6 +1,7 @@
 import React from 'react';
 import { Facebook, Instagram, Mail, Phone, MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import logo from '../../assets/logo.png';
 
 const Footer = () => {
     return (
@@ -9,9 +10,7 @@ const Footer = () => {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
                     {/* Brand */}
                     <div className="space-y-4">
-                        <h3 className="text-2xl font-serif font-bold tracking-widest">
-                            AKNEL <span className="text-gold">EVENT</span>
-                        </h3>
+                        <img src={logo} alt="AKNEL Event" className="h-16 w-auto" />
                         <p className="text-gray-400 text-sm leading-relaxed">
                             Transformez votre événement en un moment inoubliable avec notre expertise en organisation et décoration.
                         </p>

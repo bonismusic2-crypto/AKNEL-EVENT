@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock, Mail } from 'lucide-react';
+import logo from '../assets/logo.png';
 
 const Login = () => {
     const [email, setEmail] = useState('');
@@ -44,9 +45,7 @@ const Login = () => {
             <div className="max-w-md w-full bg-white rounded-2xl shadow-2xl p-8 space-y-8">
                 {/* Logo */}
                 <div className="text-center">
-                    <h1 className="text-3xl font-serif font-bold text-dark">
-                        AKNEL <span className="text-gold">EVENT</span>
-                    </h1>
+                    <img src={logo} alt="AKNEL Event" className="h-20 w-auto mx-auto mb-4" />
                     <p className="text-gray-500 mt-2">Admin Dashboard</p>
                 </div>
 
