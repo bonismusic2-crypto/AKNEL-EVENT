@@ -20,8 +20,8 @@ const Footer = () => {
                     <div className="space-y-4">
                         <h4 className="text-lg font-serif font-semibold text-gold">Contact</h4>
                         <div className="space-y-2 text-sm text-gray-300">
-                            <p className="flex items-center gap-2"><MapPin size={16} className="text-gold" /> Abidjan, Côte d'Ivoire</p>
-                            <p className="flex items-center gap-2"><Phone size={16} className="text-gold" /> +225 07 00 00 00 00</p>
+                            <p className="flex items-center gap-2"><MapPin size={16} className="text-gold" /> Abidjan Cocody Rivera Palmeraie</p>
+                            <p className="flex items-center gap-2"><Phone size={16} className="text-gold" /> +225 05 56 01 87 87</p>
                             <p className="flex items-center gap-2"><Mail size={16} className="text-gold" /> contact@aknelevent.com</p>
                         </div>
                     </div>
