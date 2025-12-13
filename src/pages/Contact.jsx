@@ -98,6 +98,34 @@ const Contact = () => {
                             </form>
                         </div>
                     </div>
+
+                    {/* Google Maps Section */}
+                    <div className="mt-16">
+                        <h2 className="text-3xl font-serif font-bold text-center text-dark mb-8">Notre Localisation</h2>
+                        <div className="w-full h-96 rounded-xl overflow-hidden shadow-xl">
+                            <iframe
+                                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3972.4247697841543!2d-3.9827405!3d5.3563896!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xfc1ed6c90e0e0cd%3A0x4e3e8e3e8e3e8e3e!2sCocody%20Rivera%20Palmeraie!5e0!3m2!1sfr!2sci!4v1234567890123"
+                                width="100%"
+                                height="100%"
+                                style={{ border: 0 }}
+                                allowFullScreen=""
+                                loading="lazy"
+                                referrerPolicy="no-referrer-when-downgrade"
+                                title="Localisation AKNEL Event"
+                            />
+                        </div>
+                        <div className="text-center mt-4">
+                            <a
+                                href="https://maps.app.goo.gl/ZayzYYadqpB7cRHo7?g_st=awb"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 text-gold hover:text-yellow-600 font-medium transition-colors"
+                            >
+                                <MapPin size={20} />
+                                Ouvrir dans Google Maps
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </section>
         </Layout>
