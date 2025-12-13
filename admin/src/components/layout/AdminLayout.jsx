@@ -1,9 +1,16 @@
 import React from 'react';
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, FileText, Briefcase, Camera, Mail, Settings, LogOut, Calendar, MessageSquare } from 'lucide-react';
 
 const AdminLayout = () => {
     const location = useLocation();
+    const navigate = useNavigate();
+
+    const handleLogout = () => {
+        localStorage.removeItem('adminAuth');
+        localStorage.removeItem('adminEmail');
+        navigate('/login');
+    };
 
     const menuItems = [
         { name: 'Tableau de bord', icon: <LayoutDashboard size={20} />, path: '/' },
@@ -33,8 +40,8 @@ const AdminLayout = () => {
                             key={item.path}
                             to={item.path}
                             className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-300 ${location.pathname === item.path
-                                    ? 'bg-gold text-white shadow-lg translate-x-1'
-                                    : 'text-gray-400 hover:bg-gray-800 hover:text-white hover:translate-x-1'
+                                ? 'bg-gold text-white shadow-lg translate-x-1'
+                                : 'text-gray-400 hover:bg-gray-800 hover:text-white hover:translate-x-1'
                                 }`}
                         >
                             <span className={location.pathname === item.path ? 'bg-white/20 p-1 rounded font-bold' : ''}>{item.icon}</span>
@@ -49,8 +56,8 @@ const AdminLayout = () => {
                             key={item.path}
                             to={item.path}
                             className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-300 ${location.pathname === item.path
-                                    ? 'bg-gold text-white shadow-lg translate-x-1'
-                                    : 'text-gray-400 hover:bg-gray-800 hover:text-white hover:translate-x-1'
+                                ? 'bg-gold text-white shadow-lg translate-x-1'
+                                : 'text-gray-400 hover:bg-gray-800 hover:text-white hover:translate-x-1'
                                 }`}
                         >
                             <span className={location.pathname === item.path ? 'bg-white/20 p-1 rounded font-bold' : ''}>{item.icon}</span>
@@ -60,7 +67,7 @@ const AdminLayout = () => {
                 </nav>
 
                 <div className="p-4 border-t border-gray-800">
-                    <button className="flex items-center gap-3 px-4 py-3 text-red-400 hover:bg-red-400/10 rounded-lg w-full transition-colors text-sm font-medium">
+                    <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-3 text-red-400 hover:bg-red-400/10 rounded-lg w-full transition-colors text-sm font-medium">
                         <LogOut size={20} />
                         Déconnexion
                     </button>

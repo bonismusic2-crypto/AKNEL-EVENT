@@ -8,12 +8,22 @@ import EditAbout from './pages/EditAbout';
 import EditServices from './pages/EditServices';
 import EditGallery from './pages/EditGallery';
 import EditContact from './pages/EditContact';
+import Login from './pages/Login';
+import { ProtectedRoute } from './components/ProtectedRoute';
 
 function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<AdminLayout />}>
+        {/* Login Route - Public */}
+        <Route path="/login" element={<Login />} />
+
+        {/* Protected Admin Routes */}
+        <Route path="/" element={
+          <ProtectedRoute>
+            <AdminLayout />
+          </ProtectedRoute>
+        }>
           <Route index element={<DashboardHome />} />
           <Route path="messages" element={<Messages />} />
           <Route path="reservations" element={<Reservations />} />
