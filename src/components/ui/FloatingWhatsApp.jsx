@@ -13,7 +13,7 @@ const FloatingWhatsApp = () => {
             href="https://wa.me/2250556018787"
             target="_blank"
             rel="noopener noreferrer"
-            className="fixed bottom-6 right-6 z-50 bg-[#25D366] p-4 rounded-full shadow-lg cursor-pointer hover:bg-[#20bd5a] transition-colors flex items-center justify-center"
+            className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-50 bg-[#25D366] p-3 md:p-4 rounded-full shadow-lg cursor-pointer hover:bg-[#20bd5a] transition-colors flex items-center justify-center"
             whileHover={{ scale: 1.1, rotate: 5 }}
             whileTap={{ scale: 0.9 }}
             initial={{ opacity: 0, scale: 0 }}

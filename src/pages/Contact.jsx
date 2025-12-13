@@ -25,7 +25,7 @@ const Contact = () => {
             <div className="relative py-32 bg-dark flex items-center justify-center">
                 <div className="absolute inset-0 opacity-20 bg-cover bg-center" style={{ backgroundImage: `url(${heroBg})` }} />
                 <div className="relative z-10 text-center px-4">
-                    <h1 className="text-5xl font-serif font-bold text-white mb-4">Contactez-nous</h1>
+                    <h1 className="text-3xl md:text-5xl font-serif font-bold text-white mb-4">Contactez-nous</h1>
                 </div>
             </div>
 
