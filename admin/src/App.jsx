@@ -8,6 +8,8 @@ import EditAbout from './pages/EditAbout';
 import EditServices from './pages/EditServices';
 import EditGallery from './pages/EditGallery';
 import EditContact from './pages/EditContact';
+import ManageMusic from './pages/ManageMusic';
+import ManagePublicEvents from './pages/ManagePublicEvents';
 import Login from './pages/Login';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
@@ -26,7 +28,8 @@ function App() {
         }>
           <Route index element={<DashboardHome />} />
           <Route path="messages" element={<Messages />} />
-          <Route path="reservations" element={<Reservations />} />
+          <Route path="manage-music" element={<ManageMusic />} />
+          <Route path="manage-events" element={<ManagePublicEvents />} />
           <Route path="edit-home" element={<EditHome />} />
           <Route path="edit-about" element={<EditAbout />} />
           <Route path="edit-services" element={<EditServices />} />

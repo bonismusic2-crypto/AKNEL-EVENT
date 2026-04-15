@@ -8,7 +8,42 @@
   body {
     @apply font-sans antialiased text-gray-900 bg-white selection:bg-gold selection:text-white max-w-[100vw] overflow-x-hidden;
   }
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-serif;
+}
+
+@layer components {
+  .text-gold-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-gold-dark via-gold to-gold-light;
+  }
+  
+  .bg-gold-gradient {
+    @apply bg-gradient-to-r from-gold-dark via-gold to-gold-light;
+  }
+
+  .glass-card {
+    @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-xl;
+  }
+
+  .btn-premium {
+    @apply relative overflow-hidden transition-all duration-300 active:scale-95;
+  }
+  
+  .btn-premium::after {
+    content: '';
+    @apply absolute inset-0 bg-white/10 opacity-0 transition-opacity duration-300;
+  }
+  
+  .btn-premium:hover::after {
+    @apply opacity-100;
   }
 }
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+.animate-shake {
+  animation: shake 0.3s ease-in-out;
+}
+

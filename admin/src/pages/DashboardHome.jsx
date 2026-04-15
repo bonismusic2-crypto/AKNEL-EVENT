@@ -16,53 +16,94 @@ const StatCard = ({ title, value, icon, color, subtext }) => (
 );
 
 const DashboardHome = () => {
-    const [stats, setStats] = useState(null);
+    const [stats, setStats] = useState({
+        totalRevenue: 0,
+        ticketsSold: 0,
+        albumsSold: 0,
+        pendingReservations: 0,
+        messages: 0
+    });
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchStats = async () => {
-            const { data } = await supabase.from('pages').select('content').eq('slug', 'stats').single();
-            if (data) setStats(data.content);
+        const fetchDashboardData = async () => {
+            try {
+                // Fetch stats from various tables
+                const { count: msgCount } = await supabase.from('messages').select('*', { count: 'exact', head: true });
+                const { data: resData } = await supabase.from('reservations').select('*').eq('status', 'En attente');
+                const { data: orderData } = await supabase.from('orders').select('*').eq('payment_status', 'completed');
+                
+                let revenue = 0;
+                let tickets = 0;
+                let albums = 0;
+
+                orderData?.forEach(order => {
+                    revenue += parseFloat(order.total_amount);
+                    if (order.item_type === 'ticket') tickets += order.quantity;
+                    if (order.item_type === 'album') albums += order.quantity;
+                });
+
+                setStats({
+                    totalRevenue: revenue,
+                    ticketsSold: tickets,
+                    albumsSold: albums,
+                    pendingReservations: resData?.length || 0,
+                    messages: msgCount || 0
+                });
+            } catch (err) {
+                console.error('Error fetching dashboard data:', err);
+            } finally {
+                setLoading(false);
+            }
         };
-        fetchStats();
+        fetchDashboardData();
     }, []);
 
-    if (!stats) return <div className="p-8 text-center text-gray-500">Chargement des données...</div>;
+    if (loading) return <div className="p-8 text-center text-gray-500 italic animate-pulse">Chargement des indicateurs...</div>;
 
     return (
         <div className="space-y-8">
             <div>
                 <h1 className="text-3xl font-serif font-bold text-dark">Vue d'ensemble</h1>
-                <p className="text-gray-500">Bienvenue sur votre tableau de bord administrateur.</p>
+                <p className="text-gray-500">Pilotage de la plateforme Aknel Event.</p>
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <StatCard
-                    title="Visiteurs Totaux"
-                    value={stats.visitors}
-                    icon={<Users size={24} />}
-                    color="bg-blue-600"
-                    subtext={stats.growth}
+                    title="Chiffre d'Affaires"
+                    value={`${stats.totalRevenue.toLocaleString()} FCFA`}
+                    icon={<TrendingUp size={24} />}
+                    color="bg-green-600"
+                    subtext="+5.2%"
                 />
                 <StatCard
-                    title="Nouveaux Messages"
-                    value={stats.new_messages}
-                    icon={<MessageSquare size={24} />}
+                    title="Billets Vendus"
+                    value={stats.ticketsSold}
+                    icon={<Activity size={24} />}
+                    color="bg-blue-600"
+                />
+                <StatCard
+                    title="Ventes Albums"
+                    value={stats.albumsSold}
+                    icon={<Users size={24} />}
                     color="bg-purple-600"
                 />
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <StatCard
-                    title="Réservations"
-                    value={stats.pending_reservations}
+                    title="Réservations Salle"
+                    value={stats.pendingReservations}
                     icon={<Calendar size={24} />}
                     color="bg-gold"
                     subtext="En attente"
                 />
                 <StatCard
-                    title="Performance"
-                    value="98%"
-                    icon={<Activity size={24} />}
-                    color="bg-green-500"
-                    subtext="Temps de réponse"
+                    title="Messages Client"
+                    value={stats.messages}
+                    icon={<MessageSquare size={24} />}
+                    color="bg-dark"
                 />
             </div>
 

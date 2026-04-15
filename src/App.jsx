@@ -1,10 +1,12 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import ScrollToTop from './components/ui/ScrollToTop'; // We will create this helper
 import Home from './pages/Home';
-import About from './pages/About';
-import Services from './pages/Services';
-import Gallery from './pages/Gallery';
+import Venue from './pages/Venue';
+import Events from './pages/Events';
+import MusicStore from './pages/MusicStore';
 import Contact from './pages/Contact';
+import Auth from './pages/Auth';
+import Profile from './pages/Profile';
 
 // Simple ScrollToTop component inline for now or can be separate
 const ScrollToTopHelper = () => {
@@ -20,10 +22,12 @@ function App() {
       <ScrollToTop />
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/about" element={<About />} />
-        <Route path="/services" element={<Services />} />
-        <Route path="/gallery" element={<Gallery />} />
+        <Route path="/venue" element={<Venue />} />
+        <Route path="/events" element={<Events />} />
+        <Route path="/musique" element={<MusicStore />} />
         <Route path="/contact" element={<Contact />} />
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/profile" element={<Profile />} />
       </Routes>
     </Router>
   );

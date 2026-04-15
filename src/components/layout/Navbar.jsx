@@ -18,9 +18,9 @@ const Navbar = () => {
 
     const navLinks = [
         { name: 'Accueil', path: '/' },
-        { name: 'À Propos', path: '/about' },
-        { name: 'Services', path: '/services' },
-        { name: 'Galerie', path: '/gallery' },
+        { name: 'La Salle', path: '/venue' },
+        { name: 'Événements', path: '/events' },
+        { name: 'Musique', path: '/musique' },
         { name: 'Contact', path: '/contact' },
     ];
 

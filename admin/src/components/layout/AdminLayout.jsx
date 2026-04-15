@@ -16,6 +16,8 @@ const AdminLayout = () => {
         { name: 'Tableau de bord', icon: <LayoutDashboard size={20} />, path: '/' },
         { name: 'Messagerie', icon: <MessageSquare size={20} />, path: '/messages' },
         { name: 'Réservations', icon: <Calendar size={20} />, path: '/reservations' },
+        { name: 'Gestion Musique', icon: <Music size={20} />, path: '/manage-music' },
+        { name: 'Événements Publics', icon: <Briefcase size={20} />, path: '/manage-events' },
         { name: 'Accueil', icon: <FileText size={20} />, path: '/edit-home' },
         { name: 'À Propos', icon: <FileText size={20} />, path: '/edit-about' },
         { name: 'Services', icon: <Briefcase size={20} />, path: '/edit-services' },
@@ -35,7 +37,7 @@ const AdminLayout = () => {
                 <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
                     {/* Section Label */}
                     <div className="px-4 mt-4 mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Gestion</div>
-                    {menuItems.slice(0, 3).map((item) => (
+                    {menuItems.slice(0, 5).map((item) => (
                         <Link
                             key={item.path}
                             to={item.path}
@@ -51,7 +53,7 @@ const AdminLayout = () => {
 
                     {/* Section Label */}
                     <div className="px-4 mt-8 mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Contenu du Site</div>
-                    {menuItems.slice(3).map((item) => (
+                    {menuItems.slice(5).map((item) => (
                         <Link
                             key={item.path}
                             to={item.path}
