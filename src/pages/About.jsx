@@ -10,6 +10,17 @@ const About = () => {
 
     if (loading) return <div className="h-screen flex items-center justify-center font-serif text-gold text-2xl">Chargement...</div>;
 
+    if (!data || !data.hero_title) {
+        return (
+            <Layout>
+                <div className="h-screen flex items-center justify-center flex-col text-center px-4">
+                    <h1 className="text-3xl text-red-500 mb-4 font-serif">Contenu non trouvé</h1>
+                    <p className="text-gray-500">Les données de la page À propos n'ont pas pu être chargées.</p>
+                </div>
+            </Layout>
+        );
+    }
+
     const getIcon = (index) => {
         const icons = [<Heart size={32} />, <Target size={32} />, <Award size={32} />];
         return icons[index % icons.length];

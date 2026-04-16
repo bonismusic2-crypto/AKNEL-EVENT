@@ -9,6 +9,17 @@ const Services = () => {
 
     if (loading) return <div className="h-screen flex items-center justify-center font-serif text-gold text-2xl">Chargement...</div>;
 
+    if (!services || services.length === 0) {
+        return (
+            <Layout>
+                <div className="h-screen flex items-center justify-center flex-col text-center px-4">
+                    <h1 className="text-3xl text-gray-400 mb-4 font-serif">Nos Services</h1>
+                    <p className="text-gray-500">Aucun service n'est disponible pour le moment.</p>
+                </div>
+            </Layout>
+        );
+    }
+
     return (
         <Layout>
             <div className="relative py-32 bg-dark flex items-center justify-center">

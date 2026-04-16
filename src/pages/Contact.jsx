@@ -20,6 +20,17 @@ const Contact = () => {
 
     if (loading) return <div className="h-screen flex items-center justify-center font-serif text-gold text-2xl">Chargement...</div>;
 
+    if (!contactInfo) {
+        return (
+            <Layout>
+                <div className="h-screen flex items-center justify-center flex-col text-center px-4">
+                    <h1 className="text-3xl text-red-500 mb-4 font-serif">Contenu non trouvé</h1>
+                    <p className="text-gray-500">Les coordonnées n'ont pas pu être chargées.</p>
+                </div>
+            </Layout>
+        );
+    }
+
     return (
         <Layout>
             <div className="relative py-32 bg-dark flex items-center justify-center">

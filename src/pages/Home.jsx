@@ -13,6 +13,17 @@ const Home = () => {
 
     if (homeLoading || servicesLoading) return <div className="h-screen flex items-center justify-center font-serif text-gold text-2xl">Chargement...</div>;
 
+    if (!homeData || !homeData.hero) {
+        return (
+            <Layout>
+                <div className="h-screen flex items-center justify-center flex-col text-center px-4">
+                    <h1 className="text-3xl text-red-500 mb-4 font-serif">Contenu non trouvé</h1>
+                    <p className="text-gray-500">Les données de la page d'accueil n'ont pas pu être chargées. Veuillez vérifier Supabase.</p>
+                </div>
+            </Layout>
+        );
+    }
+
     // Function to map icon name to component (if dynamic icons are stored as strings later)
     // For now, hardcoding mapping based on index or title if needed, or keeping static icons for simplicity
     const getIcon = (index) => {
