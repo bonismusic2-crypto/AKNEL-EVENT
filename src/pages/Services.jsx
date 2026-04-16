@@ -7,6 +7,12 @@ import useContent from '../hooks/useContent';
 const Services = () => {
     const { data: services, loading } = useContent('services');
 
+    const serviceImages = [
+        "https://images.unsplash.com/photo-1519225421980-715cb0215aed?q=80&w=2070&auto=format&fit=crop", // Mariage
+        "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=2070&auto=format&fit=crop", // Events
+        "https://images.unsplash.com/photo-1505364069818-4770db0ff2cc?q=80&w=2070&auto=format&fit=crop" // Corporate/Gala
+    ];
+
     if (loading) return <div className="h-screen flex items-center justify-center font-serif text-gold text-2xl">Chargement...</div>;
 
     if (!services || services.length === 0) {
@@ -33,8 +39,13 @@ const Services = () => {
             <div className="py-24 container mx-auto px-6 space-y-24">
                 {services.map((service, idx) => (
                     <div key={idx} className={`flex flex-col ${idx % 2 === 1 ? 'md:flex-row-reverse' : 'md:flex-row'} gap-12 items-center`}>
-                        <div className={`w-full md:w-1/2 h-80 rounded-xl shadow-lg bg-gray-200 flex items-center justify-center text-gray-400`}>
-                            Image Service {service.id}
+                        <div className={`w-full md:w-1/2 h-80 rounded-xl shadow-lg overflow-hidden relative group`}>
+                            <img 
+                                src={service.image_url || serviceImages[idx % serviceImages.length]} 
+                                alt={service.title}
+                                className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700" 
+                            />
+                            <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors duration-500"></div>
                         </div>
                         <div className="w-full md:w-1/2 space-y-6">
                             <h2 className="text-3xl font-serif font-bold text-dark">{service.title}</h2>

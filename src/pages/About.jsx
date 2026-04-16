@@ -47,9 +47,12 @@ const About = () => {
                             </div>
                         </div>
                         <div className="w-full md:w-1/2 grid grid-cols-2 gap-4">
-                            {/* Placeholders */}
-                            <div className="bg-gray-200 h-64 rounded-lg"></div>
-                            <div className="bg-gray-200 h-64 rounded-lg mt-8"></div>
+                            <div className="h-64 rounded-lg overflow-hidden shadow-lg transform hover:-translate-y-2 transition-transform duration-500">
+                                <img src="https://images.unsplash.com/photo-1511795409834-ef04bbd61622?q=80&w=2069&auto=format&fit=crop" alt="Event details" className="w-full h-full object-cover" />
+                            </div>
+                            <div className="h-64 rounded-lg overflow-hidden shadow-lg mt-8 transform hover:-translate-y-2 transition-transform duration-500">
+                                <img src="https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?q=80&w=2069&auto=format&fit=crop" alt="Decoration" className="w-full h-full object-cover" />
+                            </div>
                         </div>
                     </div>
                 </div>

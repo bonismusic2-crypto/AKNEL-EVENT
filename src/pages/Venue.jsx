@@ -115,9 +115,16 @@ const Venue = () => {
                     viewport={{ once: true }}
                     className="relative"
                 >
-                    <div className="absolute -inset-4 border border-gold/20 rounded-2xl -z-10 rotate-3"></div>
-                    <div className="h-[600px] rounded-2xl overflow-hidden shadow-2xl relative group bg-gray-100 italic flex items-center justify-center text-gray-400">
-                        Aperçu de la Salle (Galerie HD)
+                    <div className="absolute -inset-4 border border-gold/20 rounded-2xl -z-10 rotate-3 animate-pulse"></div>
+                    <div className="h-[600px] rounded-2xl overflow-hidden shadow-2xl relative group bg-gray-900">
+                        <img 
+                            src="https://images.unsplash.com/photo-1519167758481-83f550bb49b3?q=80&w=2098&auto=format&fit=crop" 
+                            alt="Aperçu de la Salle" 
+                            className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700 opacity-90"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-dark/80 via-transparent to-transparent flex items-end p-8">
+                            <span className="text-white font-serif text-2xl">L'Élégance à l'état pur</span>
+                        </div>
                     </div>
                 </motion.div>
             </div>

@@ -23,6 +23,11 @@ const MusicStore = () => {
         fetchAlbums();
     }, []);
 
+    const handleBuy = (albumTitle) => {
+        const text = encodeURIComponent(`Bonjour AKNEL Event, je souhaite commander l'album : ${albumTitle}`);
+        window.open(`https://wa.me/2250556018787?text=${text}`, '_blank');
+    };
+
     if (loading) return (
         <div className="h-screen flex items-center justify-center font-serif text-gold text-2xl animate-pulse">
             Préparation du catalogue...
@@ -70,7 +75,10 @@ const MusicStore = () => {
                                         <span className="text-2xl font-serif font-bold text-dark">
                                             {album.price.toLocaleString()} <span className="text-sm font-sans text-gray-400">FCFA</span>
                                         </span>
-                                        <button className="bg-dark text-white px-8 py-3 rounded-full text-xs font-bold uppercase tracking-widest hover:bg-gold-dark transition-all duration-300 flex items-center gap-2 shadow-lg hover:shadow-gold/20">
+                                        <button 
+                                            onClick={() => handleBuy(album.title)}
+                                            className="bg-dark text-white px-8 py-3 rounded-full text-xs font-bold uppercase tracking-widest hover:bg-gold-dark transition-all duration-300 flex items-center gap-2 shadow-lg hover:shadow-gold/20"
+                                        >
                                             <ShoppingBag size={14} /> Acheter l'Album
                                         </button>
                                     </div>

@@ -51,11 +51,17 @@ const Gallery = () => {
                         ))}
                     </div>
 
-                    {/* Video Placeholder (Requested in prompt) */}
                     <div className="mt-20">
                         <h2 className="text-3xl font-serif font-bold text-center mb-10">En Vidéo</h2>
-                        <div className="aspect-video bg-black rounded-xl flex items-center justify-center text-white/50 w-full max-w-4xl mx-auto shadow-2xl">
-                            <span className="text-xl">Vidéo de présentation (Placeholder)</span>
+                        <div className="aspect-video bg-black rounded-xl overflow-hidden w-full max-w-4xl mx-auto shadow-2xl relative">
+                            <iframe 
+                                className="absolute inset-0 w-full h-full"
+                                src="https://www.youtube.com/embed/5qap5aO4i9A?autoplay=0&mute=1&controls=1&loop=1&playlist=5qap5aO4i9A" 
+                                title="Lofi Event Vibe"
+                                frameBorder="0" 
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                allowFullScreen
+                            ></iframe>
                         </div>
                     </div>
                 </div>

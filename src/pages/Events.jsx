@@ -23,6 +23,11 @@ const Events = () => {
         fetchEvents();
     }, []);
 
+    const handleReserve = (eventTitle) => {
+        const text = encodeURIComponent(`Bonjour AKNEL Event, je souhaite réserver ma place pour l'événement : ${eventTitle}`);
+        window.open(`https://wa.me/2250556018787?text=${text}`, '_blank');
+    };
+
     const formatDate = (dateString) => {
         const date = new Date(dateString);
         return {
@@ -102,7 +107,10 @@ const Events = () => {
                                                 {minPrice ? `${minPrice.toLocaleString()} FCFA` : 'Entrée Libre'}
                                             </span>
                                         </div>
-                                        <button className="w-full bg-dark text-white hover:bg-gold px-6 py-4 rounded-xl transition-all duration-300 font-bold uppercase tracking-widest text-xs shadow-lg hover:shadow-gold/20 shadow-dark/5">
+                                        <button 
+                                            onClick={() => handleReserve(event.title)}
+                                            className="w-full bg-dark text-white hover:bg-gold px-6 py-4 rounded-xl transition-all duration-300 font-bold uppercase tracking-widest text-xs shadow-lg hover:shadow-gold/20 shadow-dark/5"
+                                        >
                                             Réserver ma place
                                         </button>
                                     </div>

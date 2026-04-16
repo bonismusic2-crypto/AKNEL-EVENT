@@ -1,21 +1,47 @@
 import React, { useState } from 'react';
 import Layout from '../components/layout/Layout';
 import Button from '../components/ui/Button';
-import { Phone, Mail, MapPin } from 'lucide-react';
+import { Phone, Mail, MapPin, Loader2, CheckCircle } from 'lucide-react';
 import heroBg from '../assets/hero-bg.png';
 import useContent from '../hooks/useContent';
+import { supabase } from '../lib/supabaseClient';
 
 const Contact = () => {
     const { data: contactInfo, loading } = useContent('contact');
     const [form, setForm] = useState({
-        name: '', phone: '', email: '', type: '', date: '', message: ''
+        name: '', phone: '', email: '', message: ''
     });
+    const [submitting, setSubmitting] = useState(false);
+    const [success, setSuccess] = useState(false);
+    const [error, setError] = useState(null);
 
     const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        alert("Merci de votre demande !");
+        setSubmitting(true);
+        setError(null);
+        
+        try {
+            const { error: dbError } = await supabase.from('messages').insert([{
+                name: form.name,
+                email: form.email,
+                subject: `Nouveau Message - ${form.phone}`, // Utilise le tel dans le sujet pour ne pas le perdre
+                date: new Date().toISOString().split('T')[0],
+                read: false
+            }]);
+
+            if (dbError) throw dbError;
+
+            setSuccess(true);
+            setForm({ name: '', phone: '', email: '', message: '' });
+            setTimeout(() => setSuccess(false), 5000);
+        } catch (err) {
+            console.error("Erreur d'envoi du message:", err);
+            setError("Une erreur est survenue lors de l'envoi.");
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     if (loading) return <div className="h-screen flex items-center justify-center font-serif text-gold text-2xl">Chargement...</div>;
@@ -103,9 +129,18 @@ const Contact = () => {
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-gray-700">Message</label>
-                                    <textarea name="message" rows="4" onChange={handleChange} className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-all"></textarea>
+                                    <textarea name="message" value={form.message} required rows="4" onChange={handleChange} className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-all"></textarea>
                                 </div>
-                                <Button type="submit" variant="solid" className="w-full py-4 text-lg">Envoyer la demande</Button>
+                                {error && <div className="text-red-500 font-medium text-sm">{error}</div>}
+                                {success && (
+                                    <div className="bg-green-50 text-green-700 p-4 rounded-lg flex items-center gap-3">
+                                        <CheckCircle size={20} />
+                                        <span>Votre message a été envoyé avec succès ! Nous vous recontacterons très vite.</span>
+                                    </div>
+                                )}
+                                <Button type="submit" variant="solid" className="w-full py-4 text-lg flex justify-center items-center gap-2" disabled={submitting}>
+                                    {submitting ? <><Loader2 size={20} className="animate-spin"/> Envoi...</> : "Envoyer la demande"}
+                                </Button>
                             </form>
                         </div>
                     </div>
