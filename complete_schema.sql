@@ -84,7 +84,7 @@ create policy "Users can view their own orders" on public.orders for select usin
 
 -- SEED DATA for Artists & Events
 insert into public.albums (title, artist_name, price, cover_url) values
-('C\'est ma saison', 'Chantre Aknel', 5000, 'https://images.unsplash.com/photo-1514525253361-bee8a19740c1?w=800');
+('C''est ma saison', 'Chantre Aknel', 5000, 'https://images.unsplash.com/photo-1514525253361-bee8a19740c1?w=800');
 
 insert into public.public_events (title, description, date, location, image_url) values
 ('Concert de Louange', 'Une soirée unique avec le Chantre Aknel et ses invités.', '2026-08-20 19:00:00+00', 'Aknel Hall, Abidjan', 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=800');

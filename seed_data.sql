@@ -2,7 +2,7 @@
 
 -- 1. Albums
 insert into public.albums (title, artist_name, price, cover_url) values
-('C\'est ma saison', 'Chantre Aknel', 5000, 'https://images.unsplash.com/photo-1514525253361-bee8a19740c1?w=800'),
+('C''est ma saison', 'Chantre Aknel', 5000, 'https://images.unsplash.com/photo-1514525253361-bee8a19740c1?w=800'),
 ('Louange Sublime', 'Chantre Aknel', 3500, 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800'),
 ('Grace Infinie', 'Chantre Aknel', 4500, 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800');
 
