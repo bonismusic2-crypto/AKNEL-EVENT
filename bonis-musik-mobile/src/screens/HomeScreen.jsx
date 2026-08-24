@@ -1,15 +1,58 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Bell, Search, Play } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { SAMPLE_DATA } from '../data/sampleData';
+import { MediaService } from '../services/mediaService';
 
 export const HomeScreen = ({ onSelectAlbum, onSelectClip, onSelectTeaching, onOpenProfile, onOpenPaywall }) => {
+  const [albums, setAlbums] = useState(SAMPLE_DATA.audioReleases);
+  const [clips, setClips] = useState(SAMPLE_DATA.videoClips);
+  const [teachings, setTeachings] = useState(SAMPLE_DATA.teachings);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadLiveData = async () => {
+    try {
+      const [liveAlbums, liveClips, liveTeachings] = await Promise.all([
+        MediaService.getAlbums(),
+        MediaService.getMediaContents('video_clip'),
+        MediaService.getMediaContents(null), // Enseignements
+      ]);
+
+      if (liveAlbums && liveAlbums.length > 0) setAlbums(liveAlbums);
+      if (liveClips && liveClips.length > 0) setClips(liveClips);
+      if (liveTeachings && liveTeachings.length > 0) {
+        const onlyTeachings = liveTeachings.filter(t => t.type === 'audio' || t.type === 'video');
+        if (onlyTeachings.length > 0) setTeachings(onlyTeachings);
+      }
+    } catch (e) {
+      console.warn('Sync load warning:', e);
+    }
+  };
+
+  useEffect(() => {
+    loadLiveData();
+  }, []);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadLiveData();
+    setRefreshing(false);
+  };
+
+  const heroClip = clips[0] || SAMPLE_DATA.videoClips[0];
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.container}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={THEME.colors.gold} />
+        }
+      >
         
         {/* Header avec Profil cliquable & Notification */}
         <View style={styles.header}>
@@ -38,9 +81,9 @@ export const HomeScreen = ({ onSelectAlbum, onSelectClip, onSelectTeaching, onOp
           <Text style={styles.searchText}>Rechercher un chant, album...</Text>
         </View>
 
-        {/* Bannière Hero Lumineuse & Dorée */}
+        {/* Bannière Hero Lumineuse & Dorée Synchronisée */}
         <View style={styles.heroCard}>
-          <Image source={{ uri: SAMPLE_DATA.heroBanner.image }} style={styles.heroImage} />
+          <Image source={{ uri: heroClip.thumbnail }} style={styles.heroImage} />
           <LinearGradient
             colors={['transparent', 'rgba(255, 255, 255, 0.4)', '#FFFFFF']}
             style={styles.heroGradient}
@@ -48,13 +91,13 @@ export const HomeScreen = ({ onSelectAlbum, onSelectClip, onSelectTeaching, onOp
           <View style={styles.heroContent}>
             <View style={styles.badgeRow}>
               <View style={styles.badgeContainer}>
-                <Text style={styles.newClipBadge}>{SAMPLE_DATA.heroBanner.badge}</Text>
+                <Text style={styles.newClipBadge}>NOUVEAU CLIP</Text>
               </View>
             </View>
-            <Text style={styles.heroTitle}>{SAMPLE_DATA.heroBanner.title}</Text>
+            <Text style={styles.heroTitle} numberOfLines={1}>{heroClip.title}</Text>
             <TouchableOpacity
               style={styles.watchBtn}
-              onPress={() => onSelectClip(SAMPLE_DATA.videoClips[0])}
+              onPress={() => onSelectClip(heroClip)}
               activeOpacity={0.85}
             >
               <Play size={15} color="#FFFFFF" fill="#FFFFFF" />
@@ -63,15 +106,15 @@ export const HomeScreen = ({ onSelectAlbum, onSelectClip, onSelectTeaching, onOp
           </View>
         </View>
 
-        {/* Section Dernières Sorties Audio */}
+        {/* Section Dernières Sorties Audio Synchronisées */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Dernières sorties audio</Text>
-          <TouchableOpacity>
-            <Text style={styles.seeAll}>Voir tout</Text>
+          <TouchableOpacity onPress={() => onSelectClip(heroClip)}>
+            <Text style={styles.seeAll}>Voir tout ({albums.length})</Text>
           </TouchableOpacity>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
-          {SAMPLE_DATA.audioReleases.map((album) => (
+          {albums.map((album) => (
             <TouchableOpacity
               key={album.id}
               style={styles.albumCard}
@@ -85,15 +128,15 @@ export const HomeScreen = ({ onSelectAlbum, onSelectClip, onSelectTeaching, onOp
           ))}
         </ScrollView>
 
-        {/* Section Clips Récents */}
+        {/* Section Clips Récents Synchronisés */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Clips récents</Text>
-          <TouchableOpacity onPress={() => onSelectClip(SAMPLE_DATA.videoClips[0])}>
-            <Text style={styles.seeAll}>Voir tout</Text>
+          <TouchableOpacity onPress={() => onSelectClip(heroClip)}>
+            <Text style={styles.seeAll}>Voir tout ({clips.length})</Text>
           </TouchableOpacity>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
-          {SAMPLE_DATA.videoClips.map((clip) => (
+          {clips.map((clip) => (
             <TouchableOpacity
               key={clip.id}
               style={styles.clipCard}
@@ -107,12 +150,12 @@ export const HomeScreen = ({ onSelectAlbum, onSelectClip, onSelectTeaching, onOp
                 </View>
               </View>
               <Text style={styles.clipTitle} numberOfLines={1}>{clip.title}</Text>
-              <Text style={styles.clipDate}>{clip.date}</Text>
+              <Text style={styles.clipDate}>{clip.date || 'Récemment'}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
 
-        {/* Section Enseignements Populaires */}
+        {/* Section Enseignements Populaires Synchronisés */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Enseignements populaires</Text>
           <TouchableOpacity>
@@ -120,7 +163,7 @@ export const HomeScreen = ({ onSelectAlbum, onSelectClip, onSelectTeaching, onOp
           </TouchableOpacity>
         </View>
         <View style={styles.teachingsList}>
-          {SAMPLE_DATA.teachings.slice(0, 3).map((item) => (
+          {teachings.slice(0, 4).map((item) => (
             <TouchableOpacity
               key={item.id}
               style={styles.teachingItem}

@@ -1,18 +1,53 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, Play } from 'lucide-react-native';
 import { THEME } from '../constants/theme';
 import { SAMPLE_DATA } from '../data/sampleData';
+import { MediaService } from '../services/mediaService';
 
 export const MediaLibraryScreen = ({ onSelectAlbum, onSelectClip, onSelectTeaching }) => {
   const [activeSection, setActiveSection] = useState('music'); // 'music', 'clips', 'teachings'
   const [teachingFilter, setTeachingFilter] = useState('Tous');
 
+  const [albums, setAlbums] = useState(SAMPLE_DATA.audioReleases);
+  const [clips, setClips] = useState(SAMPLE_DATA.videoClips);
+  const [teachings, setTeachings] = useState(SAMPLE_DATA.teachings);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchLiveContent = async () => {
+    try {
+      const [liveAlbums, liveClips, liveTeachings] = await Promise.all([
+        MediaService.getAlbums(),
+        MediaService.getMediaContents('video_clip'),
+        MediaService.getMediaContents(null),
+      ]);
+
+      if (liveAlbums && liveAlbums.length > 0) setAlbums(liveAlbums);
+      if (liveClips && liveClips.length > 0) setClips(liveClips);
+      if (liveTeachings && liveTeachings.length > 0) {
+        const onlyTeachings = liveTeachings.filter(t => t.type === 'audio' || t.type === 'video');
+        if (onlyTeachings.length > 0) setTeachings(onlyTeachings);
+      }
+    } catch (err) {
+      console.warn('Library sync warning:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchLiveContent();
+  }, []);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchLiveContent();
+    setRefreshing(false);
+  };
+
   const sections = [
-    { key: 'music', label: '🎵 Musique' },
-    { key: 'clips', label: '🎬 Clips' },
-    { key: 'teachings', label: '📖 Enseignements' },
+    { key: 'music', label: `🎵 Musique (${albums.length})` },
+    { key: 'clips', label: `🎬 Clips (${clips.length})` },
+    { key: 'teachings', label: `📖 Enseignements (${teachings.length})` },
   ];
 
   return (
@@ -47,12 +82,13 @@ export const MediaLibraryScreen = ({ onSelectAlbum, onSelectClip, onSelectTeachi
       {/* 1. VUE MUSIQUE & ALBUMS */}
       {activeSection === 'music' && (
         <FlatList
-          data={SAMPLE_DATA.audioReleases}
+          data={albums}
           keyExtractor={(item) => item.id.toString()}
           numColumns={2}
           columnWrapperStyle={styles.columnWrapper}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={THEME.colors.gold} />}
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.gridItem}
@@ -61,7 +97,7 @@ export const MediaLibraryScreen = ({ onSelectAlbum, onSelectClip, onSelectTeachi
             >
               <Image source={{ uri: item.cover }} style={styles.coverImage} />
               <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
-              <Text style={styles.year}>{item.year}</Text>
+              <Text style={styles.year}>{item.year} • {item.tracks?.length || 0} titres</Text>
             </TouchableOpacity>
           )}
         />
@@ -70,10 +106,11 @@ export const MediaLibraryScreen = ({ onSelectAlbum, onSelectClip, onSelectTeachi
       {/* 2. VUE CLIPS VIDÉOS */}
       {activeSection === 'clips' && (
         <FlatList
-          data={SAMPLE_DATA.videoClips}
+          data={clips}
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={THEME.colors.gold} />}
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.clipCard}
@@ -93,7 +130,7 @@ export const MediaLibraryScreen = ({ onSelectAlbum, onSelectClip, onSelectTeachi
               </View>
               <View style={styles.infoRow}>
                 <Text style={styles.clipTitle}>{item.title}</Text>
-                <Text style={styles.meta}>{item.date} • {item.views}</Text>
+                <Text style={styles.meta}>{item.date || 'Récemment'} • {item.views}</Text>
               </View>
             </TouchableOpacity>
           )}
@@ -117,7 +154,7 @@ export const MediaLibraryScreen = ({ onSelectAlbum, onSelectClip, onSelectTeachi
             ))}
           </View>
           <FlatList
-            data={SAMPLE_DATA.teachings.filter((t) => {
+            data={teachings.filter((t) => {
               if (teachingFilter === 'Tous') return true;
               if (teachingFilter === 'Audio') return t.type === 'audio';
               if (teachingFilter === 'Vidéo') return t.type === 'video';
@@ -126,6 +163,7 @@ export const MediaLibraryScreen = ({ onSelectAlbum, onSelectClip, onSelectTeachi
             keyExtractor={(item) => item.id.toString()}
             contentContainerStyle={styles.listContainer}
             showsVerticalScrollIndicator={false}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={THEME.colors.gold} />}
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={styles.teachingCard}
@@ -201,7 +239,7 @@ const styles = StyleSheet.create({
   },
   sectionTabText: {
     color: THEME.colors.textSecondary,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
   sectionTabTextActive: {
