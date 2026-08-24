@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, Check, ShieldCheck, Sparkles, X } from 'lucide-react-native';
+import { ChevronLeft, Check, ShieldCheck, Sparkles, X, Smartphone, CreditCard } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { SubscriptionService } from '../services/subscriptionService';
+import { GeniusPayService } from '../services/geniusPayService';
 
 export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
   const [loading, setLoading] = useState(false);
+  const [selectedMethod, setSelectedMethod] = useState('wave'); // 'wave', 'orange', 'mtn', 'moov', 'card'
 
   const benefits = [
     'Accès illimité à tous les albums et singles audio.',
@@ -17,20 +19,35 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
     'Écoute en arrière-plan (écran verrouillé).',
   ];
 
+  const paymentMethods = [
+    { id: 'wave', name: 'Wave', color: '#1BA4E8', type: 'Mobile Money' },
+    { id: 'orange', name: 'Orange Money', color: '#FF6600', type: 'Mobile Money' },
+    { id: 'mtn', name: 'MTN MoMo', color: '#FFCC00', textColor: '#000', type: 'Mobile Money' },
+    { id: 'moov', name: 'Moov Money', color: '#004F9F', type: 'Mobile Money' },
+    { id: 'card', name: 'Carte VISA / Mastercard', color: '#1A1F71', type: 'Carte Bancaire' },
+  ];
+
   const handleSubscribe = async () => {
     setLoading(true);
     try {
+      // 1. Initialisation Transaction Sandbox GeniusPay
+      const paymentResult = await GeniusPayService.createSubscriptionPayment({
+        user: currentUser,
+        amount: 1300,
+        paymentMethod: selectedMethod,
+      });
+
+      // 2. Activation de l'abonnement VIP dans Supabase
       if (currentUser) {
         await SubscriptionService.activateVipSubscription(currentUser);
       }
-      setTimeout(() => {
-        setLoading(false);
-        Alert.alert(
-          '🎉 Félicitations !',
-          'Votre abonnement Premium VIP (2 € / mois) est désormais actif. Profitez pleinement de tout le catalogue.',
-          [{ text: 'Accéder à la musique', onPress: onSuccess }]
-        );
-      }, 1000);
+
+      setLoading(false);
+      Alert.alert(
+        '🎉 Paiement Sandbox Réussi !',
+        `Transaction GeniusPay validée (${paymentResult.tx_id}). Votre abonnement Premium VIP (2 € / mois) est actif.`,
+        [{ text: 'Accéder à la musique', onPress: onSuccess }]
+      );
     } catch (err) {
       setLoading(false);
       Alert.alert('Erreur', 'Impossible de valider la transaction pour le moment.');
@@ -48,7 +65,7 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
           </TouchableOpacity>
           <View style={styles.secureHeaderBadge}>
             <ShieldCheck size={16} color={THEME.colors.gold} />
-            <Text style={styles.secureHeaderText}>Paiement 100% Sécurisé</Text>
+            <Text style={styles.secureHeaderText}>GeniusPay Sandbox Sécurisé</Text>
           </View>
         </View>
 
@@ -67,15 +84,14 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
             <View style={styles.cardHeader}>
               <View style={styles.vipTagContainer}>
                 <Sparkles size={14} color={THEME.colors.gold} />
-                <Text style={styles.vipTag}>OFFRE PRIVILÈGE VIP</Text>
+                <Text style={styles.vipTag}>PREMIUM VIP ILLIMITÉ</Text>
               </View>
-
               <View style={styles.priceRow}>
                 <Text style={styles.priceEuro}>2 €</Text>
                 <Text style={styles.perMonth}> / mois</Text>
               </View>
-              <Text style={styles.priceFcfa}>≈ 1 300 FCFA / mois</Text>
-              <Text style={styles.noCommitment}>Sans engagement • Annulable à tout moment</Text>
+              <Text style={styles.priceFcfa}>= 1 300 FCFA / mois</Text>
+              <Text style={styles.noCommitment}>Sans engagement • Annulable à tout moment en 1 clic</Text>
             </View>
 
             {/* Liste des Avantages */}
@@ -83,32 +99,42 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
               {benefits.map((benefit, index) => (
                 <View key={index} style={styles.benefitRow}>
                   <View style={styles.checkCircle}>
-                    <Check size={14} color={THEME.colors.gold} />
+                    <Check size={14} color={THEME.colors.gold} strokeWidth={2.5} />
                   </View>
                   <Text style={styles.benefitText}>{benefit}</Text>
                 </View>
               ))}
             </View>
 
-            {/* Section Paiement Sécurisé GeniusPay */}
+            {/* Choix du Moyen de Paiement GeniusPay */}
             <View style={styles.paymentSection}>
-              <Text style={styles.paymentNote}>Moyens de paiement acceptés (Afrique & International) :</Text>
-              <View style={styles.paymentLogosRow}>
-                <View style={[styles.badgeLogo, { backgroundColor: '#1BA4E8' }]}>
-                  <Text style={styles.badgeText}>Wave</Text>
-                </View>
-                <View style={[styles.badgeLogo, { backgroundColor: '#FF6600' }]}>
-                  <Text style={styles.badgeText}>Orange</Text>
-                </View>
-                <View style={[styles.badgeLogo, { backgroundColor: '#FFCC00' }]}>
-                  <Text style={[styles.badgeText, { color: '#000' }]}>MTN</Text>
-                </View>
-                <View style={[styles.badgeLogo, { backgroundColor: '#004F9F' }]}>
-                  <Text style={styles.badgeText}>Moov</Text>
-                </View>
-                <View style={[styles.badgeLogo, { backgroundColor: '#1A1F71' }]}>
-                  <Text style={styles.badgeText}>VISA / MC</Text>
-                </View>
+              <Text style={styles.paymentNote}>Choisissez votre moyen de paiement :</Text>
+              <View style={styles.methodsGrid}>
+                {paymentMethods.map((m) => {
+                  const isSelected = selectedMethod === m.id;
+                  return (
+                    <TouchableOpacity
+                      key={m.id}
+                      style={[
+                        styles.methodCard,
+                        isSelected && styles.methodCardSelected,
+                      ]}
+                      onPress={() => setSelectedMethod(m.id)}
+                      activeOpacity={0.8}
+                    >
+                      <View style={[styles.methodBadge, { backgroundColor: m.color }]}>
+                        <Text style={[styles.methodBadgeText, m.textColor ? { color: m.textColor } : {}]}>
+                          {m.name}
+                        </Text>
+                      </View>
+                      {isSelected && (
+                        <View style={styles.checkBadge}>
+                          <Check size={12} color="#FFFFFF" strokeWidth={3} />
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
           </LinearGradient>
@@ -130,15 +156,15 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
             {loading ? (
               <ActivityIndicator color="#FFFFFF" size="small" />
             ) : (
-              <Text style={styles.ctaText}>S'abonner pour 2 € / mois</Text>
+              <Text style={styles.ctaText}>Payer 1 300 FCFA (2 €) via GeniusPay</Text>
             )}
           </LinearGradient>
         </TouchableOpacity>
 
-        {/* Lien Continuer en mode découverte */}
-        <TouchableOpacity style={styles.skipBtn} onPress={onBack} activeOpacity={0.7}>
-          <Text style={styles.skipText}>Continuer vers l'application en mode Découverte</Text>
-        </TouchableOpacity>
+        {/* Note de Réassurance */}
+        <Text style={styles.reassuranceText}>
+          🔒 Sandbox Test : Vos clés API GeniusPay sont actives et sécurisées.
+        </Text>
 
       </ScrollView>
     </SafeAreaView>
@@ -161,9 +187,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
@@ -174,31 +200,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(197, 155, 39, 0.1)',
+    backgroundColor: 'rgba(197, 155, 39, 0.12)',
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(197, 155, 39, 0.25)',
+    paddingVertical: 5,
+    borderRadius: 12,
   },
   secureHeaderText: {
     color: THEME.colors.gold,
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 11,
+    fontWeight: '800',
   },
   title: {
     color: THEME.colors.textPrimary,
-    fontSize: 23,
+    fontSize: 24,
     fontWeight: '900',
     textAlign: 'center',
-    marginTop: 8,
-    lineHeight: 30,
+    marginTop: 10,
+    marginBottom: 6,
+    lineHeight: 32,
   },
   subtitle: {
     color: THEME.colors.textSecondary,
-    fontSize: 13,
+    fontSize: 12.5,
     textAlign: 'center',
-    marginTop: 6,
     marginBottom: 20,
     lineHeight: 18,
     paddingHorizontal: 10,
@@ -229,17 +253,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(197, 155, 39, 0.15)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    backgroundColor: 'rgba(197, 155, 39, 0.12)',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
     marginBottom: 10,
   },
   vipTag: {
     color: THEME.colors.gold,
     fontSize: 11,
     fontWeight: '900',
-    letterSpacing: 0.8,
+    letterSpacing: 1,
   },
   priceRow: {
     flexDirection: 'row',
@@ -247,7 +271,7 @@ const styles = StyleSheet.create({
   },
   priceEuro: {
     color: THEME.colors.textPrimary,
-    fontSize: 38,
+    fontSize: 36,
     fontWeight: '900',
   },
   perMonth: {
@@ -257,8 +281,8 @@ const styles = StyleSheet.create({
   },
   priceFcfa: {
     color: THEME.colors.gold,
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '800',
     marginTop: 2,
   },
   noCommitment: {
@@ -268,7 +292,7 @@ const styles = StyleSheet.create({
   },
   benefitsList: {
     gap: 12,
-    marginBottom: 18,
+    marginBottom: 20,
   },
   benefitRow: {
     flexDirection: 'row',
@@ -285,42 +309,69 @@ const styles = StyleSheet.create({
   },
   benefitText: {
     color: THEME.colors.textPrimary,
-    fontSize: 13,
+    fontSize: 12.5,
     flex: 1,
     lineHeight: 18,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   paymentSection: {
-    alignItems: 'center',
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
-    paddingTop: 14,
+    paddingTop: 16,
   },
   paymentNote: {
-    color: THEME.colors.textMuted,
-    fontSize: 11,
+    color: THEME.colors.textPrimary,
+    fontSize: 12,
+    fontWeight: '700',
     marginBottom: 10,
   },
-  paymentLogosRow: {
+  methodsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'center',
+    gap: 8,
+  },
+  methodCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 6,
   },
-  badgeLogo: {
+  methodCardSelected: {
+    borderColor: THEME.colors.gold,
+    backgroundColor: '#FFFDF5',
+  },
+  methodBadge: {
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 3,
     borderRadius: 6,
   },
-  badgeText: {
-    color: '#FFF',
-    fontSize: 10,
+  methodBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
     fontWeight: '800',
+  },
+  checkBadge: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: THEME.colors.gold,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   ctaBtn: {
     borderRadius: 30,
     overflow: 'hidden',
     marginBottom: 14,
+    shadowColor: THEME.colors.gold,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
   },
   ctaGradient: {
     paddingVertical: 16,
@@ -329,17 +380,14 @@ const styles = StyleSheet.create({
   },
   ctaText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '800',
+    fontSize: 15,
+    fontWeight: '900',
+    letterSpacing: 0.3,
   },
-  skipBtn: {
-    alignItems: 'center',
-    paddingVertical: 10,
-  },
-  skipText: {
+  reassuranceText: {
     color: THEME.colors.textMuted,
-    fontSize: 13,
-    fontWeight: '600',
-    textDecorationLine: 'underline',
+    fontSize: 11,
+    textAlign: 'center',
+    lineHeight: 16,
   },
 });
