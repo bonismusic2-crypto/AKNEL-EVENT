@@ -1,11 +1,11 @@
 /**
  * Service GeniusPay Sandbox pour le Site Web AKNEL Event
- * Point d'entrée : https://geniuspay.ci/api/v1/merchant
+ * Utilise le proxy backend sécurisé pour contourner la politique CORS des navigateurs
  */
 export const GENIUSPAY_CONFIG = {
     apiKey: import.meta.env.VITE_GENIUSPAY_API_KEY || 'sk_sandbox_0DkFG1q0rgNO21kvb5xILMBYeYmhf0Zg',
     secretKey: import.meta.env.VITE_GENIUSPAY_SECRET_KEY || 'ss_sandbox_4zyu2Kqqeft0SlmTVG1nGDynYP5jpJwwK79li5xdMVdWxrBK',
-    baseUrl: import.meta.env.VITE_GENIUSPAY_BASE_URL || 'https://geniuspay.ci/api/v1/merchant',
+    baseUrl: '/api/geniuspay',
     currency: 'XOF',
     environment: 'sandbox',
 };

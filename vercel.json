@@ -5,6 +5,10 @@
     "framework": "vite",
     "rewrites": [
         {
+            "source": "/api/geniuspay/(.*)",
+            "destination": "https://geniuspay.ci/api/v1/merchant/$1"
+        },
+        {
             "source": "/(.*)",
             "destination": "/index.html"
         }
