@@ -2,7 +2,7 @@ import React from 'react';
 import Layout from '../components/layout/Layout';
 import Button from '../components/ui/Button';
 import { motion } from 'framer-motion';
-import { Sparkles, Calendar, Users, MapPin, CheckCircle, ArrowRight, ShieldCheck, HeartHandshake, Smartphone, Music } from 'lucide-react';
+import { Sparkles, Calendar, Users, MapPin, CheckCircle, ArrowRight, ShieldCheck, HeartHandshake, Smartphone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Home = () => {
@@ -26,7 +26,7 @@ const Home = () => {
                         transition={{ duration: 0.8 }}
                     >
                         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gold/20 border border-gold/40 text-gold text-xs font-bold uppercase tracking-widest mb-6">
-                            <Sparkles size={14} /> Espace Événementiel d'Exception & Organisation de Luxe
+                            <Sparkles size={14} /> Grande Salle Événementielle & Organisation de Luxe
                         </div>
 
                         <h1 className="text-4xl sm:text-6xl md:text-7xl font-serif font-black text-white mb-6 leading-tight uppercase tracking-wide">
@@ -34,7 +34,7 @@ const Home = () => {
                         </h1>
 
                         <p className="text-base sm:text-xl text-gray-200 mb-10 font-light max-w-3xl mx-auto leading-relaxed">
-                            Située à <strong>Cocody Riviera Palmeraie</strong>, AKNEL Event vous offre une salle modulable de 200m² et une conciergerie d'organisation clé en main pour vos mariages, galas, séminaires et célébrations de prestige.
+                            Située à <strong>Cocody Riviera Palmeraie</strong>, AKNEL Event vous offre un vaste espace d'exception pouvant accueillir <strong>jusqu'à 400 personnes</strong> et une conciergerie d'organisation clé en main pour vos mariages, galas, séminaires et célébrations de prestige.
                         </p>
 
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -53,16 +53,16 @@ const Home = () => {
                 </div>
             </section>
 
-            {/* 2. Les Atouts de Notre Salle (200m² à Cocody) */}
+            {/* 2. Les Atouts de Notre Grande Salle (Cocody) */}
             <section className="py-24 bg-white">
                 <div className="container mx-auto px-6">
                     <div className="text-center max-w-3xl mx-auto mb-16">
                         <span className="text-gold text-xs font-bold tracking-widest uppercase mb-2 block">Un Cadre Prestigieux</span>
                         <h2 className="text-3xl md:text-5xl font-serif font-black text-dark uppercase tracking-wide mb-4">
-                            Une Salle d'Exception au Cœur d'Abidjan
+                            Une Grande Salle d'Exception au Cœur d'Abidjan
                         </h2>
                         <p className="text-gray-600 text-base leading-relaxed">
-                            Un espace moderne et chaleureux entièrement conçu pour accueillir vos événements privés et d'entreprises dans un confort absolu.
+                            Un grand espace modulable, moderne et chaleureux entièrement conçu pour accueillir vos événements privés et d'entreprises dans un confort absolu.
                         </p>
                     </div>
 
@@ -71,13 +71,13 @@ const Home = () => {
                             <div className="w-14 h-14 rounded-2xl bg-gold/10 text-gold flex items-center justify-center mb-6 group-hover:bg-gold group-hover:text-white transition-colors">
                                 <Users size={28} />
                             </div>
-                            <h3 className="text-xl font-serif font-bold text-dark mb-3">Capacité 150 Personnes</h3>
+                            <h3 className="text-xl font-serif font-bold text-dark mb-3">Capacité jusqu'à 400 Personnes</h3>
                             <p className="text-gray-600 text-sm leading-relaxed mb-4">
-                                Superficie de 200m² modulable en format banquet, cocktail ou conférence selon vos besoins.
+                                Vaste salle modulable en format banquet, cocktail ou conférence pour accueillir de grandes réceptions sans contrainte d'espace.
                             </p>
                             <ul className="space-y-2 text-xs text-gray-500 font-medium">
                                 <li className="flex items-center gap-2"><CheckCircle size={14} className="text-gold" /> Mobilier banquet & chaises Napoléon inclus</li>
-                                <li className="flex items-center gap-2"><CheckCircle size={14} className="text-gold" /> Espace scène et estrade d'honneur</li>
+                                <li className="flex items-center gap-2"><CheckCircle size={14} className="text-gold" /> Espace scène, piste de danse et estrade d'honneur</li>
                             </ul>
                         </div>
 
@@ -90,8 +90,8 @@ const Home = () => {
                                 Climatisation intégrale haute performance, sonorisation pro, éclairages d'ambiance et parking privé sécurisé.
                             </p>
                             <ul className="space-y-2 text-xs text-gray-500 font-medium">
-                                <li className="flex items-center gap-2"><CheckCircle size={14} className="text-gold" /> Parking sécurisé pour vos convives</li>
-                                <li className="flex items-center gap-2"><CheckCircle size={14} className="text-gold" /> Cuisine équipée pour service traiteur</li>
+                                <li className="flex items-center gap-2"><CheckCircle size={14} className="text-gold" /> Grand parking sécurisé pour tous vos convives</li>
+                                <li className="flex items-center gap-2"><CheckCircle size={14} className="text-gold" /> Cuisine équipée pour service traiteur haut de gamme</li>
                             </ul>
                         </div>
 
@@ -105,7 +105,7 @@ const Home = () => {
                             </p>
                             <ul className="space-y-2 text-xs text-gray-500 font-medium">
                                 <li className="flex items-center gap-2"><CheckCircle size={14} className="text-gold" /> Coordination complète sans stress</li>
-                                <li className="flex items-center gap-2"><CheckCircle size={14} className="text-gold" /> Formules sur-mesure et à la carte</li>
+                                <li className="flex items-center gap-2"><CheckCircle size={14} className="text-gold" /> Formules personnalisées selon votre budget</li>
                             </ul>
                         </div>
                     </div>
@@ -204,7 +204,7 @@ const Home = () => {
                         Prêt à Organiser Votre Événement ?
                     </h2>
                     <p className="text-gray-600 text-base mb-8 leading-relaxed">
-                        Contactez notre équipe dès aujourd'hui pour planifier une visite de la salle ou obtenir un devis personnalisé adapté à votre budget.
+                        Contactez notre équipe dès aujourd'hui pour planifier une visite de notre grand espace événementiel de 400 places ou obtenir un devis personnalisé.
                     </p>
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
                         <Link to="/contact">
@@ -213,7 +213,7 @@ const Home = () => {
                             </Button>
                         </Link>
                         <a
-                            href="https://wa.me/2250556018787?text=Bonjour%20AKNEL%20Event,%20je%20souhaite%20des%20informations%20pour%20une%20r%C3%A9servation"
+                            href="https://wa.me/2250556018787?text=Bonjour%20AKNEL%20Event,%20je%20souhaite%20des%20informations%20pour%20une%20r%C3%A9servation%20de%20salle"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center justify-center gap-2 border-2 border-dark text-dark hover:bg-dark hover:text-white px-8 py-4 rounded-full font-bold text-xs uppercase tracking-widest transition-colors duration-300"

@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
 import Layout from '../components/layout/Layout';
-import { Check, Calendar, Users, Clock, Send, CheckCircle2 } from 'lucide-react';
+import { Check, Calendar, Users, Clock, Send, CheckCircle2, ShieldCheck, Sparkles, MapPin } from 'lucide-react';
 import heroBg from '../assets/hero-bg.png';
-import useContent from '../hooks/useContent';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
 
 const Venue = () => {
-    const { data: services, loading } = useContent('services');
     const [formLoading, setFormLoading] = useState(false);
     const [submitted, setSubmitted] = useState(false);
     const [formData, setFormData] = useState({
@@ -41,12 +39,6 @@ const Venue = () => {
         }
     };
 
-    if (loading) return (
-        <div className="h-screen flex items-center justify-center font-serif text-gold text-2xl animate-pulse">
-            Chargement de l'espace...
-        </div>
-    );
-
     return (
         <Layout>
             {/* Hero Section */}
@@ -66,12 +58,12 @@ const Venue = () => {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.8 }}
                     >
-                        <span className="text-gold text-sm md:text-base uppercase tracking-[0.4em] mb-4 block">Lieu de Prestige</span>
+                        <span className="text-gold text-sm md:text-base uppercase tracking-[0.4em] mb-4 block font-bold">Lieu d'Exception</span>
                         <h1 className="text-4xl md:text-7xl font-serif font-bold text-white mb-6 uppercase tracking-widest leading-tight">
-                            L'Espace <span className="text-gold-gradient">Aknel</span>
+                            L'Espace <span className="text-gold">AKNEL</span>
                         </h1>
                         <p className="text-gray-300 text-lg md:text-xl font-light italic max-w-2xl mx-auto">
-                            Où chaque événement devient une légende.
+                            Le cadre idéal pour accueillir vos plus grandes célébrations jusqu'à 400 convives.
                         </p>
                     </motion.div>
                 </div>
@@ -86,25 +78,41 @@ const Venue = () => {
                     className="space-y-8"
                 >
                     <div className="space-y-4">
+                        <span className="text-gold text-xs font-bold uppercase tracking-widest">Cocody Riviera Palmeraie</span>
                         <h2 className="text-4xl md:text-5xl font-serif font-bold text-dark leading-tight">
-                            Un sanctuaire <br />
-                            <span className="text-gold-gradient italic">pour vos célébrations</span>
+                            Une Grande Salle <br />
+                            <span className="text-gold italic">Modulable & Prestigieuse</span>
                         </h2>
                         <div className="w-20 h-1 bg-gold"></div>
                     </div>
                     
                     <p className="text-gray-600 text-lg leading-relaxed font-light">
-                        Située au cœur d'Abidjan, la salle AKNEL Event harmonise luxe contemporain et flexibilité architecturale. Conçue pour sublimer vos instants les plus précieux, elle s'adapte à toutes vos exigences de mise en scène.
+                        Située dans le quartier sécurisé et accessible de <strong>Cocody Riviera Palmeraie</strong>, la salle AKNEL Event combine standing moderne, acoustique soignée et vaste espace pour loger jusqu'à <strong>400 personnes</strong> dans des conditions optimales de confort et d'élégance.
                     </p>
 
                     <div className="grid grid-cols-2 gap-8 py-4">
-                        <div className="space-y-2">
-                            <span className="text-gold font-serif text-3xl font-bold">500+</span>
-                            <p className="text-xs uppercase tracking-widest text-gray-400 font-bold">Capacité Assise</p>
+                        <div className="space-y-2 p-6 rounded-2xl bg-gray-50 border border-gray-100">
+                            <span className="text-gold font-serif text-4xl font-black">400</span>
+                            <p className="text-xs uppercase tracking-widest text-dark font-bold">Capacité jusqu'à 400 Personnes</p>
                         </div>
-                        <div className="space-y-2">
-                            <span className="text-gold font-serif text-3xl font-bold">800m²</span>
-                            <p className="text-xs uppercase tracking-widest text-gray-400 font-bold">Espace Modulable</p>
+                        <div className="space-y-2 p-6 rounded-2xl bg-gray-50 border border-gray-100">
+                            <span className="text-gold font-serif text-4xl font-black">100%</span>
+                            <p className="text-xs uppercase tracking-widest text-dark font-bold">Climatisé & Sécurisé</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-3 text-sm text-gray-600">
+                            <CheckCircle2 size={18} className="text-gold shrink-0" />
+                            <span>Mobilier complet (Chaises Napoléon blanches/or, tables rondes & rectangulaires)</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-sm text-gray-600">
+                            <CheckCircle2 size={18} className="text-gold shrink-0" />
+                            <span>Grand parking privé sécurisé pour l'ensemble des invités</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-sm text-gray-600">
+                            <CheckCircle2 size={18} className="text-gold shrink-0" />
+                            <span>Espace cuisine dédié pour les équipes traiteurs</span>
                         </div>
                     </div>
                 </motion.div>
@@ -116,31 +124,29 @@ const Venue = () => {
                     className="relative"
                 >
                     <div className="absolute -inset-4 border border-gold/20 rounded-2xl -z-10 rotate-3 animate-pulse"></div>
-                    <div className="h-[600px] rounded-2xl overflow-hidden shadow-2xl relative group bg-gray-900">
+                    <div className="h-[550px] rounded-2xl overflow-hidden shadow-2xl relative group bg-gray-900">
                         <img 
                             src="https://images.unsplash.com/photo-1519167758481-83f550bb49b3?q=80&w=2098&auto=format&fit=crop" 
-                            alt="Aperçu de la Salle" 
+                            alt="Aperçu de la Grande Salle" 
                             className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700 opacity-90"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-dark/80 via-transparent to-transparent flex items-end p-8">
-                            <span className="text-white font-serif text-2xl">L'Élégance à l'état pur</span>
+                            <span className="text-white font-serif text-2xl font-bold">L'Excellence Événementielle</span>
                         </div>
                     </div>
                 </motion.div>
             </div>
 
             {/* Reservation Form Section */}
-            <div className="py-24 bg-dark relative overflow-hidden">
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gold/5 rounded-full blur-[120px]"></div>
-                
+            <div className="py-24 bg-dark relative overflow-hidden text-white">
                 <div className="container mx-auto px-6 relative z-10">
                     <div className="max-w-5xl mx-auto flex flex-col lg:flex-row gap-16 items-start">
-                        <div className="lg:w-1/2 space-y-8 text-white">
+                        <div className="lg:w-1/2 space-y-8">
                             <h2 className="text-4xl font-serif font-bold leading-tight">
-                                Réservez <span className="text-gold italic">votre date</span>
+                                Réservez <span className="text-gold italic">Votre Date</span>
                             </h2>
-                            <p className="text-gray-400 text-lg font-light leading-relaxed">
-                                Remplissez ce formulaire pour recevoir un devis personnalisé et vérifier la disponibilité de l'Espace Aknel pour votre événement.
+                            <p className="text-gray-400 text-base font-light leading-relaxed">
+                                Remplissez ce formulaire pour recevoir un devis personnalisé et vérifier la disponibilité de l'Espace AKNEL pour votre célébration.
                             </p>
                             
                             <div className="space-y-6">
@@ -149,8 +155,8 @@ const Venue = () => {
                                         <Clock size={20} />
                                     </div>
                                     <div>
-                                        <h4 className="font-bold text-sm tracking-widest uppercase">Réponse Rapide</h4>
-                                        <p className="text-xs text-gray-500">Sous 24h ouvrées</p>
+                                        <h4 className="font-bold text-sm tracking-widest uppercase text-white">Réponse Rapide</h4>
+                                        <p className="text-xs text-gray-400">Sous 24h ouvrées</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-4">
@@ -158,113 +164,87 @@ const Venue = () => {
                                         <Users size={20} />
                                     </div>
                                     <div>
-                                        <h4 className="font-bold text-sm tracking-widest uppercase">Visite Privée</h4>
-                                        <p className="text-xs text-gray-400">Sur rendez-vous uniquement</p>
+                                        <h4 className="font-bold text-sm tracking-widest uppercase text-white">Grande Capacité</h4>
+                                        <p className="text-xs text-gray-400">Jusqu'à 400 personnes assises</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="lg:w-1/2 w-full">
-                            <div className="bg-white p-10 rounded-3xl shadow-2xl space-y-8">
-                                <AnimatePresence mode="wait">
-                                    {!submitted ? (
-                                        <motion.form 
-                                            key="form"
-                                            initial={{ opacity: 0 }}
-                                            animate={{ opacity: 1 }}
-                                            exit={{ opacity: 0 }}
-                                            onSubmit={handleSubmit} 
-                                            className="space-y-6"
+                        <div className="lg:w-1/2 w-full bg-white text-dark p-8 md:p-10 rounded-3xl shadow-2xl">
+                            {submitted ? (
+                                <div className="text-center py-12 space-y-4">
+                                    <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto">
+                                        <Check size={32} />
+                                    </div>
+                                    <h3 className="text-2xl font-serif font-bold">Demande Reçue !</h3>
+                                    <p className="text-gray-600 text-sm">
+                                        Notre équipe vous recontactera dans les plus brefs délais avec une proposition détaillée.
+                                    </p>
+                                </div>
+                            ) : (
+                                <form onSubmit={handleSubmit} className="space-y-5">
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">Nom Complet</label>
+                                        <input 
+                                            type="text" 
+                                            required
+                                            value={formData.name}
+                                            onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gold"
+                                            placeholder="Ex: Madame Koffi"
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">Date Souhaitée</label>
+                                            <input 
+                                                type="date" 
+                                                required
+                                                value={formData.date}
+                                                onChange={(e) => setFormData({...formData, date: e.target.value})}
+                                                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gold"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">Nb d'Invités</label>
+                                            <input 
+                                                type="number" 
+                                                required
+                                                max="400"
+                                                value={formData.guestCount}
+                                                onChange={(e) => setFormData({...formData, guestCount: e.target.value})}
+                                                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gold"
+                                                placeholder="Max 400"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">Type d'Événement</label>
+                                        <select 
+                                            value={formData.eventType}
+                                            onChange={(e) => setFormData({...formData, eventType: e.target.value})}
+                                            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gold"
                                         >
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                <div className="space-y-2">
-                                                    <label className="text-[10px] uppercase tracking-widest font-bold text-gray-400 ml-1">Nom complet</label>
-                                                    <input 
-                                                        type="text" required
-                                                        value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}
-                                                        placeholder="Votre nom" 
-                                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-gold/50 transition-all text-sm font-medium"
-                                                    />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <label className="text-[10px] uppercase tracking-widest font-bold text-gray-400 ml-1">Email</label>
-                                                    <input 
-                                                        type="email" required
-                                                        value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})}
-                                                        placeholder="votre@email.com" 
-                                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-gold/50 transition-all text-sm font-medium"
-                                                    />
-                                                </div>
-                                            </div>
+                                            <option value="Mariage">Mariage</option>
+                                            <option value="Gala / Soirée">Gala / Soirée</option>
+                                            <option value="Anniversaire">Anniversaire</option>
+                                            <option value="Séminaire / Entreprise">Séminaire / Entreprise</option>
+                                            <option value="Concert / Célébration">Concert / Célébration</option>
+                                        </select>
+                                    </div>
 
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                <div className="space-y-2">
-                                                    <label className="text-[10px] uppercase tracking-widest font-bold text-gray-400 ml-1">Date estimée</label>
-                                                    <input 
-                                                        type="date" required
-                                                        value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})}
-                                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-gold/50 transition-all text-sm font-medium"
-                                                    />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <label className="text-[10px] uppercase tracking-widest font-bold text-gray-400 ml-1">Type d'événement</label>
-                                                    <select 
-                                                        value={formData.eventType} onChange={e => setFormData({...formData, eventType: e.target.value})}
-                                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-gold/50 transition-all text-sm font-medium"
-                                                    >
-                                                        <option>Mariage</option>
-                                                        <option>Gala / Soirée</option>
-                                                        <option>Séminaire / Entreprise</option>
-                                                        <option>Anniversaire</option>
-                                                        <option>Autre</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] uppercase tracking-widest font-bold text-gray-400 ml-1">Message ou exigences</label>
-                                                <textarea 
-                                                    rows="4"
-                                                    value={formData.message} onChange={e => setFormData({...formData, message: e.target.value})}
-                                                    placeholder="Dites-nous en plus sur vos besoins..." 
-                                                    className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-gold/50 transition-all text-sm font-medium resize-none"
-                                                ></textarea>
-                                            </div>
-
-                                            <button 
-                                                disabled={formLoading}
-                                                className="w-full bg-dark text-white hover:bg-gold-dark py-5 rounded-xl font-bold uppercase tracking-[0.2em] text-xs transition-all duration-300 shadow-xl shadow-dark/10 flex items-center justify-center gap-3 active:scale-[0.98]"
-                                            >
-                                                {formLoading ? <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div> : <Send size={16} />}
-                                                Envoyer ma demande
-                                            </button>
-                                        </motion.form>
-                                    ) : (
-                                        <motion.div 
-                                            key="success"
-                                            initial={{ opacity: 0, scale: 0.9 }}
-                                            animate={{ opacity: 1, scale: 1 }}
-                                            className="py-12 text-center space-y-6"
-                                        >
-                                            <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                                                <CheckCircle2 size={40} />
-                                            </div>
-                                            <h3 className="text-3xl font-serif font-bold text-dark">Demande Envoyée !</h3>
-                                            <p className="text-gray-500 leading-relaxed">
-                                                Merci {formData.name}, votre demande de devis a été transmise avec succès. <br />
-                                                Notre équipe vous contactera d'ici peu.
-                                            </p>
-                                            <button 
-                                                onClick={() => setSubmitted(false)}
-                                                className="text-gold font-bold uppercase tracking-widest text-xs hover:underline pt-4"
-                                            >
-                                                Envoyer une autre demande
-                                            </button>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                            </div>
+                                    <button 
+                                        type="submit" 
+                                        disabled={formLoading}
+                                        className="w-full bg-gold text-dark hover:bg-dark hover:text-white py-4 rounded-xl font-bold text-xs uppercase tracking-widest transition-all duration-300 shadow-md flex items-center justify-center gap-2"
+                                    >
+                                        {formLoading ? 'Envoi en cours...' : 'Envoyer la Demande de Devis'}
+                                    </button>
+                                </form>
+                            )}
                         </div>
                     </div>
                 </div>
