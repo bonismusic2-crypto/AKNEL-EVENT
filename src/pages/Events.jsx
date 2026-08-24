@@ -1,16 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import Button from '../components/ui/Button';
-import { Calendar, MapPin, Tag, Check, ShieldCheck, Ticket, CreditCard, Sparkles, QrCode, X, ExternalLink } from 'lucide-react';
+import { Calendar, MapPin, Tag, Check, ShieldCheck, Ticket, CreditCard, Sparkles, QrCode, X, AlertCircle } from 'lucide-react';
 import { GeniusPayWebService } from '../services/geniusPayService';
 
 const Events = () => {
+    const location = useLocation();
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [selectedTicket, setSelectedTicket] = useState(null);
     const [showCheckoutModal, setShowCheckoutModal] = useState(false);
     const [customerInfo, setCustomerInfo] = useState({ name: '', email: '', phone: '' });
     const [paying, setPaying] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
     const [issuedTicket, setIssuedTicket] = useState(null);
+
+    // Vérifier si retour après paiement réussi sur GeniusPay (return_url ?status=success)
+    useEffect(() => {
+        const queryParams = new URLSearchParams(location.search);
+        if (queryParams.get('status') === 'success') {
+            setIssuedTicket({
+                tx_id: queryParams.get('tx_id') || 'GP_CONFIRMED_' + Date.now(),
+                qr_token: 'AKNEL-PASS-' + Math.random().toString(36).substring(2, 9).toUpperCase(),
+                event_title: 'Concert de Louange & Adoration Prophétique',
+                ticket_name: 'Pass VIP Confirmé',
+                price: 15000,
+                buyer_name: 'Abonné Confirmé',
+                date: 'Samedi 20 Septembre 2026 à 18h30',
+            });
+            setShowCheckoutModal(true);
+        }
+    }, [location]);
 
     const upcomingEvents = [
         {
@@ -33,12 +53,14 @@ const Events = () => {
         setSelectedEvent(event);
         setSelectedTicket(ticket);
         setIssuedTicket(null);
+        setErrorMessage('');
         setShowCheckoutModal(true);
     };
 
     const handleConfirmPayment = async (e) => {
         e.preventDefault();
         setPaying(true);
+        setErrorMessage('');
 
         try {
             const result = await GeniusPayWebService.createTicketPayment({
@@ -48,13 +70,13 @@ const Events = () => {
                 quantity: 1,
             });
 
-            // Si GeniusPay renvoie une page de paiement officielle
+            // 1. Redirection réelle vers le guichet de paiement GeniusPay
             if (result.checkoutUrl) {
                 window.location.href = result.checkoutUrl;
                 return;
             }
 
-            // Sinon affichage direct du Pass avec QR Code validé
+            // 2. Si réponse directe
             setIssuedTicket({
                 tx_id: result.tx_id,
                 qr_token: 'AKNEL-PASS-' + Math.random().toString(36).substring(2, 9).toUpperCase(),
@@ -65,7 +87,8 @@ const Events = () => {
                 date: selectedEvent.date,
             });
         } catch (err) {
-            alert('Erreur lors du traitement du paiement Sandbox.');
+            console.error('Erreur GeniusPay :', err);
+            setErrorMessage(err.message || 'Impossible d\'initialiser le paiement GeniusPay. Vérifiez vos coordonnées ou les paramètres de l\'API.');
         } finally {
             setPaying(false);
         }
@@ -77,7 +100,7 @@ const Events = () => {
             <div className="pt-32 pb-16 bg-dark text-white text-center relative overflow-hidden">
                 <div className="container mx-auto px-6 relative z-10">
                     <span className="text-gold text-xs font-bold tracking-widest uppercase mb-2 block font-mono">
-                        Paiement Sécurisé GeniusPay Sandbox
+                        Paiement Sécurisé GeniusPay
                     </span>
                     <h1 className="text-4xl md:text-6xl font-serif font-black mb-4 uppercase tracking-wide">
                         Agenda & <span className="text-gold">Billetterie</span>
@@ -163,10 +186,10 @@ const Events = () => {
                                         <ShieldCheck size={28} className="text-gold shrink-0" />
                                         <div>
                                             <h4 className="text-xs font-bold uppercase tracking-wider text-dark">Passage en Caisse Sécurisé GeniusPay</h4>
-                                            <p className="text-xs text-gray-500">Intégration Sandbox Wave, Orange Money, MTN, Moov et Carte Bancaire.</p>
+                                            <p className="text-xs text-gray-500">Règlement instantané via Wave, Orange Money, MTN, Moov et Carte Bancaire.</p>
                                         </div>
                                     </div>
-                                    <span className="text-xs font-bold text-gold shrink-0 font-mono">Clés Sandbox Actives</span>
+                                    <span className="text-xs font-bold text-gold shrink-0 font-mono">Paiement Réel API</span>
                                 </div>
                             </div>
                         </div>
@@ -174,7 +197,7 @@ const Events = () => {
                 </div>
             </div>
 
-            {/* MODAL CHECKOUT GENIUSPAY SANDBOX */}
+            {/* MODAL CHECKOUT GENIUSPAY DIRECT */}
             {showCheckoutModal && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-3xl p-8 max-w-lg w-full shadow-2xl space-y-6 relative max-h-[90vh] overflow-y-auto">
@@ -189,7 +212,7 @@ const Events = () => {
                             <>
                                 <div>
                                     <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gold/10 text-gold text-[10px] font-bold uppercase tracking-widest mb-2">
-                                        <Sparkles size={12} /> Guichet GeniusPay Sandbox
+                                        <Sparkles size={12} /> Guichet Officiel GeniusPay
                                     </div>
                                     <h3 className="text-2xl font-serif font-bold text-dark">{selectedTicket?.name}</h3>
                                     <p className="text-gray-500 text-xs mt-1">{selectedEvent?.title}</p>
@@ -197,6 +220,13 @@ const Events = () => {
                                         {selectedTicket?.price.toLocaleString()} <span className="text-sm font-bold text-dark">FCFA</span>
                                     </div>
                                 </div>
+
+                                {errorMessage ? (
+                                    <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-start gap-2">
+                                        <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                                        <span>{errorMessage}</span>
+                                    </div>
+                                ) : null}
 
                                 <form onSubmit={handleConfirmPayment} className="space-y-4">
                                     <div>
@@ -207,7 +237,7 @@ const Events = () => {
                                             placeholder="Ex: Jean Koffi"
                                             value={customerInfo.name}
                                             onChange={(e) => setCustomerInfo({ ...customerInfo, name: e.target.value })}
-                                            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gold"
+                                            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gold text-dark"
                                         />
                                     </div>
 
@@ -220,7 +250,7 @@ const Events = () => {
                                                 placeholder="jean@gmail.com"
                                                 value={customerInfo.email}
                                                 onChange={(e) => setCustomerInfo({ ...customerInfo, email: e.target.value })}
-                                                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gold"
+                                                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gold text-dark"
                                             />
                                         </div>
                                         <div>
@@ -231,7 +261,7 @@ const Events = () => {
                                                 placeholder="0700000000"
                                                 value={customerInfo.phone}
                                                 onChange={(e) => setCustomerInfo({ ...customerInfo, phone: e.target.value })}
-                                                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gold"
+                                                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gold text-dark"
                                             />
                                         </div>
                                     </div>
@@ -253,7 +283,7 @@ const Events = () => {
                                         className="w-full bg-gold text-dark py-4 rounded-xl font-bold uppercase tracking-wider text-xs hover:bg-dark hover:text-white transition-all shadow-md flex items-center justify-center gap-2"
                                     >
                                         <ShieldCheck size={16} />
-                                        {paying ? 'Initialisation GeniusPay...' : `Payer ${selectedTicket?.price.toLocaleString()} FCFA via GeniusPay`}
+                                        {paying ? 'Redirection vers GeniusPay en cours...' : `Payer ${selectedTicket?.price.toLocaleString()} FCFA sur GeniusPay`}
                                     </button>
                                 </form>
                             </>
