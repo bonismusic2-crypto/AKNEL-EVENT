@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, FileText, Briefcase, Camera, Mail, LogOut, Calendar, MessageSquare, Music } from 'lucide-react';
+import { LayoutDashboard, FileText, Briefcase, Camera, Mail, LogOut, Calendar, MessageSquare, Layers } from 'lucide-react';
 
 const AdminLayout = () => {
     const location = useLocation();
@@ -16,7 +16,7 @@ const AdminLayout = () => {
         { name: 'Tableau de bord', icon: <LayoutDashboard size={20} />, path: '/admin' },
         { name: 'Messagerie', icon: <MessageSquare size={20} />, path: '/admin/messages' },
         { name: 'Réservations', icon: <Calendar size={20} />, path: '/admin/reservations' },
-        { name: 'Gestion Musique', icon: <Music size={20} />, path: '/admin/manage-music' },
+        { name: 'Gestion Médiathèque', icon: <Layers size={20} />, path: '/admin/manage-music' },
         { name: 'Événements Publics', icon: <Briefcase size={20} />, path: '/admin/manage-events' },
         { name: 'Accueil', icon: <FileText size={20} />, path: '/admin/edit-home' },
         { name: 'À Propos', icon: <FileText size={20} />, path: '/admin/edit-about' },
@@ -31,7 +31,7 @@ const AdminLayout = () => {
             <aside className="w-64 bg-dark text-white flex flex-col z-10 shadow-2xl">
                 <div className="p-8 border-b border-gray-800 text-center">
                     <h1 className="text-2xl font-serif font-bold tracking-wider">AKNEL <span className="text-gold italic">Event</span></h1>
-                    <p className="text-xs text-gray-500 mt-2 uppercase tracking-widest">Admin Panel</p>
+                    <p className="text-xs text-gray-500 mt-2 uppercase tracking-widest font-bold">Admin Panel</p>
                 </div>
 
                 <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
@@ -83,7 +83,7 @@ const AdminLayout = () => {
                         <h2 className="text-2xl font-serif font-bold text-dark">
                             {menuItems.find(i => i.path === location.pathname)?.name || 'Tableau de bord'}
                         </h2>
-                        <p className="text-gray-500 text-sm mt-1">Gérez votre plateforme événementielle avec élégance.</p>
+                        <p className="text-gray-500 text-sm mt-1">Gérez votre plateforme événementielle & mobile avec élégance.</p>
                     </div>
                     <div className="flex items-center gap-4">
                         <Link to="/" target="_blank" className="text-xs uppercase font-bold text-gold hover:underline">
