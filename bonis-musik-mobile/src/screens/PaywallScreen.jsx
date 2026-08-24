@@ -9,7 +9,7 @@ import { GeniusPayService } from '../services/geniusPayService';
 
 export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
   const [loading, setLoading] = useState(false);
-  const [selectedMethod, setSelectedMethod] = useState('wave'); // 'wave', 'orange', 'mtn', 'moov', 'card'
+  const [selectedMethod, setSelectedMethod] = useState('wave');
 
   const benefits = [
     'Accès illimité à tous les albums et singles audio.',
@@ -43,14 +43,13 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
       }
 
       setLoading(false);
-      Alert.alert(
-        '🎉 Paiement Sandbox Réussi !',
-        `Transaction GeniusPay validée (${paymentResult.tx_id}). Votre abonnement Premium VIP (2 € / mois) est actif.`,
-        [{ text: 'Accéder à la musique', onPress: onSuccess }]
-      );
+      // Redirection directe vers le nouvel écran PaymentSuccessScreen avec le txId réel
+      if (onSuccess) {
+        onSuccess(paymentResult.tx_id);
+      }
     } catch (err) {
       setLoading(false);
-      Alert.alert('Erreur', 'Impossible de valider la transaction pour le moment.');
+      Alert.alert('Erreur', 'Impossible d\'initialiser le paiement GeniusPay : ' + (err.message || ''));
     }
   };
 

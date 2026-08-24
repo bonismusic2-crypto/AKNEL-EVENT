@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, Alert, Linking } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AudioProvider } from './src/context/AudioContext';
@@ -17,65 +17,56 @@ import { MediaLibraryScreen } from './src/screens/MediaLibraryScreen';
 import { AlbumDetailScreen } from './src/screens/AlbumDetailScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { PaywallScreen } from './src/screens/PaywallScreen';
+import { PaymentSuccessScreen } from './src/screens/PaymentSuccessScreen';
+import { PaymentCancelScreen } from './src/screens/PaymentCancelScreen';
 
 export default function App() {
-  const [appState, setAppState] = useState('welcome'); // 'welcome', 'auth', 'main', 'paywall'
+  const [appState, setAppState] = useState('welcome'); // 'welcome', 'auth', 'paywall', 'payment_success', 'payment_cancel', 'main'
   const [activeTab, setActiveTab] = useState('home'); // 'home', 'library', 'profile'
   const [selectedAlbum, setSelectedAlbum] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-
-  // Traitement du flux post-authentification : vérification de l'abonnement
-  const processUserAuth = async (user) => {
-    setCurrentUser(user);
-    if (!user) {
-      setAppState('welcome');
-      return;
-    }
-
-    try {
-      const { isSubscribed } = await SubscriptionService.checkSubscription(user);
-      if (isSubscribed) {
-        setAppState('main');
-      } else {
-        // Redirection systématique vers le Paywall pour les non-abonnés
-        setAppState('paywall');
-      }
-    } catch (e) {
-      console.warn('Erreur vérification post-auth:', e);
-      setAppState('paywall');
-    }
-  };
+  const [lastTxId, setLastTxId] = useState(null);
 
   // Vérifier la session active au lancement de l'application
   useEffect(() => {
-    const initSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          await processUserAuth(session.user);
-        } else {
-          setAppState('welcome');
-        }
-      } catch (err) {
-        console.warn('Session init error:', err);
-        setAppState('welcome');
-      } finally {
-        setIsCheckingAuth(false);
-      }
-    };
-
-    initSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_OUT' || !session?.user) {
-        setCurrentUser(null);
-        setAppState('welcome');
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setCurrentUser(session.user);
+        setAppState('main');
       }
     });
 
-    return () => subscription.unsubscribe();
-  }, []);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setCurrentUser(session.user);
+      } else {
+        setCurrentUser(null);
+      }
+    });
+
+    // Écoute des retours Deep Link (bonismusik://payment-success ou payment-cancel)
+    const handleDeepLink = (event) => {
+      const url = event.url;
+      if (url && url.includes('payment-success')) {
+        if (currentUser) {
+          SubscriptionService.activateVipSubscription(currentUser);
+        }
+        setAppState('payment_success');
+      } else if (url && url.includes('payment-cancel')) {
+        setAppState('payment_cancel');
+      }
+    };
+
+    const linkingSub = Linking.addEventListener('url', handleDeepLink);
+    Linking.getInitialURL().then((url) => {
+      if (url) handleDeepLink({ url });
+    });
+
+    return () => {
+      subscription.unsubscribe();
+      linkingSub.remove();
+    };
+  }, [currentUser]);
 
   const handleSelectAlbum = (album) => {
     setSelectedAlbum(album);
@@ -103,25 +94,50 @@ export default function App() {
           {/* 2. Écran d'Authentification Supabase */}
           {appState === 'auth' && (
             <AuthScreen
-              onSuccess={(user) => {
-                processUserAuth(user);
+              onSuccess={async (user) => {
+                setCurrentUser(user);
+                // Vérifier si abonné actif
+                const isSubscribed = await SubscriptionService.isUserSubscribed(user);
+                if (isSubscribed) {
+                  setAppState('main');
+                } else {
+                  setAppState('paywall');
+                }
               }}
               onBack={() => setAppState('welcome')}
             />
           )}
 
-          {/* 3. Écran Paywall (Abonnement 2 € / mois) */}
+          {/* 3. Écran Paywall GeniusPay (2 € / mois) */}
           {appState === 'paywall' && (
             <PaywallScreen
               currentUser={currentUser}
               onBack={() => setAppState('main')}
-              onSuccess={() => {
-                setAppState('main');
+              onSuccess={(txId) => {
+                setLastTxId(txId);
+                setAppState('payment_success');
               }}
             />
           )}
 
-          {/* 4. Application Principale avec 3 Onglets Épurés */}
+          {/* 4. Écran de Succès du Paiement Mobile */}
+          {appState === 'payment_success' && (
+            <PaymentSuccessScreen
+              txId={lastTxId}
+              currentUser={currentUser}
+              onContinue={() => setAppState('main')}
+            />
+          )}
+
+          {/* 5. Écran d'Annulation du Paiement Mobile */}
+          {appState === 'payment_cancel' && (
+            <PaymentCancelScreen
+              onRetry={() => setAppState('paywall')}
+              onBack={() => setAppState('main')}
+            />
+          )}
+
+          {/* 6. Application Principale avec 3 Onglets Épurés */}
           {appState === 'main' && (
             <View style={styles.mainContainer}>
               <View style={styles.contentArea}>
@@ -153,13 +169,12 @@ export default function App() {
                       />
                     )}
 
-                    {/* Onglet 3 : PROFIL UTILISATEUR & GESTION */}
+                    {/* Onglet 3 : PROFIL UTILISATEUR & ABONNEMENT */}
                     {activeTab === 'profile' && (
                       <ProfileScreen
                         currentUser={currentUser}
                         onOpenPaywall={() => setAppState('paywall')}
                         onLogout={() => {
-                          setCurrentUser(null);
                           setAppState('welcome');
                           setActiveTab('home');
                         }}
