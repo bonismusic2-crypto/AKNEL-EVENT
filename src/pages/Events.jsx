@@ -15,11 +15,11 @@ const Events = () => {
             date: 'Samedi 20 Septembre 2026 à 18h30',
             location: 'AKNEL Hall, Cocody Riviera Palmeraie, Abidjan',
             image: 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=800',
-            description: 'Une soirée unique d''élévation spirituelle, d''adoration et de célébration dans le cadre luxueux d''AKNEL Hall.',
+            description: "Une soirée unique d'élévation spirituelle, d'adoration et de célébration dans le cadre luxueux d'AKNEL Hall.",
             ticketTypes: [
                 { id: 'standard', name: 'Pass Standard', price: 5000, desc: 'Accès en salle, placement libre' },
-                { id: 'vip', name: 'Pass VIP Prestige', price: 15000, desc: 'Placement privilégié devant de scène + Cocktail d''accueil offert' },
-                { id: 'gold', name: 'Pass Carré d''Or', price: 25000, desc: 'Table VIP réservée + Rencontre privée avec l''artiste + Reçu dédicacé' },
+                { id: 'vip', name: 'Pass VIP Prestige', price: 15000, desc: "Placement privilégié devant de scène + Cocktail d'accueil offert" },
+                { id: 'gold', name: "Pass Carré d'Or", price: 25000, desc: "Table VIP réservée + Rencontre privée avec l'artiste + Reçu dédicacé" },
             ]
         }
     ];
