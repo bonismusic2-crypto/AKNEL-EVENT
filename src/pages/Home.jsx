@@ -2,7 +2,7 @@ import React from 'react';
 import Layout from '../components/layout/Layout';
 import Button from '../components/ui/Button';
 import { motion } from 'framer-motion';
-import { Sparkles, Calendar, Users, MapPin, CheckCircle, ArrowRight, ShieldCheck, HeartHandshake, Smartphone } from 'lucide-react';
+import { Calendar, Users, MapPin, CheckCircle, ArrowRight, ShieldCheck, HeartHandshake, Smartphone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Home = () => {
@@ -25,10 +25,6 @@ const Home = () => {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.8 }}
                     >
-                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gold/20 border border-gold/40 text-gold text-xs font-bold uppercase tracking-widest mb-6">
-                            <Sparkles size={14} /> Grande Salle Événementielle & Organisation de Luxe
-                        </div>
-
                         <h1 className="text-4xl sm:text-6xl md:text-7xl font-serif font-black text-white mb-6 leading-tight uppercase tracking-wide">
                             Sublimez Vos <span className="text-gold">Moments</span> Inoubliables
                         </h1>
