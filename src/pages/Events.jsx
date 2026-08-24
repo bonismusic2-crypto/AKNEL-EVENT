@@ -1,124 +1,133 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import Layout from '../components/layout/Layout';
-import { Calendar, MapPin, Tag, Loader2, Info } from 'lucide-react';
-import { supabase } from '../lib/supabaseClient';
+import Button from '../components/ui/Button';
+import { Calendar, MapPin, Tag, Check, ShieldCheck, Ticket, CreditCard, ChevronRight } from 'lucide-react';
 
 const Events = () => {
-    const [events, setEvents] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [selectedCategory, setSelectedCategory] = useState('all');
+    const [selectedTicket, setSelectedTicket] = useState(null);
 
-    useEffect(() => {
-        const fetchEvents = async () => {
-            const { data, error } = await supabase
-                .from('public_events')
-                .select('*, ticket_types(*)');
-            
-            if (error) {
-                console.error('Error fetching events:', error);
-            } else {
-                setEvents(data);
-            }
-            setLoading(false);
-        };
-        fetchEvents();
-    }, []);
+    const upcomingEvents = [
+        {
+            id: 1,
+            title: 'Concert de Louange & Adoration Prophétique',
+            artist: 'Chantre Boniface & Invités Spéciaux',
+            date: 'Samedi 20 Septembre 2026 à 18h30',
+            location: 'AKNEL Hall, Cocody Riviera Palmeraie, Abidjan',
+            image: 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=800',
+            description: 'Une soirée unique d''élévation spirituelle, d''adoration et de célébration dans le cadre luxueux d''AKNEL Hall.',
+            ticketTypes: [
+                { id: 'standard', name: 'Pass Standard', price: 5000, desc: 'Accès en salle, placement libre' },
+                { id: 'vip', name: 'Pass VIP Prestige', price: 15000, desc: 'Placement privilégié devant de scène + Cocktail d''accueil offert' },
+                { id: 'gold', name: 'Pass Carré d''Or', price: 25000, desc: 'Table VIP réservée + Rencontre privée avec l''artiste + Reçu dédicacé' },
+            ]
+        }
+    ];
 
-    const handleReserve = (eventTitle) => {
-        const text = encodeURIComponent(`Bonjour AKNEL Event, je souhaite réserver ma place pour l'événement : ${eventTitle}`);
+    const handleBuyTicket = (event, ticket) => {
+        const text = encodeURIComponent(`Bonjour AKNEL Event, je souhaite acheter le ${ticket.name} (${ticket.price} FCFA) pour : ${event.title}`);
         window.open(`https://wa.me/2250556018787?text=${text}`, '_blank');
     };
 
-    const formatDate = (dateString) => {
-        const date = new Date(dateString);
-        return {
-            day: date.getDate(),
-            month: date.toLocaleDateString('fr-FR', { month: 'short' }),
-            full: date.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-        };
-    };
-
-    if (loading) return (
-        <div className="h-screen flex items-center justify-center font-serif text-gold text-2xl animate-pulse">
-            Chargement de la programmation...
-        </div>
-    );
-
     return (
         <Layout>
-            <div className="pt-32 pb-24 bg-dark relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
-                    <div className="absolute top-20 left-10 w-64 h-64 bg-gold rounded-full blur-[100px]"></div>
-                </div>
-                <div className="container mx-auto px-6 text-center relative z-10">
-                    <h1 className="text-4xl md:text-6xl font-serif font-bold text-white mb-6 uppercase tracking-widest">
-                        Agenda <span className="text-gold">Public</span>
+            {/* Header */}
+            <div className="pt-32 pb-16 bg-dark text-white text-center relative overflow-hidden">
+                <div className="container mx-auto px-6 relative z-10">
+                    <span className="text-gold text-xs font-bold tracking-widest uppercase mb-2 block">Billetterie Officielle</span>
+                    <h1 className="text-4xl md:text-6xl font-serif font-black mb-4 uppercase tracking-wide">
+                        Agenda & <span className="text-gold">Billetterie</span>
                     </h1>
-                    <p className="text-gray-400 text-lg uppercase tracking-widest leading-relaxed">Vivez l'expérience Aknel en direct</p>
+                    <p className="text-gray-300 text-sm md:text-base max-w-2xl mx-auto font-light">
+                        Réservez vos places en toute sécurité pour les prochains concerts et célébrations exclusifs hébergés à AKNEL Event.
+                    </p>
                 </div>
             </div>
 
-            <div className="py-24 container mx-auto px-6">
-                {events.length === 0 ? (
-                    <div className="text-center py-20 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
-                        <Info className="mx-auto text-gray-300 mb-4" size={48} />
-                        <p className="text-gray-500 font-serif italic text-lg">Aucun événement public n'est programmé pour le moment.</p>
-                        <p className="text-sm text-gray-400 mt-2">Revenez bientôt pour découvrir nos prochaines dates !</p>
-                    </div>
-                ) : (
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {events.map((event) => {
-                            const date = formatDate(event.date);
-                            const minPrice = event.ticket_types?.length > 0 
-                                ? Math.min(...event.ticket_types.map(t => t.price)) 
-                                : null;
-
-                            return (
-                                <div key={event.id} className="bg-white rounded-2xl overflow-hidden shadow-lg border border-gray-100 flex flex-col group hover:shadow-2xl transition-all duration-500">
-                                    <div className="h-64 bg-gray-900 relative">
-                                        <div className="absolute top-4 left-4 bg-gold text-dark font-bold px-4 py-2 rounded-lg text-center shadow-lg z-10">
-                                            <span className="block text-xl leading-none">{date.day}</span>
-                                            <span className="text-[10px] uppercase tracking-tighter">{date.month}</span>
-                                        </div>
-                                        {event.image_url ? (
-                                            <img src={event.image_url} alt={event.title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-500" />
-                                        ) : (
-                                            <div className="absolute inset-0 flex items-center justify-center text-gray-600 font-serif italic">Pas d'image</div>
-                                        )}
-                                    </div>
-                                    <div className="p-8 space-y-4 flex-grow">
-                                        <div className="flex items-center gap-2 text-gold text-[10px] font-bold uppercase tracking-[0.2em]">
-                                            <Tag size={12} /> {event.status === 'upcoming' ? 'Prochainement' : event.status}
-                                        </div>
-                                        <h2 className="text-2xl font-serif font-bold text-dark group-hover:text-gold transition-colors line-clamp-2">{event.title}</h2>
-                                        <p className="text-gray-500 text-sm line-clamp-3 leading-relaxed italic">{event.description}</p>
-                                        <div className="pt-4 border-t border-gray-50 space-y-2">
-                                            <div className="flex items-center gap-2 text-xs text-gray-500">
-                                                <MapPin size={14} className="text-gold" /> {event.venue_name || event.location}
-                                            </div>
-                                            <div className="flex items-center gap-2 text-xs text-gray-500">
-                                                <Calendar size={14} className="text-gold" /> {date.full}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="p-6 pt-0">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <span className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">À partir de</span>
-                                            <span className="text-xl font-serif font-bold text-dark">
-                                                {minPrice ? `${minPrice.toLocaleString()} FCFA` : 'Entrée Libre'}
-                                            </span>
-                                        </div>
-                                        <button 
-                                            onClick={() => handleReserve(event.title)}
-                                            className="w-full bg-dark text-white hover:bg-gold px-6 py-4 rounded-xl transition-all duration-300 font-bold uppercase tracking-widest text-xs shadow-lg hover:shadow-gold/20 shadow-dark/5"
-                                        >
-                                            Réserver ma place
-                                        </button>
+            {/* Liste des Événements & Guichet */}
+            <div className="py-20 bg-gray-50">
+                <div className="container mx-auto px-6 max-w-5xl">
+                    {upcomingEvents.map((event) => (
+                        <div key={event.id} className="bg-white rounded-3xl overflow-hidden shadow-xl border border-gray-100 mb-12">
+                            {/* Bannière Image */}
+                            <div className="relative h-72 md:h-96 bg-gray-900">
+                                <img
+                                    src={event.image}
+                                    alt={event.title}
+                                    className="w-full h-full object-cover opacity-85"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                                <div className="absolute bottom-6 left-6 right-6 text-white">
+                                    <span className="bg-gold text-dark font-black px-3 py-1 rounded-md text-xs uppercase tracking-wider mb-2 inline-block">
+                                        Billetterie Ouverte
+                                    </span>
+                                    <h2 className="text-2xl md:text-4xl font-serif font-bold text-white mb-2">
+                                        {event.title}
+                                    </h2>
+                                    <div className="flex flex-wrap gap-4 text-xs text-gray-300">
+                                        <span className="flex items-center gap-1.5"><Calendar size={14} className="text-gold" /> {event.date}</span>
+                                        <span className="flex items-center gap-1.5"><MapPin size={14} className="text-gold" /> {event.location}</span>
                                     </div>
                                 </div>
-                            );
-                        })}
-                    </div>
-                )}
+                            </div>
+
+                            {/* Contenu et Choix des Pass */}
+                            <div className="p-6 md:p-10 space-y-8">
+                                <div>
+                                    <h3 className="text-lg font-serif font-bold text-dark mb-2">À Propos de l'Événement</h3>
+                                    <p className="text-gray-600 text-sm leading-relaxed">
+                                        {event.description}
+                                    </p>
+                                </div>
+
+                                {/* Grille des Pass & Tarifs */}
+                                <div>
+                                    <h3 className="text-lg font-serif font-bold text-dark mb-4 flex items-center gap-2">
+                                        <Ticket size={20} className="text-gold" /> Sélectionnez Votre Catégorie de Billet
+                                    </h3>
+                                    <div className="grid md:grid-cols-3 gap-6">
+                                        {event.ticketTypes.map((ticket) => (
+                                            <div
+                                                key={ticket.id}
+                                                className="border-2 border-gray-100 hover:border-gold rounded-2xl p-6 transition-all duration-300 flex flex-col justify-between bg-gray-50/50 hover:bg-white hover:shadow-md"
+                                            >
+                                                <div className="space-y-2">
+                                                    <span className="text-xs font-bold uppercase tracking-wider text-gray-500">{ticket.name}</span>
+                                                    <div className="text-2xl font-black text-dark">
+                                                        {ticket.price.toLocaleString()} <span className="text-xs font-bold text-gold">FCFA</span>
+                                                    </div>
+                                                    <p className="text-xs text-gray-500 leading-relaxed pt-2 border-t border-gray-100">
+                                                        {ticket.desc}
+                                                    </p>
+                                                </div>
+
+                                                <button
+                                                    onClick={() => handleBuyTicket(event, ticket)}
+                                                    className="mt-6 w-full bg-dark text-white hover:bg-gold hover:text-dark py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-colors duration-300 shadow-sm flex items-center justify-center gap-2"
+                                                >
+                                                    <CreditCard size={14} />
+                                                    <span>Prendre mon Pass</span>
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Paiement GeniusPay Réassurance */}
+                                <div className="p-6 rounded-2xl bg-gold/5 border border-gold/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+                                    <div className="flex items-center gap-3">
+                                        <ShieldCheck size={28} className="text-gold shrink-0" />
+                                        <div>
+                                            <h4 className="text-xs font-bold uppercase tracking-wider text-dark">Paiement Mobile Money Sécurisé</h4>
+                                            <p className="text-xs text-gray-500">Règlement instantané via Wave, Orange Money, MTN, Moov & Carte Bancaire.</p>
+                                        </div>
+                                    </div>
+                                    <span className="text-xs font-bold text-gold shrink-0">Pass délivré immédiatement</span>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
         </Layout>
     );
