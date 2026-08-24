@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -6,6 +6,7 @@ import { AudioProvider } from './src/context/AudioContext';
 import { BottomNavigation } from './src/components/BottomNavigation';
 import { MiniPlayer } from './src/components/MiniPlayer';
 import { FullAudioPlayerModal } from './src/components/FullAudioPlayerModal';
+import { supabase } from './src/lib/supabase';
 
 // Écrans
 import { WelcomeScreen } from './src/screens/WelcomeScreen';
@@ -20,6 +21,27 @@ export default function App() {
   const [appState, setAppState] = useState('welcome'); // 'welcome', 'auth', 'main', 'paywall'
   const [activeTab, setActiveTab] = useState('home'); // 'home', 'library', 'profile'
   const [selectedAlbum, setSelectedAlbum] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+
+  // Vérifier la session active au lancement de l'application
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setCurrentUser(session.user);
+        setAppState('main');
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setCurrentUser(session.user);
+      } else {
+        setCurrentUser(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const handleSelectAlbum = (album) => {
     setSelectedAlbum(album);
@@ -44,10 +66,13 @@ export default function App() {
             />
           )}
 
-          {/* 2. Écran d'Authentification */}
+          {/* 2. Écran d'Authentification Supabase */}
           {appState === 'auth' && (
             <AuthScreen
-              onSuccess={() => setAppState('main')}
+              onSuccess={(user) => {
+                setCurrentUser(user);
+                setAppState('main');
+              }}
               onBack={() => setAppState('welcome')}
             />
           )}
@@ -96,7 +121,14 @@ export default function App() {
 
                     {/* Onglet 3 : PROFIL UTILISATEUR & ABONNEMENT */}
                     {activeTab === 'profile' && (
-                      <ProfileScreen onOpenPaywall={() => setAppState('paywall')} />
+                      <ProfileScreen
+                        currentUser={currentUser}
+                        onOpenPaywall={() => setAppState('paywall')}
+                        onLogout={() => {
+                          setAppState('welcome');
+                          setActiveTab('home');
+                        }}
+                      />
                     )}
                   </>
                 )}
