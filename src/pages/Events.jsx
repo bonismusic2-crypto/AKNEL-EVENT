@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Layout from '../components/layout/Layout';
 import Button from '../components/ui/Button';
-import { Calendar, MapPin, Tag, Check, ShieldCheck, Ticket, CreditCard, Sparkles, QrCode, X } from 'lucide-react';
+import { Calendar, MapPin, Tag, Check, ShieldCheck, Ticket, CreditCard, Sparkles, QrCode, X, ExternalLink } from 'lucide-react';
 import { GeniusPayWebService } from '../services/geniusPayService';
 
 const Events = () => {
@@ -48,6 +48,13 @@ const Events = () => {
                 quantity: 1,
             });
 
+            // Si GeniusPay renvoie une page de paiement officielle
+            if (result.checkoutUrl) {
+                window.location.href = result.checkoutUrl;
+                return;
+            }
+
+            // Sinon affichage direct du Pass avec QR Code validé
             setIssuedTicket({
                 tx_id: result.tx_id,
                 qr_token: 'AKNEL-PASS-' + Math.random().toString(36).substring(2, 9).toUpperCase(),
@@ -246,7 +253,7 @@ const Events = () => {
                                         className="w-full bg-gold text-dark py-4 rounded-xl font-bold uppercase tracking-wider text-xs hover:bg-dark hover:text-white transition-all shadow-md flex items-center justify-center gap-2"
                                     >
                                         <ShieldCheck size={16} />
-                                        {paying ? 'Validation Sandbox en cours...' : `Régler ${selectedTicket?.price.toLocaleString()} FCFA`}
+                                        {paying ? 'Initialisation GeniusPay...' : `Payer ${selectedTicket?.price.toLocaleString()} FCFA via GeniusPay`}
                                     </button>
                                 </form>
                             </>
