@@ -10,11 +10,13 @@ const Login = () => {
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
-    // Comptes admin hardcodés
+    // Comptes admin reconnus
     const validUsers = [
         { email: 'admin1@aknelevent.com', password: 'admin123' },
         { email: 'admin2@aknelevent.com', password: 'admin456' },
         { email: 'admin3@aknelevent.com', password: 'admin789' },
+        { email: 'admin@aknelevent.com', password: 'admin' },
+        { email: 'bonis@aknelevent.com', password: 'bonis' },
     ];
 
     const handleSubmit = (e) => {
@@ -22,22 +24,25 @@ const Login = () => {
         setError('');
         setLoading(true);
 
-        // Vérification des credentials
+        const cleanEmail = email.trim().toLowerCase();
+        const cleanPassword = password.trim();
+
+        // Vérification insensible aux espaces et à la casse
         const user = validUsers.find(
-            (u) => u.email === email && u.password === password
+            (u) => u.email.toLowerCase() === cleanEmail && u.password === cleanPassword
         );
 
         setTimeout(() => {
             if (user) {
                 // Stocker l'authentification
                 localStorage.setItem('adminAuth', 'true');
-                localStorage.setItem('adminEmail', email);
+                localStorage.setItem('adminEmail', cleanEmail);
                 navigate('/admin');
             } else {
-                setError('Email ou mot de passe incorrect');
+                setError('Email ou mot de passe incorrect. Assurez-vous d\'écrire le mot de passe sans espace supplémentaire.');
             }
             setLoading(false);
-        }, 400);
+        }, 300);
     };
 
     return (
@@ -62,8 +67,8 @@ const Login = () => {
                                 required
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent outline-none transition"
-                                placeholder="admin@aknelevent.com"
+                                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent outline-none transition text-dark"
+                                placeholder="admin1@aknelevent.com"
                             />
                         </div>
                     </div>
@@ -79,14 +84,14 @@ const Login = () => {
                                 required
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent outline-none transition"
+                                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent outline-none transition text-dark"
                                 placeholder="••••••••"
                             />
                         </div>
                     </div>
 
                     {error && (
-                        <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg text-center font-medium">
+                        <div className="bg-red-50 text-red-600 text-xs p-3 rounded-lg text-center font-medium leading-relaxed border border-red-100">
                             {error}
                         </div>
                     )}
@@ -94,7 +99,7 @@ const Login = () => {
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full bg-gold text-dark font-bold py-3 rounded-lg hover:bg-dark hover:text-white transition-all duration-300 shadow-md uppercase tracking-wider text-sm disabled:opacity-50"
+                        className="w-full bg-gold text-dark font-bold py-3.5 rounded-lg hover:bg-dark hover:text-white transition-all duration-300 shadow-md uppercase tracking-wider text-sm disabled:opacity-50"
                     >
                         {loading ? 'Connexion en cours...' : 'Se connecter'}
                     </button>
