@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AudioProvider } from './src/context/AudioContext';
@@ -7,6 +7,7 @@ import { BottomNavigation } from './src/components/BottomNavigation';
 import { MiniPlayer } from './src/components/MiniPlayer';
 import { FullAudioPlayerModal } from './src/components/FullAudioPlayerModal';
 import { supabase } from './src/lib/supabase';
+import { SubscriptionService } from './src/services/subscriptionService';
 
 // Écrans
 import { WelcomeScreen } from './src/screens/WelcomeScreen';
@@ -22,21 +23,54 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('home'); // 'home', 'library', 'profile'
   const [selectedAlbum, setSelectedAlbum] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  // Traitement du flux post-authentification : vérification de l'abonnement
+  const processUserAuth = async (user) => {
+    setCurrentUser(user);
+    if (!user) {
+      setAppState('welcome');
+      return;
+    }
+
+    try {
+      const { isSubscribed } = await SubscriptionService.checkSubscription(user);
+      if (isSubscribed) {
+        setAppState('main');
+      } else {
+        // Redirection systématique vers le Paywall pour les non-abonnés
+        setAppState('paywall');
+      }
+    } catch (e) {
+      console.warn('Erreur vérification post-auth:', e);
+      setAppState('paywall');
+    }
+  };
 
   // Vérifier la session active au lancement de l'application
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setCurrentUser(session.user);
-        setAppState('main');
+    const initSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          await processUserAuth(session.user);
+        } else {
+          setAppState('welcome');
+        }
+      } catch (err) {
+        console.warn('Session init error:', err);
+        setAppState('welcome');
+      } finally {
+        setIsCheckingAuth(false);
       }
-    });
+    };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setCurrentUser(session.user);
-      } else {
+    initSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT' || !session?.user) {
         setCurrentUser(null);
+        setAppState('welcome');
       }
     });
 
@@ -70,8 +104,7 @@ export default function App() {
           {appState === 'auth' && (
             <AuthScreen
               onSuccess={(user) => {
-                setCurrentUser(user);
-                setAppState('main');
+                processUserAuth(user);
               }}
               onBack={() => setAppState('welcome')}
             />
@@ -80,9 +113,9 @@ export default function App() {
           {/* 3. Écran Paywall (Abonnement 2 € / mois) */}
           {appState === 'paywall' && (
             <PaywallScreen
+              currentUser={currentUser}
               onBack={() => setAppState('main')}
               onSuccess={() => {
-                Alert.alert('Félicitations !', 'Votre abonnement Premium VIP est actif.');
                 setAppState('main');
               }}
             />
@@ -102,6 +135,7 @@ export default function App() {
                     {/* Onglet 1 : ACCUEIL */}
                     {activeTab === 'home' && (
                       <HomeScreen
+                        currentUser={currentUser}
                         onSelectAlbum={handleSelectAlbum}
                         onSelectClip={() => setActiveTab('library')}
                         onSelectTeaching={() => setActiveTab('library')}
@@ -119,12 +153,13 @@ export default function App() {
                       />
                     )}
 
-                    {/* Onglet 3 : PROFIL UTILISATEUR & ABONNEMENT */}
+                    {/* Onglet 3 : PROFIL UTILISATEUR & GESTION */}
                     {activeTab === 'profile' && (
                       <ProfileScreen
                         currentUser={currentUser}
                         onOpenPaywall={() => setAppState('paywall')}
                         onLogout={() => {
+                          setCurrentUser(null);
                           setAppState('welcome');
                           setActiveTab('home');
                         }}

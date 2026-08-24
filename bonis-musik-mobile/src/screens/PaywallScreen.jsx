@@ -1,17 +1,41 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, Check } from 'lucide-react-native';
+import { ChevronLeft, Check, ShieldCheck, Sparkles, X } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
+import { SubscriptionService } from '../services/subscriptionService';
 
-export const PaywallScreen = ({ onBack, onSuccess }) => {
+export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
+  const [loading, setLoading] = useState(false);
+
   const benefits = [
     'Accès illimité à tous les albums et singles audio.',
-    'Clips vidéo officiels en qualité HD.',
+    'Clips vidéo officiels en qualité HD & 4K.',
     'Enseignements et prédications audio & vidéo exclusifs.',
+    'Écoute et visionnage hors-ligne (stockage in-app chiffré).',
     'Écoute en arrière-plan (écran verrouillé).',
   ];
+
+  const handleSubscribe = async () => {
+    setLoading(true);
+    try {
+      if (currentUser) {
+        await SubscriptionService.activateVipSubscription(currentUser);
+      }
+      setTimeout(() => {
+        setLoading(false);
+        Alert.alert(
+          '🎉 Félicitations !',
+          'Votre abonnement Premium VIP (2 € / mois) est désormais actif. Profitez pleinement de tout le catalogue.',
+          [{ text: 'Accéder à la musique', onPress: onSuccess }]
+        );
+      }, 1000);
+    } catch (err) {
+      setLoading(false);
+      Alert.alert('Erreur', 'Impossible de valider la transaction pour le moment.');
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -19,13 +43,20 @@ export const PaywallScreen = ({ onBack, onSuccess }) => {
         
         {/* Navigation Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={onBack} style={styles.backBtn}>
-            <ChevronLeft size={24} color={THEME.colors.textPrimary} />
+          <TouchableOpacity onPress={onBack} style={styles.backBtn} activeOpacity={0.7}>
+            <X size={24} color={THEME.colors.textPrimary} />
           </TouchableOpacity>
+          <View style={styles.secureHeaderBadge}>
+            <ShieldCheck size={16} color={THEME.colors.gold} />
+            <Text style={styles.secureHeaderText}>Paiement 100% Sécurisé</Text>
+          </View>
         </View>
 
         {/* Titre Principal */}
         <Text style={styles.title}>Accédez à tout l'univers du{'\n'}Chantre Boniface</Text>
+        <Text style={styles.subtitle}>
+          Soutenez le ministère et écoutez sans interruption toutes les louanges, adorations et enseignements.
+        </Text>
 
         {/* Carte Tarifaire Dorée - Premium VIP */}
         <View style={styles.cardWrapper}>
@@ -34,12 +65,16 @@ export const PaywallScreen = ({ onBack, onSuccess }) => {
             style={styles.cardGradient}
           >
             <View style={styles.cardHeader}>
-              <Text style={styles.vipTag}>👑 PREMIUM VIP</Text>
+              <View style={styles.vipTagContainer}>
+                <Sparkles size={14} color={THEME.colors.gold} />
+                <Text style={styles.vipTag}>OFFRE PRIVILÈGE VIP</Text>
+              </View>
+
               <View style={styles.priceRow}>
                 <Text style={styles.priceEuro}>2 €</Text>
                 <Text style={styles.perMonth}> / mois</Text>
               </View>
-              <Text style={styles.priceFcfa}>= 1 300 FCFA / mois</Text>
+              <Text style={styles.priceFcfa}>≈ 1 300 FCFA / mois</Text>
               <Text style={styles.noCommitment}>Sans engagement • Annulable à tout moment</Text>
             </View>
 
@@ -57,7 +92,7 @@ export const PaywallScreen = ({ onBack, onSuccess }) => {
 
             {/* Section Paiement Sécurisé GeniusPay */}
             <View style={styles.paymentSection}>
-              <Text style={styles.paymentNote}>Paiement sécurisé via GeniusPay</Text>
+              <Text style={styles.paymentNote}>Moyens de paiement acceptés (Afrique & International) :</Text>
               <View style={styles.paymentLogosRow}>
                 <View style={[styles.badgeLogo, { backgroundColor: '#1BA4E8' }]}>
                   <Text style={styles.badgeText}>Wave</Text>
@@ -72,7 +107,7 @@ export const PaywallScreen = ({ onBack, onSuccess }) => {
                   <Text style={styles.badgeText}>Moov</Text>
                 </View>
                 <View style={[styles.badgeLogo, { backgroundColor: '#1A1F71' }]}>
-                  <Text style={styles.badgeText}>VISA</Text>
+                  <Text style={styles.badgeText}>VISA / MC</Text>
                 </View>
               </View>
             </View>
@@ -80,20 +115,29 @@ export const PaywallScreen = ({ onBack, onSuccess }) => {
         </View>
 
         {/* Bouton S'abonner maintenant */}
-        <TouchableOpacity style={styles.ctaBtn} onPress={onSuccess} activeOpacity={0.85}>
+        <TouchableOpacity
+          style={styles.ctaBtn}
+          onPress={handleSubscribe}
+          disabled={loading}
+          activeOpacity={0.85}
+        >
           <LinearGradient
             colors={THEME.colors.goldGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.ctaGradient}
           >
-            <Text style={styles.ctaText}>S'abonner maintenant</Text>
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <Text style={styles.ctaText}>S'abonner pour 2 € / mois</Text>
+            )}
           </LinearGradient>
         </TouchableOpacity>
 
-        {/* Lien Déjà Abonné */}
-        <TouchableOpacity style={styles.restoreBtn} onPress={onBack}>
-          <Text style={styles.restoreText}>Déjà abonné ? <Text style={styles.restoreLink}>Se connecter</Text></Text>
+        {/* Lien Continuer en mode découverte */}
+        <TouchableOpacity style={styles.skipBtn} onPress={onBack} activeOpacity={0.7}>
+          <Text style={styles.skipText}>Continuer vers l'application en mode Découverte</Text>
         </TouchableOpacity>
 
       </ScrollView>
@@ -111,27 +155,60 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingVertical: 12,
   },
   backBtn: {
-    padding: 6,
-    alignSelf: 'flex-start',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  secureHeaderBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(197, 155, 39, 0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(197, 155, 39, 0.25)',
+  },
+  secureHeaderText: {
+    color: THEME.colors.gold,
+    fontSize: 12,
+    fontWeight: '700',
   },
   title: {
     color: THEME.colors.textPrimary,
-    fontSize: 24,
-    fontWeight: '800',
+    fontSize: 23,
+    fontWeight: '900',
     textAlign: 'center',
     marginTop: 8,
-    marginBottom: 24,
-    lineHeight: 32,
+    lineHeight: 30,
+  },
+  subtitle: {
+    color: THEME.colors.textSecondary,
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: 6,
+    marginBottom: 20,
+    lineHeight: 18,
+    paddingHorizontal: 10,
   },
   cardWrapper: {
     borderRadius: 24,
     overflow: 'hidden',
     borderWidth: 1.5,
     borderColor: THEME.colors.gold,
-    marginBottom: 24,
+    marginBottom: 20,
     shadowColor: THEME.colors.gold,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
@@ -146,14 +223,23 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
     paddingBottom: 16,
-    marginBottom: 20,
+    marginBottom: 18,
+  },
+  vipTagContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(197, 155, 39, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginBottom: 10,
   },
   vipTag: {
     color: THEME.colors.gold,
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 1,
-    marginBottom: 8,
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.8,
   },
   priceRow: {
     flexDirection: 'row',
@@ -161,7 +247,7 @@ const styles = StyleSheet.create({
   },
   priceEuro: {
     color: THEME.colors.textPrimary,
-    fontSize: 36,
+    fontSize: 38,
     fontWeight: '900',
   },
   perMonth: {
@@ -181,8 +267,8 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   benefitsList: {
-    gap: 14,
-    marginBottom: 20,
+    gap: 12,
+    marginBottom: 18,
   },
   benefitRow: {
     flexDirection: 'row',
@@ -208,7 +294,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
-    paddingTop: 16,
+    paddingTop: 14,
   },
   paymentNote: {
     color: THEME.colors.textMuted,
@@ -217,7 +303,9 @@ const styles = StyleSheet.create({
   },
   paymentLogosRow: {
     flexDirection: 'row',
-    gap: 8,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 6,
   },
   badgeLogo: {
     paddingHorizontal: 8,
@@ -232,7 +320,7 @@ const styles = StyleSheet.create({
   ctaBtn: {
     borderRadius: 30,
     overflow: 'hidden',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   ctaGradient: {
     paddingVertical: 16,
@@ -244,15 +332,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
   },
-  restoreBtn: {
+  skipBtn: {
     alignItems: 'center',
+    paddingVertical: 10,
   },
-  restoreText: {
+  skipText: {
     color: THEME.colors.textMuted,
     fontSize: 13,
-  },
-  restoreLink: {
-    color: THEME.colors.gold,
-    fontWeight: '700',
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
 });

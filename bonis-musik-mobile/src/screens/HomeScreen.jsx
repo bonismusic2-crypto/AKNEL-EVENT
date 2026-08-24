@@ -1,17 +1,83 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, RefreshControl, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Bell, Search, Play } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { SAMPLE_DATA } from '../data/sampleData';
 import { MediaService } from '../services/mediaService';
+import { useAudio } from '../context/AudioContext';
+import { NotificationsModal, INITIAL_MOBILE_NOTIFICATIONS } from '../components/NotificationsModal';
 
-export const HomeScreen = ({ onSelectAlbum, onSelectClip, onSelectTeaching, onOpenProfile, onOpenPaywall }) => {
+export const HomeScreen = ({
+  currentUser,
+  onSelectAlbum,
+  onSelectClip,
+  onSelectTeaching,
+  onOpenProfile,
+  onOpenPaywall
+}) => {
+  const { playTrack } = useAudio();
   const [albums, setAlbums] = useState(SAMPLE_DATA.audioReleases);
   const [clips, setClips] = useState(SAMPLE_DATA.videoClips);
   const [teachings, setTeachings] = useState(SAMPLE_DATA.teachings);
   const [refreshing, setRefreshing] = useState(false);
+  const [isNotifModalVisible, setIsNotifModalVisible] = useState(false);
+  const [notifications, setNotifications] = useState(INITIAL_MOBILE_NOTIFICATIONS);
+
+  // Extraction dynamique du prénom réel de l'utilisateur connecté
+  const getFirstName = () => {
+    if (currentUser?.user_metadata?.full_name) {
+      const parts = currentUser.user_metadata.full_name.trim().split(' ');
+      return parts[0];
+    }
+    if (currentUser?.user_metadata?.name) {
+      const parts = currentUser.user_metadata.name.trim().split(' ');
+      return parts[0];
+    }
+    if (currentUser?.email) {
+      const emailPrefix = currentUser.email.split('@')[0];
+      return emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1);
+    }
+    return 'Bien-aimé(e)';
+  };
+
+  const firstName = getFirstName();
+
+  const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  const handleMarkAsRead = (id) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+  };
+
+  const handleMarkAllAsRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+  };
+
+  const handleDeleteNotification = (id) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  };
+
+  const handleNavigateAction = (item) => {
+    if (item.actionType === 'clip') {
+      const heroClip = clips[0] || SAMPLE_DATA.videoClips[0];
+      onSelectClip(heroClip);
+    } else if (item.actionType === 'teaching') {
+      const firstTeaching = teachings[0] || SAMPLE_DATA.teachings[0];
+      if (firstTeaching) handleTeachingPress(firstTeaching);
+    } else if (item.actionType === 'paywall') {
+      onOpenPaywall();
+    } else if (item.actionType === 'music') {
+      const firstAlbum = albums[0] || SAMPLE_DATA.audioReleases[0];
+      if (firstAlbum) onSelectAlbum(firstAlbum);
+    } else if (item.actionType === 'concert') {
+      Alert.alert(
+        'Concert AKNEL Hall',
+        'Grand Concert du Chantre Boniface le 15 Décembre 2026 à AKNEL Hall. Billetterie disponible sur le site web AKNEL Event.',
+        [{ text: 'Compris' }]
+      );
+    }
+  };
 
   const loadLiveData = async () => {
     try {
@@ -44,6 +110,23 @@ export const HomeScreen = ({ onSelectAlbum, onSelectClip, onSelectTeaching, onOp
 
   const heroClip = clips[0] || SAMPLE_DATA.videoClips[0];
 
+  const handleTeachingPress = (item) => {
+    if (item.type === 'audio' || item.url) {
+      playTrack({
+        id: item.id,
+        title: item.title,
+        artist: 'Chantre Boniface',
+        album: 'Enseignement',
+        cover: item.thumbnail,
+        duration: item.duration,
+        url: item.url || item.videoUrl,
+        type: 'teaching',
+      });
+    } else {
+      onSelectTeaching(item);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
@@ -53,7 +136,6 @@ export const HomeScreen = ({ onSelectAlbum, onSelectClip, onSelectTeaching, onOp
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={THEME.colors.gold} />
         }
       >
-        
         {/* Header avec Profil cliquable & Notification */}
         <View style={styles.header}>
           <TouchableOpacity
@@ -61,24 +143,36 @@ export const HomeScreen = ({ onSelectAlbum, onSelectClip, onSelectTeaching, onOp
             onPress={onOpenProfile}
             activeOpacity={0.8}
           >
-            <Image source={{ uri: SAMPLE_DATA.user.avatar }} style={styles.avatar} />
+            <Image
+              source={{ uri: currentUser?.user_metadata?.avatar_url || SAMPLE_DATA.user.avatar }}
+              style={styles.avatar}
+            />
             <View>
-              <Text style={styles.greeting}>Bonjour, Bonis 👋</Text>
-              <View style={styles.vipBadge}>
+              <Text style={styles.greeting}>Bonjour, {firstName} 👋</Text>
+              <TouchableOpacity onPress={onOpenPaywall} activeOpacity={0.7} style={styles.vipBadge}>
                 <Text style={styles.vipText}>👑 Abonné VIP</Text>
-              </View>
+              </TouchableOpacity>
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.iconBtn} onPress={onOpenProfile}>
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={() => setIsNotifModalVisible(true)}
+            activeOpacity={0.75}
+          >
             <Bell size={20} color={THEME.colors.textPrimary} />
+            {unreadCount > 0 && (
+              <View style={styles.bellBadge}>
+                <Text style={styles.bellBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
 
         {/* Barre de Recherche */}
         <View style={styles.searchBar}>
           <Search size={18} color={THEME.colors.textMuted} />
-          <Text style={styles.searchText}>Rechercher un chant, album...</Text>
+          <Text style={styles.searchText}>Rechercher un chant, album, enseignement...</Text>
         </View>
 
         {/* Bannière Hero Lumineuse & Dorée Synchronisée */}
@@ -158,8 +252,8 @@ export const HomeScreen = ({ onSelectAlbum, onSelectClip, onSelectTeaching, onOp
         {/* Section Enseignements Populaires Synchronisés */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Enseignements populaires</Text>
-          <TouchableOpacity>
-            <Text style={styles.seeAll}>Voir tout</Text>
+          <TouchableOpacity onPress={() => onSelectTeaching(teachings[0])}>
+            <Text style={styles.seeAll}>Voir tout ({teachings.length})</Text>
           </TouchableOpacity>
         </View>
         <View style={styles.teachingsList}>
@@ -167,7 +261,7 @@ export const HomeScreen = ({ onSelectAlbum, onSelectClip, onSelectTeaching, onOp
             <TouchableOpacity
               key={item.id}
               style={styles.teachingItem}
-              onPress={() => onSelectTeaching(item)}
+              onPress={() => handleTeachingPress(item)}
               activeOpacity={0.7}
             >
               <Image source={{ uri: item.thumbnail }} style={styles.teachingThumb} />
@@ -185,6 +279,17 @@ export const HomeScreen = ({ onSelectAlbum, onSelectClip, onSelectTeaching, onOp
         </View>
 
       </ScrollView>
+
+      {/* Centre de Notifications Modal Interactif */}
+      <NotificationsModal
+        visible={isNotifModalVisible}
+        onClose={() => setIsNotifModalVisible(false)}
+        notifications={notifications}
+        onMarkAsRead={handleMarkAsRead}
+        onMarkAllAsRead={handleMarkAllAsRead}
+        onDeleteNotification={handleDeleteNotification}
+        onNavigateAction={handleNavigateAction}
+      />
     </SafeAreaView>
   );
 };
@@ -223,6 +328,7 @@ const styles = StyleSheet.create({
   },
   vipBadge: {
     marginTop: 2,
+    alignSelf: 'flex-start',
   },
   vipText: {
     color: THEME.colors.gold,
@@ -238,6 +344,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    position: 'relative',
+  },
+  bellBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: '#EF4444',
+    borderRadius: 10,
+    minWidth: 17,
+    height: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  bellBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '900',
   },
   searchBar: {
     flexDirection: 'row',
@@ -253,7 +379,8 @@ const styles = StyleSheet.create({
   },
   searchText: {
     color: THEME.colors.textMuted,
-    fontSize: 14,
+    fontSize: 13,
+    flex: 1,
   },
   heroCard: {
     height: 195,

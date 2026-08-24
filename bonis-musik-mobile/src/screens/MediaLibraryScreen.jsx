@@ -5,8 +5,10 @@ import { Search, Play } from 'lucide-react-native';
 import { THEME } from '../constants/theme';
 import { SAMPLE_DATA } from '../data/sampleData';
 import { MediaService } from '../services/mediaService';
+import { useAudio } from '../context/AudioContext';
 
 export const MediaLibraryScreen = ({ onSelectAlbum, onSelectClip, onSelectTeaching }) => {
+  const { playTrack } = useAudio();
   const [activeSection, setActiveSection] = useState('music'); // 'music', 'clips', 'teachings'
   const [teachingFilter, setTeachingFilter] = useState('Tous');
 
@@ -167,7 +169,22 @@ export const MediaLibraryScreen = ({ onSelectAlbum, onSelectClip, onSelectTeachi
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={styles.teachingCard}
-                onPress={() => onSelectTeaching(item)}
+                onPress={() => {
+                  if (item.type === 'audio' || item.url) {
+                    playTrack({
+                      id: item.id,
+                      title: item.title,
+                      artist: 'Chantre Boniface',
+                      album: 'Enseignement',
+                      cover: item.thumbnail,
+                      duration: item.duration,
+                      url: item.url || item.videoUrl,
+                      type: 'teaching',
+                    });
+                  } else {
+                    onSelectTeaching(item);
+                  }
+                }}
                 activeOpacity={0.75}
               >
                 <Image source={{ uri: item.thumbnail }} style={styles.teachingThumb} />
