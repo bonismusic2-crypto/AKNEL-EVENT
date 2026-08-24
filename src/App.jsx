@@ -9,6 +9,8 @@ import Events from './pages/Events';
 import Contact from './pages/Contact';
 import Auth from './pages/Auth';
 import Profile from './pages/Profile';
+import PaymentSuccess from './pages/PaymentSuccess';
+import PaymentCancel from './pages/PaymentCancel';
 
 // Pages & Layout Administrateur
 import AdminLayout from './components/admin-layout/AdminLayout';
@@ -38,6 +40,10 @@ function App() {
         <Route path="/contact" element={<Contact />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/profile" element={<Profile />} />
+
+        {/* ================= PAGES PAIEMENT GENIUSPAY ================= */}
+        <Route path="/payment-success" element={<PaymentSuccess />} />
+        <Route path="/payment-cancel" element={<PaymentCancel />} />
 
         {/* ================= ROUTES ADMIN FUSIONNÉES ================= */}
         <Route path="/admin/login" element={<Login />} />

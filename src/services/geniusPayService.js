@@ -17,6 +17,13 @@ export const GeniusPayWebService = {
     async createTicketPayment({ event, ticket, customer, quantity = 1 }) {
         const totalAmount = Number(ticket.price) * Number(quantity);
 
+        const successParams = new URLSearchParams({
+            ticket: ticket.name,
+            amount: totalAmount.toLocaleString(),
+            name: customer.name,
+            event: event.title,
+        }).toString();
+
         const payload = {
             amount: totalAmount,
             currency: GENIUSPAY_CONFIG.currency,
@@ -33,8 +40,8 @@ export const GeniusPayWebService = {
                 ticket_name: ticket.name,
                 event_title: event.title,
             },
-            return_url: `${window.location.origin}/events?status=success`,
-            cancel_url: `${window.location.origin}/events?status=cancelled`,
+            return_url: `${window.location.origin}/payment-success?${successParams}`,
+            cancel_url: `${window.location.origin}/payment-cancel`,
         };
 
         const response = await fetch(`${GENIUSPAY_CONFIG.baseUrl}/payments`, {
