@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, Check, ShieldCheck, Sparkles, X, Smartphone, CreditCard } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -37,19 +37,30 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
         paymentMethod: selectedMethod,
       });
 
-      // 2. Activation de l'abonnement VIP dans Supabase
+      // 2. Si GeniusPay renvoie l'URL de paiement officielle, ouverture dans le navigateur du téléphone
+      if (paymentResult.checkoutUrl) {
+        setLoading(false);
+        const supported = await Linking.canOpenURL(paymentResult.checkoutUrl);
+        if (supported) {
+          await Linking.openURL(paymentResult.checkoutUrl);
+        } else {
+          Alert.alert('Paiement', `Veuillez finaliser votre paiement sur : ${paymentResult.checkoutUrl}`);
+        }
+        return;
+      }
+
+      // 3. Activation de l'abonnement VIP dans Supabase
       if (currentUser) {
         await SubscriptionService.activateVipSubscription(currentUser);
       }
 
       setLoading(false);
-      // Redirection directe vers le nouvel écran PaymentSuccessScreen avec le txId réel
       if (onSuccess) {
         onSuccess(paymentResult.tx_id);
       }
     } catch (err) {
       setLoading(false);
-      Alert.alert('Erreur', 'Impossible d\'initialiser le paiement GeniusPay : ' + (err.message || ''));
+      Alert.alert('Erreur GeniusPay', err.message || 'Impossible d\'initialiser le paiement.');
     }
   };
 
