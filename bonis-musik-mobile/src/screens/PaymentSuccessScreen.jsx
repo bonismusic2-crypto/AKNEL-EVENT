@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Share } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Share, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   CheckCircle2,
@@ -20,7 +20,6 @@ import { THEME } from '../constants/theme';
 export const PaymentSuccessScreen = ({ txId, onContinue, currentUser }) => {
   const buyerName = currentUser?.user_metadata?.full_name || currentUser?.email?.split('@')[0] || 'Abonné Bonis';
   const buyerEmail = currentUser?.email || 'abonne@bonismusik.com';
-  const buyerPhone = currentUser?.user_metadata?.phone || '07 00 00 00 00';
   
   // Date de transaction actuelle et date d'échéance (+1 mois)
   const now = new Date();
