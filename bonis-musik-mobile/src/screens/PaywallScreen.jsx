@@ -418,7 +418,7 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
             </View>
           )}
 
-          {/* Navigateur Web Intégré */}
+          {/* Navigateur Web Intégré Plein Écran */}
           {paymentUrl && (
             <WebView
               source={{ uri: paymentUrl }}
@@ -431,22 +431,6 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
               startInLoadingState={true}
             />
           )}
-
-          {/* Barre d'Action Sécurisée avec Vérification d'API */}
-          <View style={styles.webviewBottomBar}>
-            <TouchableOpacity
-              style={styles.confirmPaidBtn}
-              onPress={verifyAndComplete}
-              disabled={verifying}
-              activeOpacity={0.85}
-            >
-              {verifying ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
-              ) : (
-                <Text style={styles.confirmPaidBtnText}>Vérifier & Valider mon abonnement ✓</Text>
-              )}
-            </TouchableOpacity>
-          </View>
         </SafeAreaView>
       </Modal>
 
