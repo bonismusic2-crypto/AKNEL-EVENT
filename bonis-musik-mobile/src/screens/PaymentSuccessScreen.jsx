@@ -1,112 +1,180 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Share } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CheckCircle2, Sparkles, Music, ArrowRight, ShieldCheck, Download, Award } from 'lucide-react-native';
+import {
+  CheckCircle2,
+  ShieldCheck,
+  Smartphone,
+  Calendar,
+  Clock,
+  CreditCard,
+  ArrowRight,
+  Share2,
+  Receipt,
+  Sparkles,
+  Lock
+} from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 
 export const PaymentSuccessScreen = ({ txId, onContinue, currentUser }) => {
-  const buyerName = currentUser?.user_metadata?.full_name || currentUser?.email?.split('@')[0] || 'Abonné VIP';
-  const renewalDate = '24 Septembre 2026';
+  const buyerName = currentUser?.user_metadata?.full_name || currentUser?.email?.split('@')[0] || 'Abonné Bonis';
+  const buyerEmail = currentUser?.email || 'abonne@bonismusik.com';
+  const buyerPhone = currentUser?.user_metadata?.phone || '07 00 00 00 00';
+  
+  // Date de transaction actuelle et date d'échéance (+1 mois)
+  const now = new Date();
+  const options = { day: 'numeric', month: 'long', year: 'numeric' };
+  const paymentDate = now.toLocaleDateString('fr-FR', options);
+  
+  const nextMonth = new Date(now.setMonth(now.getMonth() + 1));
+  const dueDate = nextMonth.toLocaleDateString('fr-FR', options);
+
+  const referenceCode = txId || 'GP_SANDBOX_' + Date.now().toString().slice(-8);
+
+  const handleShareReceipt = async () => {
+    try {
+      await Share.share({
+        message: `Reçu de paiement Bonis Musik VIP\nRéférence: ${referenceCode}\nMontant: 1 300 FCFA (2 €)\nTitulaire: ${buyerName}\nProchaine échéance: ${dueDate}`,
+      });
+    } catch (e) {}
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
         
-        {/* Icône de Succès */}
+        {/* Header avec Icône Succès */}
         <View style={styles.header}>
           <View style={styles.iconCircle}>
-            <CheckCircle2 size={44} color="#FFFFFF" strokeWidth={2.5} />
+            <CheckCircle2 size={40} color="#FFFFFF" strokeWidth={2.5} />
           </View>
           <View style={styles.badgeSuccess}>
             <ShieldCheck size={14} color="#059669" />
-            <Text style={styles.badgeSuccessText}>PAIEMENT VALIDÉ PAR GENIUSPAY</Text>
+            <Text style={styles.badgeSuccessText}>TRANSACTION MOBILE MONEY VALIDÉE</Text>
           </View>
-          <Text style={styles.title}>Bienvenue dans le Club VIP !</Text>
+          <Text style={styles.title}>Paiement Réussi !</Text>
           <Text style={styles.subtitle}>
-            Votre abonnement mensuel à 2 € (~1 300 FCFA) est actif. Vous avez désormais un accès illimité à tout le catalogue du Chantre Boniface.
+            Votre souscription mensuelle a été enregistrée avec succès auprès de GeniusPay.
           </Text>
         </View>
 
-        {/* CARTE PASS VIP OFFICIEL MOBILE */}
-        <View style={styles.vipPassCard}>
-          <LinearGradient
-            colors={['#111827', '#1F2937', '#111827']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.cardGradient}
-          >
-            {/* Header du Pass */}
-            <View style={styles.passHeader}>
+        {/* CARTE REÇU OFFICIEL DE TRANSACTION MOBILE */}
+        <View style={styles.receiptCard}>
+          {/* Header du Reçu */}
+          <View style={styles.receiptHeader}>
+            <View style={styles.receiptBrandRow}>
+              <View style={styles.receiptLogoCircle}>
+                <Receipt size={18} color={THEME.colors.gold} />
+              </View>
               <View>
-                <Text style={styles.brandTitle}>BONIS <Text style={{ color: THEME.colors.gold }}>MUSIK</Text></Text>
-                <Text style={styles.brandSubtitle}>PASS STREAMING ILLIMITÉ VIP</Text>
+                <Text style={styles.receiptBrand}>BONIS <Text style={{ color: THEME.colors.gold }}>MUSIK</Text></Text>
+                <Text style={styles.receiptType}>REÇU D'ABONNEMENT OFFICIEL</Text>
               </View>
-              <View style={styles.vipPill}>
-                <Award size={12} color={THEME.colors.gold} />
-                <Text style={styles.vipPillText}>MEMBRE VIP</Text>
+            </View>
+            <View style={styles.amountBox}>
+              <Text style={styles.amountText}>1 300 FCFA</Text>
+              <Text style={styles.amountSubText}>~2,00 EUR</Text>
+            </View>
+          </View>
+
+          {/* Ligne pointillée décorative */}
+          <View style={styles.dashedDivider} />
+
+          {/* Corps des détails de la transaction */}
+          <View style={styles.receiptBody}>
+            {/* Ligne 1 : Titulaire & Email */}
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Client / Titulaire</Text>
+              <Text style={styles.detailValue}>{buyerName}</Text>
+            </View>
+
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Adresse Email</Text>
+              <Text style={styles.detailValue}>{buyerEmail}</Text>
+            </View>
+
+            {/* Ligne 2 : Mode de prélèvement */}
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Moyen de Règlement</Text>
+              <View style={styles.paymentMethodTag}>
+                <Smartphone size={12} color="#059669" />
+                <Text style={styles.paymentMethodText}>Mobile Money / GeniusPay</Text>
               </View>
             </View>
 
-            {/* Infos Utilisateur & Transaction */}
-            <View style={styles.passBody}>
-              <View style={styles.infoRow}>
-                <View>
-                  <Text style={styles.infoLabel}>TITULAIRE</Text>
-                  <Text style={styles.infoValue}>{buyerName}</Text>
-                </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={styles.infoLabel}>TARIF</Text>
-                  <Text style={[styles.infoValue, { color: THEME.colors.gold }]}>1 300 FCFA / mois</Text>
-                </View>
-              </View>
-
-              <View style={[styles.infoRow, { marginTop: 12 }]}>
-                <View>
-                  <Text style={styles.infoLabel}>RENOUVELLEMENT</Text>
-                  <Text style={styles.infoValue}>{renewalDate}</Text>
-                </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={styles.infoLabel}>RÉFÉRENCE GENIUSPAY</Text>
-                  <Text style={[styles.infoValue, { fontFamily: 'monospace', fontSize: 11 }]}>{txId || 'GP_CONFIRMED'}</Text>
-                </View>
-              </View>
+            {/* Ligne 3 : Référence GeniusPay */}
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Réf. Transaction</Text>
+              <Text style={styles.monoValue}>{referenceCode}</Text>
             </View>
 
-            {/* Footer Pass & Avantages Débloqués */}
-            <View style={styles.passFooter}>
-              <View style={styles.perkBadge}>
-                <Music size={12} color="#10B981" />
-                <Text style={styles.perkText}>Audio HD 320k</Text>
+            {/* Ligne 4 : Date de prélèvement */}
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Date du Prélèvement</Text>
+              <Text style={styles.detailValue}>{paymentDate}</Text>
+            </View>
+
+            {/* Ligne 5 : Prochaine date d'échéance (Mise en valeur) */}
+            <View style={[styles.detailRow, styles.dueDateRow]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Calendar size={14} color={THEME.colors.gold} />
+                <Text style={[styles.detailLabel, { color: THEME.colors.gold, fontWeight: '800' }]}>
+                  Prochaine Échéance
+                </Text>
               </View>
-              <View style={styles.perkBadge}>
-                <Download size={12} color="#10B981" />
-                <Text style={styles.perkText}>Mode Hors-Ligne In-App</Text>
+              <Text style={styles.dueDateValue}>{dueDate}</Text>
+            </View>
+          </View>
+
+          {/* Footer du Reçu : Avantages Débloqués */}
+          <View style={styles.receiptFooter}>
+            <View style={styles.vipPerksContainer}>
+              <View style={styles.perkItem}>
+                <CheckCircle2 size={13} color="#10B981" />
+                <Text style={styles.perkItemText}>Audio Haute Définition Illimité</Text>
               </View>
-              <View style={styles.perkBadge}>
-                <Sparkles size={12} color="#10B981" />
-                <Text style={styles.perkText}>Clips 4K & Enseignements</Text>
+              <View style={styles.perkItem}>
+                <CheckCircle2 size={13} color="#10B981" />
+                <Text style={styles.perkItemText}>Téléchargements Hors-Ligne In-App</Text>
+              </View>
+              <View style={styles.perkItem}>
+                <CheckCircle2 size={13} color="#10B981" />
+                <Text style={styles.perkItemText}>Clips Vidéo HD & Prédications</Text>
               </View>
             </View>
-          </LinearGradient>
+          </View>
         </View>
 
-        {/* Bouton d'action vers l'accueil */}
-        <TouchableOpacity
-          style={styles.ctaBtn}
-          onPress={onContinue}
-          activeOpacity={0.85}
-        >
-          <LinearGradient
-            colors={THEME.colors.goldGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.ctaGradient}
+        {/* Boutons d'Action */}
+        <View style={styles.actionsContainer}>
+          {/* Bouton Partager le reçu */}
+          <TouchableOpacity
+            style={styles.shareBtn}
+            onPress={handleShareReceipt}
+            activeOpacity={0.8}
           >
-            <Text style={styles.ctaText}>Commencer l'Écoute</Text>
-            <ArrowRight size={18} color="#FFFFFF" />
-          </LinearGradient>
-        </TouchableOpacity>
+            <Share2 size={16} color={THEME.colors.textPrimary} />
+            <Text style={styles.shareBtnText}>Partager mon reçu</Text>
+          </TouchableOpacity>
+
+          {/* Bouton Principal : Commencer l'écoute */}
+          <TouchableOpacity
+            style={styles.continueBtn}
+            onPress={onContinue}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={THEME.colors.goldGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.continueGradient}
+            >
+              <Text style={styles.continueText}>Accéder à mes musiques</Text>
+              <ArrowRight size={18} color="#FFFFFF" />
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
 
       </ScrollView>
     </SafeAreaView>
@@ -116,26 +184,24 @@ export const PaymentSuccessScreen = ({ txId, onContinue, currentUser }) => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: THEME.colors.background,
+    backgroundColor: '#F9FAFB',
   },
   container: {
     paddingHorizontal: 20,
-    paddingBottom: 30,
-    justifyContent: 'center',
+    paddingVertical: 20,
   },
   header: {
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 24,
+    marginBottom: 20,
   },
   iconCircle: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     backgroundColor: '#10B981',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
     shadowColor: '#10B981',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
@@ -150,7 +216,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 14,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   badgeSuccessText: {
     color: '#059669',
@@ -163,105 +229,173 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '900',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   subtitle: {
     color: THEME.colors.textSecondary,
-    fontSize: 13,
+    fontSize: 12.5,
     textAlign: 'center',
-    lineHeight: 19,
-    paddingHorizontal: 10,
+    lineHeight: 18,
+    paddingHorizontal: 12,
   },
-  vipPassCard: {
-    borderRadius: 24,
-    overflow: 'hidden',
+  receiptCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
     borderWidth: 1.5,
-    borderColor: THEME.colors.gold,
-    marginBottom: 24,
+    borderColor: '#E5E7EB',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
     shadowRadius: 10,
-    elevation: 8,
+    elevation: 4,
+    marginBottom: 20,
+    overflow: 'hidden',
   },
-  cardGradient: {
-    padding: 20,
-  },
-  passHeader: {
+  receiptHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.1)',
-    paddingBottom: 14,
-    marginBottom: 16,
+    alignItems: 'center',
+    padding: 18,
   },
-  brandTitle: {
-    color: '#FFFFFF',
+  receiptBrandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  receiptLogoCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(197, 155, 39, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  receiptBrand: {
+    color: THEME.colors.textPrimary,
+    fontSize: 15,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  receiptType: {
+    color: THEME.colors.textMuted,
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+  },
+  amountBox: {
+    alignItems: 'flex-end',
+  },
+  amountText: {
+    color: THEME.colors.gold,
     fontSize: 18,
     fontWeight: '900',
-    letterSpacing: 1,
   },
-  brandSubtitle: {
-    color: '#9CA3AF',
-    fontSize: 9,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-    marginTop: 2,
+  amountSubText: {
+    color: THEME.colors.textMuted,
+    fontSize: 11,
+    fontWeight: '600',
   },
-  vipPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(197, 155, 39, 0.2)',
-    borderWidth: 1,
-    borderColor: THEME.colors.gold,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+  dashedDivider: {
+    borderBottomWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderStyle: 'dashed',
+    marginHorizontal: 16,
   },
-  vipPillText: {
-    color: THEME.colors.gold,
-    fontSize: 10,
-    fontWeight: '800',
+  receiptBody: {
+    padding: 18,
+    gap: 12,
   },
-  passBody: {
-    marginBottom: 16,
-  },
-  infoRow: {
+  detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  infoLabel: {
-    color: '#9CA3AF',
-    fontSize: 9,
+  detailLabel: {
+    color: THEME.colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  detailValue: {
+    color: THEME.colors.textPrimary,
+    fontSize: 12.5,
     fontWeight: '700',
-    letterSpacing: 0.8,
-    marginBottom: 2,
   },
-  infoValue: {
-    color: '#FFFFFF',
+  paymentMethodTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  paymentMethodText: {
+    color: '#059669',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  monoValue: {
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    color: THEME.colors.textPrimary,
+    fontSize: 11,
+    fontWeight: '700',
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  dueDateRow: {
+    backgroundColor: '#FFFDF5',
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(197, 155, 39, 0.25)',
+    marginTop: 4,
+  },
+  dueDateValue: {
+    color: THEME.colors.gold,
+    fontSize: 12.5,
+    fontWeight: '900',
+  },
+  receiptFooter: {
+    backgroundColor: '#F9FAFB',
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  vipPerksContainer: {
+    gap: 8,
+  },
+  perkItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  perkItemText: {
+    color: THEME.colors.textPrimary,
+    fontSize: 11.5,
+    fontWeight: '600',
+  },
+  actionsContainer: {
+    gap: 10,
+  },
+  shareBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    paddingVertical: 13,
+    borderRadius: 25,
+  },
+  shareBtnText: {
+    color: THEME.colors.textPrimary,
     fontSize: 13,
     fontWeight: '700',
   },
-  passFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.1)',
-    paddingTop: 14,
-  },
-  perkBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  perkText: {
-    color: '#D1D5DB',
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  ctaBtn: {
+  continueBtn: {
     borderRadius: 30,
     overflow: 'hidden',
     shadowColor: THEME.colors.gold,
@@ -270,14 +404,14 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 4,
   },
-  ctaGradient: {
+  continueGradient: {
     paddingVertical: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
   },
-  ctaText: {
+  continueText: {
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '900',
