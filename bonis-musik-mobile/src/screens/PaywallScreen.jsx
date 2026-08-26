@@ -1,18 +1,30 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Linking, Platform } from 'react-native';
+import React, { useState, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  Platform
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, Check, ShieldCheck, Sparkles, X, Smartphone, CreditCard, ExternalLink, RefreshCw } from 'lucide-react-native';
+import { WebView } from 'react-native-webview';
+import { ChevronLeft, Check, ShieldCheck, Sparkles, X, Smartphone, CreditCard, Lock } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as WebBrowser from 'expo-web-browser';
 import { THEME } from '../constants/theme';
 import { GeniusPayService } from '../services/geniusPayService';
 import { SubscriptionService } from '../services/subscriptionService';
 
 export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
   const [loading, setLoading] = useState(false);
-  const [checkingPayment, setCheckingPayment] = useState(false);
-  const [lastPayment, setLastPayment] = useState(null);
   const [selectedMethod, setSelectedMethod] = useState('wave');
+  const [showWebview, setShowWebview] = useState(false);
+  const [paymentUrl, setPaymentUrl] = useState(null);
+  const [currentTxId, setCurrentTxId] = useState(null);
+  const [webviewLoading, setWebviewLoading] = useState(true);
 
   const benefits = [
     'Accès illimité à tous les albums et singles audio.',
@@ -30,10 +42,10 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
     { id: 'card', name: 'Carte VISA / Mastercard', color: '#1A1F71', type: 'Carte Bancaire' },
   ];
 
+  // 1. Initialiser la transaction et ouvrir le WebView intégré à l'écran
   const handleSubscribe = async () => {
     setLoading(true);
     try {
-      // 1. Initialisation Transaction Sandbox GeniusPay
       const paymentResult = await GeniusPayService.createSubscriptionPayment({
         user: currentUser,
         amount: 1300,
@@ -41,60 +53,79 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
       });
 
       setLoading(false);
-      setLastPayment(paymentResult);
 
       if (!paymentResult || !paymentResult.checkoutUrl) {
-        throw new Error('L\'API GeniusPay n\'a pas retourné l\'URL de paiement requise.');
+        throw new Error("L'API GeniusPay n'a pas retourné l'URL de paiement.");
       }
 
-      // 2. OUVERTURE DIRECTE IN-APP (Sans jamais quitter l'application mobile)
-      const browserResult = await WebBrowser.openBrowserAsync(paymentResult.checkoutUrl, {
-        presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
-        controlsColor: THEME.colors.gold,
-        toolbarColor: '#0D0D0D',
-        enableBarCollapsing: false,
-        showTitle: true,
-      });
-
-      // 3. Dès la fermeture du navigateur in-app (quand l'utilisateur clique sur Terminer ou ferme)
-      if (browserResult.type === 'cancel' || browserResult.type === 'dismiss') {
-        // Activation automatique de l'abonnement VIP
-        if (currentUser) {
-          await SubscriptionService.activateVipSubscription(currentUser);
-        }
-        if (onSuccess) {
-          onSuccess(paymentResult.tx_id);
-        }
-      }
+      setPaymentUrl(paymentResult.checkoutUrl);
+      setCurrentTxId(paymentResult.tx_id);
+      setShowWebview(true);
+      setWebviewLoading(true);
     } catch (err) {
       setLoading(false);
-      // Si expo-web-browser rencontre un souci, secours par Linking.openURL
-      if (lastPayment?.checkoutUrl) {
-        await Linking.openURL(lastPayment.checkoutUrl);
-      } else {
-        Alert.alert(
-          'Erreur Passerelle GeniusPay',
-          err.message || 'Impossible d\'initialiser le paiement. Veuillez réessayer.'
-        );
-      }
+      Alert.alert(
+        'Erreur GeniusPay',
+        err.message || 'Impossible d\'initialiser le paiement sécurisé. Veuillez réessayer.'
+      );
     }
   };
 
-  // Bouton de confirmation manuelle de secours
-  const handleVerifyPaid = async () => {
-    setCheckingPayment(true);
-    try {
+  // 2. Intercepter le succès directement dans le WebView
+  const handleNavigationStateChange = async (navState) => {
+    const { url } = navState;
+    if (!url) return;
+
+    // Détection de la page de succès ou de retour
+    if (
+      url.includes('payment-success') ||
+      url.includes('success') ||
+      url.includes('bonismusik://payment-success') ||
+      url.includes('/status/success')
+    ) {
+      setShowWebview(false);
+      // Activation de l'abonnement VIP dans Supabase
       if (currentUser) {
         await SubscriptionService.activateVipSubscription(currentUser);
       }
-      setCheckingPayment(false);
       if (onSuccess) {
-        onSuccess(lastPayment?.tx_id || 'GP_CONFIRMED');
+        onSuccess(currentTxId || 'GP_SUCCESS');
       }
-    } catch (e) {
-      setCheckingPayment(false);
-      Alert.alert('Vérification', 'Votre abonnement est en cours de traitement.');
+    } else if (
+      url.includes('payment-cancel') ||
+      url.includes('cancel') ||
+      url.includes('bonismusik://payment-cancel')
+    ) {
+      setShowWebview(false);
+      Alert.alert('Paiement interrompu', 'La transaction n\'a pas été complétée.');
     }
+  };
+
+  // Bouton pour fermer manuellement le WebView
+  const handleCloseWebview = async () => {
+    Alert.alert(
+      'Fermer le guichet de paiement',
+      'Avez-vous finalisé votre paiement sur GeniusPay ?',
+      [
+        {
+          text: 'Non, annuler',
+          style: 'cancel',
+          onPress: () => setShowWebview(false),
+        },
+        {
+          text: 'Oui, j\'ai payé',
+          onPress: async () => {
+            setShowWebview(false);
+            if (currentUser) {
+              await SubscriptionService.activateVipSubscription(currentUser);
+            }
+            if (onSuccess) {
+              onSuccess(currentTxId || 'GP_SUCCESS');
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -108,7 +139,7 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
           </TouchableOpacity>
           <View style={styles.secureHeaderBadge}>
             <ShieldCheck size={16} color={THEME.colors.gold} />
-            <Text style={styles.secureHeaderText}>GeniusPay In-App Sécurisé</Text>
+            <Text style={styles.secureHeaderText}>GeniusPay 100% In-App</Text>
           </View>
         </View>
 
@@ -187,7 +218,7 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
         <TouchableOpacity
           style={styles.ctaBtn}
           onPress={handleSubscribe}
-          disabled={loading || checkingPayment}
+          disabled={loading}
           activeOpacity={0.85}
         >
           <LinearGradient
@@ -199,39 +230,60 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
             {loading ? (
               <ActivityIndicator color="#FFFFFF" size="small" />
             ) : (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Text style={styles.ctaText}>Payer 1 300 FCFA (2 €) via GeniusPay</Text>
-                <ExternalLink size={16} color="#FFFFFF" />
-              </View>
+              <Text style={styles.ctaText}>Payer 1 300 FCFA (2 €) via GeniusPay</Text>
             )}
           </LinearGradient>
         </TouchableOpacity>
 
-        {/* Bouton de secours si besoin */}
-        {lastPayment && (
-          <TouchableOpacity
-            style={styles.verifyBtn}
-            onPress={handleVerifyPaid}
-            disabled={checkingPayment}
-            activeOpacity={0.8}
-          >
-            {checkingPayment ? (
-              <ActivityIndicator color={THEME.colors.gold} size="small" />
-            ) : (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <RefreshCw size={15} color={THEME.colors.gold} />
-                <Text style={styles.verifyBtnText}>Valider mon accès VIP</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        )}
-
         {/* Note de Réassurance */}
         <Text style={styles.reassuranceText}>
-          🔒 Paiement sécurisé In-App : Vos données bancaires et Mobile Money sont protégées.
+          🔒 Paiement 100% In-App : Restez dans l'application pendant tout le processus de paiement.
         </Text>
 
       </ScrollView>
+
+      {/* MODAL WEBVIEW INTÉGRÉE DANS L'APP POUR LE PAIEMENT SANS JAMAIS SORTIR */}
+      <Modal
+        visible={showWebview}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={handleCloseWebview}
+      >
+        <SafeAreaView style={styles.webviewSafeArea}>
+          {/* Header du Guichet */}
+          <View style={styles.webviewHeader}>
+            <View style={styles.webviewHeaderLeft}>
+              <Lock size={16} color={THEME.colors.gold} />
+              <Text style={styles.webviewHeaderTitle}>Guichet GeniusPay Sécurisé</Text>
+            </View>
+            <TouchableOpacity onPress={handleCloseWebview} style={styles.webviewCloseBtn}>
+              <X size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Indicateur de chargement */}
+          {webviewLoading && (
+            <View style={styles.webviewLoader}>
+              <ActivityIndicator size="large" color={THEME.colors.gold} />
+              <Text style={styles.webviewLoaderText}>Chargement du guichet de paiement...</Text>
+            </View>
+          )}
+
+          {/* Navigateur Web Intégré */}
+          {paymentUrl && (
+            <WebView
+              source={{ uri: paymentUrl }}
+              style={styles.webview}
+              onLoadEnd={() => setWebviewLoading(false)}
+              onNavigationStateChange={handleNavigationStateChange}
+              javaScriptEnabled={true}
+              domStorageEnabled={true}
+              startInLoadingState={true}
+            />
+          )}
+        </SafeAreaView>
+      </Modal>
+
     </SafeAreaView>
   );
 };
@@ -449,25 +501,57 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 0.3,
   },
-  verifyBtn: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: THEME.colors.gold,
-    borderRadius: 30,
-    paddingVertical: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-  },
-  verifyBtnText: {
-    color: THEME.colors.gold,
-    fontSize: 13,
-    fontWeight: '800',
-  },
   reassuranceText: {
     color: THEME.colors.textMuted,
     fontSize: 11,
     textAlign: 'center',
     lineHeight: 16,
+  },
+  webviewSafeArea: {
+    flex: 1,
+    backgroundColor: '#0D0D0D',
+  },
+  webviewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#161616',
+    borderBottomWidth: 1,
+    borderBottomColor: '#262626',
+  },
+  webviewHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  webviewHeaderTitle: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  webviewCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#262626',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  webviewLoader: {
+    paddingVertical: 20,
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#0D0D0D',
+  },
+  webviewLoaderText: {
+    color: '#9CA3AF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  webview: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
   },
 });
