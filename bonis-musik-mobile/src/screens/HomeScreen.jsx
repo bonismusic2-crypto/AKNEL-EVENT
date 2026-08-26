@@ -101,12 +101,42 @@ export const HomeScreen = ({
     }
   };
 
+  const fetchNotifications = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (!error && data && data.length > 0) {
+        const mapped = data.map((n) => ({
+          id: n.id,
+          type: n.type || 'general',
+          title: n.title,
+          message: n.message,
+          time: n.created_at ? new Date(n.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : 'Récemment',
+          isRead: n.is_read || false,
+          badge: n.badge || 'Bonis Musik',
+          badgeBg: n.badge_bg || '#FEF3C7',
+          badgeTextColor: n.badge_text_color || '#92400E',
+          actionType: n.action_type || 'home',
+          actionText: n.action_text || 'Consulter',
+        }));
+        setNotifications(mapped);
+      }
+    } catch (e) {
+      console.warn('Notifications fetch warning:', e);
+    }
+  };
+
   const loadLiveData = async () => {
     try {
       const [liveAlbums, liveClips, liveTeachings] = await Promise.all([
         MediaService.getAlbums(),
         MediaService.getMediaContents('video_clip'),
         MediaService.getMediaContents(null), // Enseignements
+        fetchNotifications(),
       ]);
 
       if (liveAlbums && liveAlbums.length > 0) setAlbums(liveAlbums);
@@ -122,11 +152,47 @@ export const HomeScreen = ({
 
   useEffect(() => {
     loadLiveData();
+
+    // 🔔 Abonnement Temps Réel aux Notifications Supabase
+    const notifChannel = supabase
+      .channel('bonis-notifications-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'notifications' },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const n = payload.new;
+            const newNotif = {
+              id: n.id,
+              type: n.type || 'general',
+              title: n.title,
+              message: n.message,
+              time: 'À l\'instant',
+              isRead: false,
+              badge: n.badge || 'Nouveau',
+              badgeBg: n.badge_bg || '#DCFCE7',
+              badgeTextColor: n.badge_text_color || '#166534',
+              actionType: n.action_type || 'home',
+              actionText: n.action_text || 'Consulter',
+            };
+            setNotifications((prev) => [newNotif, ...prev]);
+          } else if (payload.eventType === 'UPDATE') {
+            setNotifications((prev) =>
+              prev.map((item) => (item.id === payload.new.id ? { ...item, isRead: payload.new.is_read } : item))
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(notifChannel);
+    };
   }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([loadLiveData(), checkVipStatus()]);
+    await Promise.all([loadLiveData(), checkVipStatus(), fetchNotifications()]);
     setRefreshing(false);
   };
 
