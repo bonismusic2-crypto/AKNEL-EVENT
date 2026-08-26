@@ -34,6 +34,11 @@ create policy "Les utilisateurs peuvent marquer leurs notifications comme lues"
   on public.notifications for update
   using (auth.uid() = user_id or user_id is null);
 
+-- ✅ AUTORISATION D'INSERTION : Permet l'envoi de notifications depuis l'application et les webhooks
+create policy "Autoriser l'insertion des notifications"
+  on public.notifications for insert
+  with check (true);
+
 -- ==========================================================
 -- 2. ÉTAPE CLÉ : REPLICA IDENTITY FULL (Pour recevoir les anciennes et nouvelles valeurs)
 -- ==========================================================

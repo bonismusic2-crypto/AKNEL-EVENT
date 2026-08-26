@@ -87,7 +87,7 @@ export const NotificationService = {
    */
   async recordNotificationInDatabase({ userId, type, title, message, badge, badgeBg, badgeTextColor, actionType, actionText }) {
     try {
-      await supabase.from('notifications').insert({
+      const { data, error } = await supabase.from('notifications').insert({
         user_id: userId || null,
         type: type || 'general',
         title: title,
@@ -100,6 +100,10 @@ export const NotificationService = {
         is_read: false,
         created_at: new Date().toISOString(),
       });
+
+      if (error) {
+        console.warn('Erreur Supabase RLS / Insert notification:', error.message);
+      }
     } catch (e) {
       console.warn('Erreur enregistrement notification DB:', e);
     }
