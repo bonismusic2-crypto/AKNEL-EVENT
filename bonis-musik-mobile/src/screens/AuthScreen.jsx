@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Mail, Lock, Eye, EyeOff, User, Phone, ArrowLeft, AlertCircle } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -62,20 +62,23 @@ export const AuthScreen = ({ onSuccess, onBack }) => {
           password: cleanPassword,
           options: {
             data: {
-              full_name: fullName.trim() || 'Abonné Bonis',
-              phone: phone.trim() || '',
-            },
-          },
+              full_name: fullName.trim() || cleanEmail.split('@')[0],
+              phone: phone.trim(),
+            }
+          }
         });
 
         if (error) throw error;
 
         if (data?.user) {
-          onSuccess(data.user);
+          Alert.alert(
+            'Compte créé avec succès !',
+            'Bienvenue sur Bonis Musik.',
+            [{ text: 'Continuer', onPress: () => onSuccess(data.user) }]
+          );
         } else {
-          // Si inscription réussie mais nécessite confirmation
           setIsLogin(true);
-          setErrorMessage('Compte créé ! Vous pouvez maintenant vous connecter.');
+          Alert.alert('Inscription reçue', 'Veuillez maintenant vous connecter avec vos identifiants.');
         }
       }
     } catch (err) {
@@ -99,8 +102,13 @@ export const AuthScreen = ({ onSuccess, onBack }) => {
             <ArrowLeft size={22} color={THEME.colors.textPrimary} />
           </TouchableOpacity>
 
-          {/* Titre & Sous-titre */}
+          {/* Logo Officiel & Titre */}
           <View style={styles.header}>
+            <Image
+              source={require('../../assets/icon boni musik.png')}
+              style={styles.appIcon}
+              resizeMode="contain"
+            />
             <Text style={styles.brandTitle}>BONIS <Text style={{ color: THEME.colors.gold }}>MUSIK</Text></Text>
             <Text style={styles.title}>{isLogin ? 'Connexion' : 'Créer un compte'}</Text>
             <Text style={styles.subtitle}>
@@ -139,70 +147,87 @@ export const AuthScreen = ({ onSuccess, onBack }) => {
           <View style={styles.form}>
             {!isLogin && (
               <>
+                {/* Nom complet */}
                 <View style={styles.inputWrapper}>
-                  <User size={18} color={THEME.colors.textMuted} style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Nom et Prénoms (ex: Boniface Boni)"
-                    placeholderTextColor={THEME.colors.textMuted}
-                    value={fullName}
-                    onChangeText={setFullName}
-                  />
+                  <Text style={styles.inputLabel}>Nom & Prénom</Text>
+                  <View style={styles.inputContainer}>
+                    <User size={18} color={THEME.colors.textMuted} style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Ex: Jean Kouassi"
+                      placeholderTextColor={THEME.colors.textMuted}
+                      value={fullName}
+                      onChangeText={setFullName}
+                      autoCapitalize="words"
+                    />
+                  </View>
                 </View>
 
+                {/* Téléphone */}
                 <View style={styles.inputWrapper}>
-                  <Phone size={18} color={THEME.colors.textMuted} style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Téléphone (Wave / Mobile Money)"
-                    placeholderTextColor={THEME.colors.textMuted}
-                    value={phone}
-                    onChangeText={setPhone}
-                    keyboardType="phone-pad"
-                  />
+                  <Text style={styles.inputLabel}>Numéro de Téléphone (Mobile Money)</Text>
+                  <View style={styles.inputContainer}>
+                    <Phone size={18} color={THEME.colors.textMuted} style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Ex: 07 00 00 00 00"
+                      placeholderTextColor={THEME.colors.textMuted}
+                      value={phone}
+                      onChangeText={setPhone}
+                      keyboardType="phone-pad"
+                    />
+                  </View>
                 </View>
               </>
             )}
 
+            {/* Email */}
             <View style={styles.inputWrapper}>
-              <Mail size={18} color={THEME.colors.textMuted} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Adresse email"
-                placeholderTextColor={THEME.colors.textMuted}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
+              <Text style={styles.inputLabel}>Adresse Email</Text>
+              <View style={styles.inputContainer}>
+                <Mail size={18} color={THEME.colors.textMuted} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="votre.email@exemple.com"
+                  placeholderTextColor={THEME.colors.textMuted}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
             </View>
 
+            {/* Mot de passe */}
             <View style={styles.inputWrapper}>
-              <Lock size={18} color={THEME.colors.textMuted} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Mot de passe"
-                placeholderTextColor={THEME.colors.textMuted}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-              />
-              <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-                style={styles.eyeBtn}
-                activeOpacity={0.7}
-              >
-                {showPassword ? (
-                  <EyeOff size={18} color={THEME.colors.textMuted} />
-                ) : (
-                  <Eye size={18} color={THEME.colors.textMuted} />
-                )}
-              </TouchableOpacity>
+              <Text style={styles.inputLabel}>Mot de passe</Text>
+              <View style={styles.inputContainer}>
+                <Lock size={18} color={THEME.colors.textMuted} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="••••••••"
+                  placeholderTextColor={THEME.colors.textMuted}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeBtn}
+                  activeOpacity={0.7}
+                >
+                  {showPassword ? (
+                    <EyeOff size={18} color={THEME.colors.textMuted} />
+                  ) : (
+                    <Eye size={18} color={THEME.colors.textMuted} />
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
 
-            {/* Bouton de Validation */}
+            {/* Bouton de Soumission */}
             <TouchableOpacity
               style={styles.submitBtn}
               onPress={handleAuth}
@@ -213,19 +238,19 @@ export const AuthScreen = ({ onSuccess, onBack }) => {
                 colors={THEME.colors.goldGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
-                style={styles.submitGradient}
+                style={styles.gradientBtn}
               >
                 {loading ? (
                   <ActivityIndicator color="#FFFFFF" size="small" />
                 ) : (
-                  <Text style={styles.submitText}>
-                    {isLogin ? 'Se connecter' : 'Valider mon inscription'}
+                  <Text style={styles.submitBtnText}>
+                    {isLogin ? 'Se connecter' : 'Créer mon compte'}
                   </Text>
                 )}
               </LinearGradient>
             </TouchableOpacity>
-          </View>
 
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -238,37 +263,41 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.background,
   },
   scrollContainer: {
-    flexGrow: 1,
     paddingHorizontal: 24,
-    paddingVertical: 30,
-    justifyContent: 'center',
+    paddingTop: 16,
+    paddingBottom: 40,
   },
   backBtn: {
-    alignSelf: 'flex-start',
     width: 40,
     height: 40,
     borderRadius: 20,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    marginBottom: 20,
   },
   header: {
     alignItems: 'center',
     marginBottom: 24,
   },
+  appIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 18,
+    marginBottom: 12,
+  },
   brandTitle: {
     color: THEME.colors.textPrimary,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '900',
     letterSpacing: 2,
-    marginBottom: 8,
+    marginBottom: 4,
   },
   title: {
     color: THEME.colors.textPrimary,
-    fontSize: 22,
+    fontSize: 26,
     fontWeight: '900',
     marginBottom: 6,
   },
@@ -288,14 +317,14 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 10,
     alignItems: 'center',
-    borderRadius: 10,
+    borderRadius: 11,
   },
   toggleBtnActive: {
     backgroundColor: '#FFFFFF',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
     elevation: 2,
   },
   toggleText: {
@@ -304,39 +333,47 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   toggleTextActive: {
-    color: THEME.colors.gold,
+    color: THEME.colors.textPrimary,
     fontWeight: '800',
   },
   errorBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
     backgroundColor: '#FEE2E2',
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 16,
     borderWidth: 1,
     borderColor: '#FCA5A5',
-    flexDirection: 'row',
-    gap: 8,
-    alignItems: 'flex-start',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 18,
   },
   errorText: {
-    color: '#DC2626',
-    fontSize: 12,
+    color: '#B91C1C',
+    fontSize: 12.5,
     fontWeight: '600',
     flex: 1,
-    lineHeight: 16,
+    lineHeight: 18,
   },
   form: {
-    gap: 14,
+    gap: 16,
   },
   inputWrapper: {
+    gap: 6,
+  },
+  inputLabel: {
+    color: THEME.colors.textPrimary,
+    fontSize: 12.5,
+    fontWeight: '700',
+  },
+  inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
     borderWidth: 1.5,
     borderColor: '#E5E7EB',
-    paddingHorizontal: 14,
-    height: 52,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    height: 50,
   },
   inputIcon: {
     marginRight: 10,
@@ -345,6 +382,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: THEME.colors.textPrimary,
     fontSize: 14,
+    height: '100%',
   },
   eyeBtn: {
     padding: 6,
@@ -352,22 +390,22 @@ const styles = StyleSheet.create({
   submitBtn: {
     borderRadius: 30,
     overflow: 'hidden',
-    marginTop: 8,
+    marginTop: 10,
     shadowColor: THEME.colors.gold,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
     elevation: 4,
   },
-  submitGradient: {
+  gradientBtn: {
     paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  submitText: {
+  submitBtnText: {
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '900',
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
   },
 });

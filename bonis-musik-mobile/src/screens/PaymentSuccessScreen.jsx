@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Share, Platform, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Share, Platform, Alert, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ViewShot from 'react-native-view-shot';
 import * as Print from 'expo-print';
@@ -33,7 +33,7 @@ export const PaymentSuccessScreen = ({ txId, planType = 'monthly', onContinue, c
   const isAnnual = planType === 'annual';
   const planLabel = isAnnual ? 'Abonnement Annuel (1 An)' : 'Abonnement Mensuel (1 Mois)';
   const amountFcfa = isAnnual ? '10 000 FCFA' : '1 000 FCFA';
-  const amountEuro = isAnnual ? '~15,00 EUR' : '~1,50 EUR';
+  const amountEuro = isAnnual ? '15,00 €' : '1,50 €';
 
   // Date de transaction actuelle et date d'échéance (+1 mois ou +1 an)
   const now = new Date();
@@ -51,7 +51,7 @@ export const PaymentSuccessScreen = ({ txId, planType = 'monthly', onContinue, c
   const handleShareReceipt = async () => {
     try {
       await Share.share({
-        message: `Reçu d'abonnement Bonis Musik\nFormule: ${planLabel}\nRéférence: ${referenceCode}\nMontant: ${amountFcfa} (${amountEuro})\nTitulaire: ${buyerName}\nProchaine échéance: ${dueDate}`,
+        message: `Reçu d'abonnement Bonis Musik\nFormule: ${planLabel}\nRéférence: ${referenceCode}\nMontant: ${amountFcfa} = ${amountEuro}\nTitulaire: ${buyerName}\nProchaine échéance: ${dueDate}`,
       });
     } catch (e) {}
   };
@@ -154,9 +154,10 @@ export const PaymentSuccessScreen = ({ txId, planType = 'monthly', onContinue, c
                 color: #C59B27;
               }
               .amount-sub {
-                font-size: 14px;
+                font-size: 15px;
                 color: #6b7280;
-                font-weight: 600;
+                font-weight: 700;
+                margin-top: 4px;
               }
               .row {
                 display: flex;
@@ -199,8 +200,7 @@ export const PaymentSuccessScreen = ({ txId, planType = 'monthly', onContinue, c
               </div>
               <div class="body">
                 <div class="amount-row">
-                  <div class="amount-val">${amountFcfa}</div>
-                  <div class="amount-sub">${amountEuro}</div>
+                  <div class="amount-val">${amountFcfa} = ${amountEuro}</div>
                 </div>
                 <div class="row">
                   <span class="label">Formule d'Accès :</span>
@@ -262,10 +262,15 @@ export const PaymentSuccessScreen = ({ txId, planType = 'monthly', onContinue, c
     <SafeAreaView style={styles.safeArea}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
         
-        {/* Header avec Icône Succès */}
+        {/* Header avec Icône Officielle et Succès */}
         <View style={styles.header}>
+          <Image
+            source={require('../../assets/icon boni musik.png')}
+            style={styles.headerAppIcon}
+            resizeMode="contain"
+          />
           <View style={styles.iconCircle}>
-            <CheckCircle2 size={40} color="#FFFFFF" strokeWidth={2.5} />
+            <CheckCircle2 size={36} color="#FFFFFF" strokeWidth={2.5} />
           </View>
           <View style={styles.badgeSuccess}>
             <ShieldCheck size={14} color="#059669" />
@@ -280,12 +285,14 @@ export const PaymentSuccessScreen = ({ txId, planType = 'monthly', onContinue, c
         {/* CARTE REÇU OFFICIEL DE TRANSACTION (CAPTURABLE EN IMAGE) */}
         <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 1.0 }}>
           <View style={styles.receiptCard}>
-            {/* Header du Reçu */}
+            {/* Header du Reçu avec Logo Officiel */}
             <View style={styles.receiptHeader}>
               <View style={styles.receiptBrandRow}>
-                <View style={styles.receiptLogoCircle}>
-                  <Receipt size={18} color={THEME.colors.gold} />
-                </View>
+                <Image
+                  source={require('../../assets/icon boni musik.png')}
+                  style={styles.receiptAppLogo}
+                  resizeMode="contain"
+                />
                 <View>
                   <Text style={styles.receiptBrand}>BONIS <Text style={{ color: THEME.colors.gold }}>MUSIK</Text></Text>
                   <Text style={styles.receiptType}>REÇU D'ABONNEMENT OFFICIEL</Text>
@@ -293,7 +300,7 @@ export const PaymentSuccessScreen = ({ txId, planType = 'monthly', onContinue, c
               </View>
               <View style={styles.amountBox}>
                 <Text style={styles.amountText}>{amountFcfa}</Text>
-                <Text style={styles.amountSubText}>{amountEuro}</Text>
+                <Text style={styles.amountSubText}>= {amountEuro}</Text>
               </View>
             </View>
 
@@ -445,14 +452,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
+  headerAppIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+    marginBottom: 10,
+  },
   iconCircle: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: '#10B981',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
     shadowColor: '#10B981',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
@@ -506,20 +519,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 18,
+    padding: 16,
   },
   receiptBrandRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
-  receiptLogoCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(197, 155, 39, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
+  receiptAppLogo: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
   },
   receiptBrand: {
     color: THEME.colors.textPrimary,
@@ -543,8 +553,8 @@ const styles = StyleSheet.create({
   },
   amountSubText: {
     color: THEME.colors.textMuted,
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '700',
   },
   dashedDivider: {
     borderBottomWidth: 1.5,

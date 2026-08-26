@@ -33,7 +33,8 @@ import {
   ExternalLink,
   Music,
   BookOpen,
-  Film
+  Film,
+  Calendar
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
@@ -46,18 +47,35 @@ export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser }) => {
   const { history, clearHistory, removeFromHistory, playTrack } = useAudio();
   const [activeModal, setActiveModal] = useState(null);
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [subscriptionDetails, setSubscriptionDetails] = useState({
+    plan: 'Abonnement Bonis Musik',
+    expiresAt: null,
+  });
 
-  // Vérifier le vrai statut d'abonnement Supabase
+  // Vérifier le statut réel et la date d'échéance depuis Supabase / Cache
   const checkVipStatus = async () => {
     if (currentUser) {
-      const sub = await SubscriptionService.isUserSubscribed(currentUser);
-      setIsSubscribed(sub);
+      const subInfo = await SubscriptionService.checkSubscription(currentUser);
+      setIsSubscribed(subInfo.isSubscribed);
+      setSubscriptionDetails({
+        plan: subInfo.plan || 'Accès Intégral Bonis Musik',
+        expiresAt: subInfo.expiresAt || null,
+      });
     }
   };
 
   useEffect(() => {
     checkVipStatus();
   }, [currentUser]);
+
+  // Formatage de la date d'échéance
+  const formattedExpiryDate = subscriptionDetails.expiresAt
+    ? new Date(subscriptionDetails.expiresAt).toLocaleDateString('fr-FR', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      })
+    : 'Dans 30 jours';
 
   // État des téléchargements hors-ligne sécurisés
   const [downloads, setDownloads] = useState([
@@ -108,42 +126,29 @@ export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser }) => {
       } else {
         Alert.alert('Support Bonis Musik', 'Contactez le support au +225 05 56 01 87 87');
       }
-    } catch (err) {
-      Alert.alert('Support Bonis Musik', 'Contactez le support au +225 05 56 01 87 87');
+    } catch (e) {
+      Alert.alert('Support', 'Contactez le support au +225 05 56 01 87 87');
     }
   };
 
-  // Suppression d'un téléchargement
-  const handleDeleteDownload = (id) => {
-    Alert.alert(
-      'Supprimer le téléchargement',
-      'Voulez-vous supprimer ce titre de votre espace hors-ligne chiffré ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Supprimer',
-          style: 'destructive',
-          onPress: () => {
-            setDownloads(prev => prev.filter(item => item.id !== id));
-          },
-        },
-      ]
-    );
-  };
-
   // Déconnexion
-  const handleLogoutPress = async () => {
+  const handleSignOut = async () => {
     Alert.alert(
       'Déconnexion',
-      'Êtes-vous sûr de vouloir vous déconnecter ?',
+      'Voulez-vous vraiment vous déconnecter de Bonis Musik ?',
       [
         { text: 'Annuler', style: 'cancel' },
         {
           text: 'Se déconnecter',
           style: 'destructive',
           onPress: async () => {
-            await supabase.auth.signOut();
-            if (onLogout) onLogout();
+            try {
+              SubscriptionService.clearMemoryCache(currentUser?.id);
+              await supabase.auth.signOut();
+              if (onLogout) onLogout();
+            } catch (err) {
+              if (onLogout) onLogout();
+            }
           },
         },
       ]
@@ -154,19 +159,17 @@ export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser }) => {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
         
-        {/* Header Profil */}
+        {/* Header Profil avec Logo */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Mon Profil</Text>
-          <TouchableOpacity
-            style={styles.iconBtn}
-            onPress={() => setActiveModal('settings')}
-            activeOpacity={0.7}
-          >
-            <Settings size={20} color={THEME.colors.textPrimary} />
-          </TouchableOpacity>
+          <Image
+            source={require('../../assets/icon boni musik.png')}
+            style={styles.profileHeaderLogo}
+            resizeMode="contain"
+          />
+          <Text style={styles.headerTitle}>Mon Compte</Text>
         </View>
 
-        {/* Info Utilisateur Connecté */}
+        {/* Carte Profil Utilisateur */}
         <View style={styles.userCard}>
           <Image
             source={{ uri: currentUser?.user_metadata?.avatar_url || SAMPLE_DATA.user.avatar }}
@@ -179,7 +182,7 @@ export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser }) => {
           </View>
         </View>
 
-        {/* Encadré Abonnement Dynamique */}
+        {/* Encadré Abonnement Dynamique avec Date d'Échéance */}
         <View style={styles.subscriptionBox}>
           {isSubscribed ? (
             <>
@@ -187,7 +190,13 @@ export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser }) => {
                 <Sparkles size={13} color={THEME.colors.success} />
                 <Text style={styles.statusBadgeText}>ABONNEMENT ACTIF</Text>
               </View>
-              <Text style={styles.planTitle}>Accès Intégral Bonis Musik</Text>
+              <Text style={styles.planTitle}>{subscriptionDetails.plan}</Text>
+              <View style={styles.dueDateBadge}>
+                <Calendar size={13} color={THEME.colors.gold} />
+                <Text style={styles.dueDateText}>
+                  Échéance : <Text style={{ fontWeight: '800', color: THEME.colors.textPrimary }}>{formattedExpiryDate}</Text>
+                </Text>
+              </View>
               <Text style={styles.renewalText}>Accès illimité à tous les albums, clips & enseignements</Text>
             </>
           ) : (
@@ -196,7 +205,7 @@ export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser }) => {
                 <Text style={[styles.statusBadgeText, { color: '#DC2626' }]}>AUCUN ABONNEMENT ACTIF</Text>
               </View>
               <Text style={styles.planTitle}>Abonnement Bonis Musik</Text>
-              <Text style={styles.renewalText}>1 000 F (~1,50 €) / mois ou 10 000 F (~15 €) / an</Text>
+              <Text style={styles.renewalText}>1 000 FCFA = 1,50 € / mois ou 10 000 FCFA = 15,00 € / an</Text>
             </>
           )}
 
@@ -208,7 +217,7 @@ export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser }) => {
               style={styles.gradientBtn}
             >
               <Text style={styles.manageBtnText}>
-                {isSubscribed ? 'Gérer mon abonnement GeniusPay' : 'S\'abonner (Dès 1 000 FCFA)'}
+                {isSubscribed ? 'Gérer / Renouveler mon abonnement' : 'S\'abonner (Dès 1 000 FCFA)'}
               </Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -228,7 +237,7 @@ export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser }) => {
               </View>
               <View>
                 <Text style={styles.menuItemText}>Téléchargements hors-ligne</Text>
-                <Text style={styles.menuItemSubText}>{downloads.length} titres & vidéos chiffrés in-app</Text>
+                <Text style={styles.menuItemSubtext}>{downloads.length} titres chiffrés in-app</Text>
               </View>
             </View>
             <ChevronRight size={18} color={THEME.colors.textMuted} />
@@ -246,13 +255,13 @@ export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser }) => {
               </View>
               <View>
                 <Text style={styles.menuItemText}>Historique d'écoute</Text>
-                <Text style={styles.menuItemSubText}>{history.length} titres récents</Text>
+                <Text style={styles.menuItemSubtext}>{history.length} titres écoutés récemment</Text>
               </View>
             </View>
             <ChevronRight size={18} color={THEME.colors.textMuted} />
           </TouchableOpacity>
 
-          {/* 3. Paramètres */}
+          {/* 3. Paramètres de l'application */}
           <TouchableOpacity
             style={styles.menuItem}
             onPress={() => setActiveModal('settings')}
@@ -260,29 +269,29 @@ export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser }) => {
           >
             <View style={styles.menuItemLeft}>
               <View style={[styles.menuIconCircle, { backgroundColor: 'rgba(107, 114, 128, 0.12)' }]}>
-                <Sliders size={18} color={THEME.colors.textSecondary} />
+                <Sliders size={18} color="#4B5563" />
               </View>
               <View>
-                <Text style={styles.menuItemText}>Paramètres & Qualité audio</Text>
-                <Text style={styles.menuItemSubText}>HD 320 kbps • Wi-Fi</Text>
+                <Text style={styles.menuItemText}>Paramètres & Audio</Text>
+                <Text style={styles.menuItemSubtext}>Qualité streaming, Wi-Fi, Cache ({cacheSize})</Text>
               </View>
             </View>
             <ChevronRight size={18} color={THEME.colors.textMuted} />
           </TouchableOpacity>
 
-          {/* 4. Support WhatsApp */}
+          {/* 4. Support & Contact WhatsApp */}
           <TouchableOpacity
             style={styles.menuItem}
             onPress={handleWhatsAppSupport}
             activeOpacity={0.7}
           >
             <View style={styles.menuItemLeft}>
-              <View style={[styles.menuIconCircle, { backgroundColor: 'rgba(16, 185, 129, 0.12)' }]}>
-                <MessageCircle size={18} color="#10B981" />
+              <View style={[styles.menuIconCircle, { backgroundColor: 'rgba(37, 211, 102, 0.12)' }]}>
+                <MessageCircle size={18} color="#25D366" />
               </View>
               <View>
-                <Text style={styles.menuItemText}>Assistance & Contact Direct</Text>
-                <Text style={styles.menuItemSubText}>WhatsApp officiel</Text>
+                <Text style={styles.menuItemText}>Support & Ministère</Text>
+                <Text style={styles.menuItemSubtext}>Écrire au Chantre Boniface sur WhatsApp</Text>
               </View>
             </View>
             <ExternalLink size={16} color={THEME.colors.textMuted} />
@@ -292,144 +301,243 @@ export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser }) => {
         {/* Bouton de Déconnexion */}
         <TouchableOpacity
           style={styles.logoutBtn}
-          onPress={handleLogoutPress}
+          onPress={handleSignOut}
           activeOpacity={0.8}
         >
-          <LogOut size={18} color={THEME.colors.error} />
-          <Text style={styles.logoutBtnText}>Se déconnecter</Text>
+          <LogOut size={18} color="#DC2626" />
+          <Text style={styles.logoutText}>Se déconnecter</Text>
         </TouchableOpacity>
 
-        {/* MODAL 1 : TÉLÉCHARGEMENTS HORS-LIGNE */}
-        <Modal
-          visible={activeModal === 'downloads'}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => setActiveModal(null)}
-        >
-          <SafeAreaView style={styles.modalSafeArea}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Téléchargements hors-ligne</Text>
-              <TouchableOpacity onPress={() => setActiveModal(null)} style={styles.closeBtn}>
-                <X size={20} color={THEME.colors.textPrimary} />
-              </TouchableOpacity>
-            </View>
+        <Text style={styles.versionText}>Bonis Musik App • Version 1.0.0 (Édition Officielle)</Text>
 
-            <ScrollView contentContainerStyle={styles.modalBody}>
-              <View style={styles.legalNoticeBox}>
-                <ShieldCheck size={20} color={THEME.colors.gold} style={{ marginTop: 2 }} />
-                <Text style={styles.legalNoticeText}>
-                  🔒 <Text style={{ fontWeight: '800' }}>Stockage Sécurisé In-App :</Text> Vos musiques et vidéos sont chiffrées (AES-256) et lisibles exclusivement dans l'application Bonis Musik. Aucun export externe n'est possible.
+      </ScrollView>
+
+      {/* ========================================================= */}
+      {/* 1. MODAL TÉLÉCHARGEMENTS HORS-LIGNE CHIFFRÉS IN-APP */}
+      {/* ========================================================= */}
+      <Modal
+        visible={activeModal === 'downloads'}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setActiveModal(null)}
+      >
+        <SafeAreaView style={styles.modalSafeArea}>
+          <View style={styles.modalHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Download size={20} color={THEME.colors.gold} />
+              <Text style={styles.modalTitle}>Téléchargements Hors-Ligne</Text>
+            </View>
+            <TouchableOpacity onPress={() => setActiveModal(null)} style={styles.closeBtn}>
+              <X size={20} color={THEME.colors.textPrimary} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalBody}>
+            {/* Bannière de Sécurité / Droits d'auteur */}
+            <View style={styles.securityBanner}>
+              <Lock size={20} color={THEME.colors.gold} style={{ marginTop: 2 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.securityBannerTitle}>Stockage Sécurisé & Chiffré In-App</Text>
+                <Text style={styles.securityBannerText}>
+                  Vos musiques et vidéos sont chiffrées et lisibles exclusivement à l'intérieur de l'application Bonis Musik pour la protection des œuvres de l'artiste. Aucun export MP3 externe n'est autorisé.
                 </Text>
               </View>
+            </View>
 
-              <View style={styles.downloadsList}>
-                {downloads.map((item) => (
-                  <View key={item.id} style={styles.downloadCard}>
-                    <Image source={{ uri: item.thumbnail }} style={styles.downloadThumb} />
-                    <View style={styles.downloadInfo}>
-                      <Text style={styles.downloadTitle} numberOfLines={1}>{item.title}</Text>
-                      <Text style={styles.downloadMeta}>{item.artist} • {item.size}</Text>
+            {/* Espace Utilisé */}
+            <View style={styles.storageCard}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                <Text style={styles.storageLabel}>Espace utilisé par les titres hors-ligne :</Text>
+                <Text style={styles.storageValue}>26.5 Mo / 2 Go</Text>
+              </View>
+              <View style={styles.storageBarBg}>
+                <View style={[styles.storageBarFill, { width: '15%' }]} />
+              </View>
+            </View>
+
+            {/* Liste des Pistes Téléchargées */}
+            <Text style={styles.sectionHeading}>Pistes audio disponibles hors-ligne ({downloads.length})</Text>
+            
+            {downloads.map((item) => (
+              <View key={item.id} style={styles.downloadCard}>
+                <Image source={{ uri: item.thumbnail }} style={styles.downloadThumb} />
+                <View style={styles.downloadInfo}>
+                  <Text style={styles.downloadTitle} numberOfLines={1}>{item.title}</Text>
+                  <Text style={styles.downloadMeta}>{item.artist} • {item.size} • {item.duration}</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => {
+                    playTrack(item);
+                    setActiveModal(null);
+                  }}
+                  style={styles.playIconCircle}
+                >
+                  <Play size={16} color={THEME.colors.gold} fill={THEME.colors.gold} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    setDownloads(downloads.filter(d => d.id !== item.id));
+                    Alert.alert('Supprimé', 'Titre retiré de vos téléchargements hors-ligne.');
+                  }}
+                  style={styles.trashBtn}
+                >
+                  <Trash2 size={16} color="#DC2626" />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* ========================================================= */}
+      {/* 2. MODAL HISTORIQUE D'ÉCOUTE RÉCENT */}
+      {/* ========================================================= */}
+      <Modal
+        visible={activeModal === 'history'}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setActiveModal(null)}
+      >
+        <SafeAreaView style={styles.modalSafeArea}>
+          <View style={styles.modalHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <History size={20} color="#3B82F6" />
+              <Text style={styles.modalTitle}>Historique d'écoute</Text>
+            </View>
+            <TouchableOpacity onPress={() => setActiveModal(null)} style={styles.closeBtn}>
+              <X size={20} color={THEME.colors.textPrimary} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalBody}>
+            {history && history.length > 0 ? (
+              <>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                  <Text style={styles.sectionHeading}>Derniers titres écoutés</Text>
+                  <TouchableOpacity onPress={clearHistory}>
+                    <Text style={{ color: '#DC2626', fontSize: 12, fontWeight: '700' }}>Effacer tout</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {history.map((track, idx) => (
+                  <View key={track.id || idx} style={styles.historyCard}>
+                    <Image source={{ uri: track.cover || track.thumbnail || SAMPLE_DATA.audioReleases[0].cover }} style={styles.historyThumb} />
+                    <View style={styles.historyInfo}>
+                      <Text style={styles.historyTitle} numberOfLines={1}>{track.title}</Text>
+                      <Text style={styles.historyMeta}>{track.artist || 'Chantre Boniface'} • {track.duration || '04:30'}</Text>
                     </View>
                     <TouchableOpacity
-                      onPress={() => handleDeleteDownload(item.id)}
+                      onPress={() => {
+                        playTrack(track);
+                        setActiveModal(null);
+                      }}
+                      style={styles.playIconCircle}
+                    >
+                      <Play size={16} color={THEME.colors.gold} fill={THEME.colors.gold} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => removeFromHistory(track.id)}
                       style={styles.trashBtn}
                     >
-                      <Trash2 size={18} color={THEME.colors.error} />
+                      <Trash2 size={16} color={THEME.colors.textMuted} />
                     </TouchableOpacity>
                   </View>
                 ))}
+              </>
+            ) : (
+              <View style={styles.emptyState}>
+                <Music size={44} color={THEME.colors.textMuted} />
+                <Text style={styles.emptyText}>Aucun historique d'écoute pour le moment.</Text>
               </View>
-            </ScrollView>
-          </SafeAreaView>
-        </Modal>
+            )}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
 
-        {/* MODAL 2 : HISTORIQUE D'ÉCOUTE */}
-        <Modal
-          visible={activeModal === 'history'}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => setActiveModal(null)}
-        >
-          <SafeAreaView style={styles.modalSafeArea}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Historique d'écoute</Text>
-              <TouchableOpacity onPress={() => setActiveModal(null)} style={styles.closeBtn}>
-                <X size={20} color={THEME.colors.textPrimary} />
-              </TouchableOpacity>
+      {/* ========================================================= */}
+      {/* 3. MODAL PARAMÈTRES & RÉGLAGES AUDIO */}
+      {/* ========================================================= */}
+      <Modal
+        visible={activeModal === 'settings'}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setActiveModal(null)}
+      >
+        <SafeAreaView style={styles.modalSafeArea}>
+          <View style={styles.modalHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Sliders size={20} color="#4B5563" />
+              <Text style={styles.modalTitle}>Paramètres & Audio</Text>
+            </View>
+            <TouchableOpacity onPress={() => setActiveModal(null)} style={styles.closeBtn}>
+              <X size={20} color={THEME.colors.textPrimary} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalBody}>
+            {/* Qualité Streaming */}
+            <Text style={styles.sectionHeading}>Qualité Audio & Vidéo</Text>
+            <View style={styles.settingRow}>
+              <View style={{ flex: 1, paddingRight: 10 }}>
+                <Text style={styles.settingLabel}>Haute Définition (HD 320 kbps / 4K)</Text>
+                <Text style={styles.settingDesc}>Expérience sonore maximale pour les adorations et clips</Text>
+              </View>
+              <Switch
+                value={streamingQuality === 'hd'}
+                onValueChange={(val) => setStreamingQuality(val ? 'hd' : 'standard')}
+                trackColor={{ false: '#D1D5DB', true: THEME.colors.gold }}
+              />
             </View>
 
-            <ScrollView contentContainerStyle={styles.modalBody}>
-              {history.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <History size={48} color={THEME.colors.textMuted} />
-                  <Text style={styles.emptyText}>Aucune écoute récente</Text>
-                </View>
-              ) : (
-                history.map((item, idx) => (
-                  <TouchableOpacity
-                    key={idx}
-                    style={styles.historyCard}
-                    onPress={async () => {
-                      const isSub = currentUser ? await SubscriptionService.isUserSubscribed(currentUser) : false;
-                      if (!isSub) {
-                        setActiveModal(null);
-                        if (onOpenPaywall) onOpenPaywall();
-                        return;
-                      }
-                      playTrack(item);
-                      setActiveModal(null);
-                    }}
-                  >
-                    <Image source={{ uri: item.cover || item.thumbnail }} style={styles.historyThumb} />
-                    <View style={styles.historyInfo}>
-                      <Text style={styles.historyTitle} numberOfLines={1}>{item.title}</Text>
-                      <Text style={styles.historyMeta}>{item.artist || 'Chantre Boniface'}</Text>
-                    </View>
-                    <Play size={16} color={THEME.colors.gold} />
-                  </TouchableOpacity>
-                ))
-              )}
-            </ScrollView>
-          </SafeAreaView>
-        </Modal>
-
-        {/* MODAL 3 : PARAMÈTRES */}
-        <Modal
-          visible={activeModal === 'settings'}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => setActiveModal(null)}
-        >
-          <SafeAreaView style={styles.modalSafeArea}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Paramètres</Text>
-              <TouchableOpacity onPress={() => setActiveModal(null)} style={styles.closeBtn}>
-                <X size={20} color={THEME.colors.textPrimary} />
-              </TouchableOpacity>
+            {/* Téléchargement Wi-Fi */}
+            <Text style={styles.sectionHeading}>Données Mobiles</Text>
+            <View style={styles.settingRow}>
+              <View style={{ flex: 1, paddingRight: 10 }}>
+                <Text style={styles.settingLabel}>Télécharger uniquement en Wi-Fi</Text>
+                <Text style={styles.settingDesc}>Économise votre forfait Internet Mobile Money</Text>
+              </View>
+              <Switch
+                value={wifiOnly}
+                onValueChange={setWifiOnly}
+                trackColor={{ false: '#D1D5DB', true: THEME.colors.gold }}
+              />
             </View>
 
-            <ScrollView contentContainerStyle={styles.modalBody}>
-              <View style={styles.settingRow}>
-                <Text style={styles.settingLabel}>Téléchargement Wi-Fi uniquement</Text>
-                <Switch
-                  value={wifiOnly}
-                  onValueChange={setWifiOnly}
-                  trackColor={{ false: '#D1D5DB', true: THEME.colors.gold }}
-                />
+            {/* Notifications */}
+            <Text style={styles.sectionHeading}>Notifications & Alertes</Text>
+            <View style={styles.settingRow}>
+              <View style={{ flex: 1, paddingRight: 10 }}>
+                <Text style={styles.settingLabel}>Alertes Nouveaux Clips & Concerts</Text>
+                <Text style={styles.settingDesc}>Soyez averti dès la sortie d'un cantique prophétique</Text>
               </View>
-              <View style={styles.settingRow}>
-                <Text style={styles.settingLabel}>Notifications d'évangélisation</Text>
-                <Switch
-                  value={evangelizationNotifs}
-                  onValueChange={setEvangelizationNotifs}
-                  trackColor={{ false: '#D1D5DB', true: THEME.colors.gold }}
-                />
-              </View>
-            </ScrollView>
-          </SafeAreaView>
-        </Modal>
+              <Switch
+                value={evangelizationNotifs}
+                onValueChange={setEvangelizationNotifs}
+                trackColor={{ false: '#D1D5DB', true: THEME.colors.gold }}
+              />
+            </View>
 
-      </ScrollView>
+            {/* Cache Local */}
+            <Text style={styles.sectionHeading}>Stockage Local</Text>
+            <View style={styles.settingRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.settingLabel}>Vider le cache temporaire</Text>
+                <Text style={styles.settingDesc}>Espace occupé par les morceaux en cache : {cacheSize}</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.clearCacheBtn}
+                onPress={() => {
+                  setCacheSize('0 Mo');
+                  Alert.alert('Cache vidé', 'Le cache audio temporaire a été nettoyé.');
+                }}
+              >
+                <Text style={styles.clearCacheText}>Vider</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
     </SafeAreaView>
   );
 };
@@ -441,118 +549,131 @@ const styles = StyleSheet.create({
   },
   container: {
     paddingHorizontal: 20,
-    paddingBottom: 40,
+    paddingBottom: 30,
   },
   header: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 16,
+    paddingVertical: 14,
+    marginBottom: 6,
+  },
+  profileHeaderLogo: {
+    width: 60,
+    height: 60,
+    borderRadius: 15,
+    marginBottom: 8,
   },
   headerTitle: {
     color: THEME.colors.textPrimary,
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '900',
-  },
-  iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
   userCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
     padding: 16,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    marginBottom: 20,
-    gap: 16,
+    marginBottom: 16,
+    gap: 14,
   },
   avatar: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    borderWidth: 2,
-    borderColor: THEME.colors.gold,
+    backgroundColor: '#F3F4F6',
   },
   userInfo: {
     flex: 1,
   },
   userName: {
     color: THEME.colors.textPrimary,
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '800',
+    marginBottom: 2,
   },
   userEmail: {
     color: THEME.colors.textSecondary,
-    fontSize: 13,
-    marginTop: 2,
+    fontSize: 12.5,
   },
   userPhone: {
-    color: THEME.colors.gold,
-    fontSize: 12,
-    fontWeight: '700',
+    color: THEME.colors.textMuted,
+    fontSize: 11.5,
     marginTop: 2,
   },
   subscriptionBox: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
     padding: 20,
+    borderRadius: 22,
     borderWidth: 1.5,
     borderColor: THEME.colors.gold,
-    marginBottom: 24,
+    marginBottom: 20,
     shadowColor: THEME.colors.gold,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 3,
   },
   statusBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 6,
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
+    alignSelf: 'flex-start',
     marginBottom: 10,
   },
   statusBadgeText: {
-    color: '#059669',
+    color: THEME.colors.success,
     fontSize: 10,
     fontWeight: '800',
+    letterSpacing: 0.5,
   },
   planTitle: {
     color: THEME.colors.textPrimary,
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '900',
-    marginBottom: 4,
+    marginBottom: 6,
+  },
+  dueDateBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FFFDF5',
+    borderWidth: 1,
+    borderColor: 'rgba(197, 155, 39, 0.25)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    marginBottom: 8,
+    alignSelf: 'flex-start',
+  },
+  dueDateText: {
+    color: THEME.colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '600',
   },
   renewalText: {
     color: THEME.colors.textSecondary,
     fontSize: 12,
     marginBottom: 16,
+    lineHeight: 16,
   },
   manageBtn: {
     borderRadius: 25,
     overflow: 'hidden',
   },
   gradientBtn: {
-    paddingVertical: 14,
+    paddingVertical: 13,
     alignItems: 'center',
     justifyContent: 'center',
   },
   manageBtnText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '800',
   },
   menuContainer: {
@@ -560,22 +681,22 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    overflow: 'hidden',
-    marginBottom: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginBottom: 20,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
   },
   menuItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 12,
     flex: 1,
   },
   menuIconCircle: {
@@ -587,27 +708,36 @@ const styles = StyleSheet.create({
   },
   menuItemText: {
     color: THEME.colors.textPrimary,
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '700',
   },
-  menuItemSubText: {
+  menuItemSubtext: {
     color: THEME.colors.textMuted,
     fontSize: 11,
-    marginTop: 2,
+    marginTop: 1,
   },
   logoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#FEE2E2',
-    paddingVertical: 15,
-    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#FEE2E2',
+    paddingVertical: 14,
+    borderRadius: 25,
+    marginBottom: 16,
   },
-  logoutBtnText: {
-    color: THEME.colors.error,
-    fontSize: 14,
+  logoutText: {
+    color: '#DC2626',
+    fontSize: 13.5,
     fontWeight: '800',
+  },
+  versionText: {
+    textAlign: 'center',
+    color: THEME.colors.textMuted,
+    fontSize: 11,
+    marginBottom: 10,
   },
   modalSafeArea: {
     flex: 1,
@@ -621,36 +751,76 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: '800',
     color: THEME.colors.textPrimary,
+    fontSize: 16,
+    fontWeight: '800',
   },
   closeBtn: {
-    padding: 6,
+    padding: 4,
   },
   modalBody: {
     padding: 20,
   },
-  legalNoticeBox: {
+  securityBanner: {
     flexDirection: 'row',
-    gap: 10,
+    alignItems: 'flex-start',
+    gap: 12,
     backgroundColor: 'rgba(197, 155, 39, 0.1)',
-    padding: 14,
-    borderRadius: 14,
-    marginBottom: 20,
     borderWidth: 1,
-    borderColor: 'rgba(197, 155, 39, 0.2)',
+    borderColor: 'rgba(197, 155, 39, 0.3)',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 20,
   },
-  legalNoticeText: {
+  securityBannerTitle: {
+    color: THEME.colors.gold,
+    fontSize: 13,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  securityBannerText: {
+    color: THEME.colors.textSecondary,
+    fontSize: 11.5,
+    lineHeight: 16,
+  },
+  storageCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 20,
+  },
+  storageLabel: {
+    color: THEME.colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  storageValue: {
     color: THEME.colors.textPrimary,
     fontSize: 12,
-    lineHeight: 18,
-    flex: 1,
+    fontWeight: '800',
   },
-  downloadsList: {
-    gap: 12,
+  storageBarBg: {
+    height: 8,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  storageBarFill: {
+    height: '100%',
+    backgroundColor: THEME.colors.gold,
+    borderRadius: 4,
+  },
+  sectionHeading: {
+    color: THEME.colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '800',
+    marginBottom: 12,
+    marginTop: 6,
   },
   downloadCard: {
     flexDirection: 'row',
@@ -661,6 +831,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
     gap: 12,
+    marginBottom: 10,
   },
   downloadThumb: {
     width: 48,
@@ -680,8 +851,16 @@ const styles = StyleSheet.create({
     color: THEME.colors.textMuted,
     marginTop: 2,
   },
+  playIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(197, 155, 39, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   trashBtn: {
-    padding: 8,
+    padding: 6,
   },
   emptyState: {
     alignItems: 'center',
@@ -727,15 +906,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: '#FFFFFF',
-    padding: 16,
+    padding: 14,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   settingLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
     color: THEME.colors.textPrimary,
+  },
+  settingDesc: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+    marginTop: 2,
+  },
+  clearCacheBtn: {
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  clearCacheText: {
+    color: '#DC2626',
+    fontSize: 12,
+    fontWeight: '700',
   },
 });
