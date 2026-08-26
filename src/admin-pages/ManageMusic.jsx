@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Music, Plus, Edit2, Trash2, Film, BookOpen, Layers, CheckCircle2, Upload, AlertCircle } from 'lucide-react';
+import { FileUploader } from '../components/admin-ui/FileUploader';
 
 const ManageMusic = () => {
     const [activeTab, setActiveTab] = useState('albums'); // 'albums', 'clips', 'teachings'
@@ -300,30 +301,28 @@ const ManageMusic = () => {
                                 </div>
                             )}
 
-                            <div>
-                                <label className="block mb-1">URL de la Pochette / Miniature (Image)</label>
-                                <input
-                                    type="url"
-                                    required
-                                    placeholder="https://... ou Cloudinary / Supabase Storage"
-                                    value={formData.thumbnail_url}
-                                    onChange={(e) => setFormData({ ...formData, thumbnail_url: e.target.value })}
-                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gold normal-case font-normal"
-                                />
-                            </div>
+                            {/* 1. Upload de la Pochette / Miniature Image */}
+                            <FileUploader
+                                label={modalType === 'album' ? "Pochette de l'Album (Image)" : "Miniature du Média (Image)"}
+                                accept="image/*"
+                                bucket="covers"
+                                required={true}
+                                helperText="Sélectionnez l'image PNG / JPG depuis votre ordinateur"
+                                currentPreviewUrl={formData.thumbnail_url}
+                                onUploadSuccess={(url) => setFormData(prev => ({ ...prev, thumbnail_url: url }))}
+                            />
 
+                            {/* 2. Upload du Média Réel (Fichier Vidéo MP4 ou Audio MP3) */}
                             {modalType !== 'album' && (
-                                <div>
-                                    <label className="block mb-1">URL du Média (Fichier Vidéo / Audio MP3 / MP4)</label>
-                                    <input
-                                        type="url"
-                                        required
-                                        placeholder="https://... Cloudinary ou Supabase Storage"
-                                        value={formData.media_url}
-                                        onChange={(e) => setFormData({ ...formData, media_url: e.target.value })}
-                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gold normal-case font-normal"
-                                    />
-                                </div>
+                                <FileUploader
+                                    label={formData.category === 'teaching_audio' ? "Fichier Audio (MP3 / WAV)" : "Fichier Vidéo HD (MP4 / WebM)"}
+                                    accept={formData.category === 'teaching_audio' ? "audio/*" : "video/*"}
+                                    bucket="media"
+                                    required={true}
+                                    helperText={formData.category === 'teaching_audio' ? "Sélectionnez le fichier audio MP3 de l'enseignement" : "Sélectionnez la vidéo MP4 du clip ou de la prédication"}
+                                    currentPreviewUrl={formData.media_url}
+                                    onUploadSuccess={(url) => setFormData(prev => ({ ...prev, media_url: url }))}
+                                />
                             )}
 
                             <div className="grid grid-cols-2 gap-4">
