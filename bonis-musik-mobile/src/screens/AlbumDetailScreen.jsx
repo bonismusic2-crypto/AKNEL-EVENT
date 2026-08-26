@@ -1,12 +1,31 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, Play, Shuffle, Heart, MoreVertical } from 'lucide-react-native';
 import { THEME } from '../constants/theme';
 import { useAudio } from '../context/AudioContext';
+import { SubscriptionService } from '../services/subscriptionService';
+import { DownloadService } from '../services/downloadService';
+import { MediaOptionsMenu } from '../components/MediaOptionsMenu';
 
-export const AlbumDetailScreen = ({ album, onBack }) => {
+export const AlbumDetailScreen = ({ album, onBack, currentUser, onOpenPaywall }) => {
   const { playTrack } = useAudio();
+  const [isMenuVisible, setIsMenuVisible] = useState(false);
+  const [selectedMenuItem, setSelectedMenuItem] = useState(null);
+
+  const handlePlayTrack = async (track) => {
+    if (currentUser) {
+      const isSub = await SubscriptionService.isUserSubscribed(currentUser);
+      if (!isSub) {
+        if (onOpenPaywall) onOpenPaywall();
+        return;
+      }
+    } else {
+      if (onOpenPaywall) onOpenPaywall();
+      return;
+    }
+    playTrack(track);
+  };
 
   const tracks = album.tracks && album.tracks.length > 0 ? album.tracks : [
     { id: 101, title: 'Élévation', duration: '04:25', liked: true },
@@ -25,7 +44,19 @@ export const AlbumDetailScreen = ({ album, onBack }) => {
           <TouchableOpacity onPress={onBack} style={styles.backBtn}>
             <ChevronLeft size={24} color={THEME.colors.textPrimary} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.moreBtn}>
+          <TouchableOpacity
+            style={styles.moreBtn}
+            onPress={() => {
+              setSelectedMenuItem({
+                id: album.id,
+                title: album.title,
+                artist: 'Chantre Boniface',
+                thumbnail: album.cover,
+                type: 'audio',
+              });
+              setIsMenuVisible(true);
+            }}
+          >
             <MoreVertical size={20} color={THEME.colors.textPrimary} />
           </TouchableOpacity>
         </View>
@@ -44,7 +75,7 @@ export const AlbumDetailScreen = ({ album, onBack }) => {
         <View style={styles.actionButtonsRow}>
           <TouchableOpacity
             style={styles.playAllBtn}
-            onPress={() => playTrack({ ...tracks[0], cover: album.cover, album: album.title })}
+            onPress={() => handlePlayTrack({ ...tracks[0], cover: album.cover, album: album.title })}
             activeOpacity={0.8}
           >
             <Play size={18} color="#0D0D0D" fill="#0D0D0D" />
@@ -55,7 +86,7 @@ export const AlbumDetailScreen = ({ album, onBack }) => {
             style={styles.shuffleBtn}
             onPress={() => {
               const randomTrack = tracks[Math.floor(Math.random() * tracks.length)];
-              playTrack({ ...randomTrack, cover: album.cover, album: album.title });
+              handlePlayTrack({ ...randomTrack, cover: album.cover, album: album.title });
             }}
             activeOpacity={0.8}
           >
@@ -72,7 +103,7 @@ export const AlbumDetailScreen = ({ album, onBack }) => {
               <TouchableOpacity
                 key={track.id}
                 style={styles.trackItem}
-                onPress={() => playTrack({ ...track, cover: album.cover, album: album.title })}
+                onPress={() => handlePlayTrack({ ...track, cover: album.cover, album: album.title })}
                 activeOpacity={0.7}
               >
                 <Text style={styles.trackNumber}>{trackNumber}</Text>
@@ -81,14 +112,30 @@ export const AlbumDetailScreen = ({ album, onBack }) => {
                   <Text style={styles.trackArtist}>Chantre Boniface</Text>
                 </View>
                 <View style={styles.trackActions}>
-                  <TouchableOpacity style={styles.iconAction}>
+                  <TouchableOpacity 
+                    style={styles.iconAction}
+                    onPress={() => Alert.alert('Favoris', `"${track.title}" ajouté à vos favoris.`)}
+                  >
                     <Heart
                       size={18}
                       color={track.liked ? THEME.colors.gold : THEME.colors.textMuted}
                       fill={track.liked ? THEME.colors.gold : 'transparent'}
                     />
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.iconAction}>
+                  <TouchableOpacity 
+                    style={styles.iconAction}
+                    onPress={() => {
+                      setSelectedMenuItem({
+                        id: track.id,
+                        title: track.title,
+                        artist: 'Chantre Boniface',
+                        album: album.title,
+                        thumbnail: album.cover,
+                        type: 'audio',
+                      });
+                      setIsMenuVisible(true);
+                    }}
+                  >
                     <MoreVertical size={18} color={THEME.colors.textMuted} />
                   </TouchableOpacity>
                 </View>
@@ -98,6 +145,20 @@ export const AlbumDetailScreen = ({ album, onBack }) => {
         </View>
 
       </ScrollView>
+
+      {/* Modal Options 3 points */}
+      <MediaOptionsMenu
+        visible={isMenuVisible}
+        onClose={() => setIsMenuVisible(false)}
+        item={selectedMenuItem}
+        onPlayDirect={(track) => handlePlayTrack({ ...track, cover: album.cover, album: album.title })}
+        onToggleDownload={async (track) => {
+          await DownloadService.toggleDownload({ ...track, cover: album.cover, album: album.title });
+        }}
+        onToggleFavorite={(track) => {
+          Alert.alert('Favoris', `"${track.title}" ajouté à vos favoris.`);
+        }}
+      />
     </SafeAreaView>
   );
 };

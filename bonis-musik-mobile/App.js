@@ -6,8 +6,11 @@ import { AudioProvider } from './src/context/AudioContext';
 import { BottomNavigation } from './src/components/BottomNavigation';
 import { MiniPlayer } from './src/components/MiniPlayer';
 import { FullAudioPlayerModal } from './src/components/FullAudioPlayerModal';
+import { YouTubeStyleVideoPlayer } from './src/components/YouTubeStyleVideoPlayer';
 import { supabase } from './src/lib/supabase';
 import { SubscriptionService } from './src/services/subscriptionService';
+import { DownloadService } from './src/services/downloadService';
+import { SAMPLE_DATA } from './src/data/sampleData';
 
 // Écrans
 import { WelcomeScreen } from './src/screens/WelcomeScreen';
@@ -28,11 +31,40 @@ export default function App() {
   const [lastTxId, setLastTxId] = useState(null);
   const [selectedPlanType, setSelectedPlanType] = useState('monthly');
 
-  // Refs pour éviter les fermetures obsolètes (stale closures) et les re-renders intempestifs
+  // États pour le Lecteur Vidéo YouTube & Mini-Player Flottant (PiP)
+  const [activeVideo, setActiveVideo] = useState(null);
+  const [isVideoPlayerVisible, setIsVideoPlayerVisible] = useState(false);
+  const [isVideoFloating, setIsVideoFloating] = useState(false);
+  const [downloadedVideoIds, setDownloadedVideoIds] = useState(new Set());
+
+  // Refs pour éviter les fermetures obsolètes (stale closures)
   const appStateRef = useRef(appState);
   appStateRef.current = appState;
   const currentUserRef = useRef(currentUser);
   currentUserRef.current = currentUser;
+
+  // Charger les téléchargements réels pour les badges d'état
+  const refreshDownloads = async () => {
+    const list = await DownloadService.getDownloads();
+    setDownloadedVideoIds(new Set(list.map((d) => String(d.id))));
+  };
+
+  useEffect(() => {
+    refreshDownloads();
+  }, []);
+
+  // Fonction de lancement de vidéo YouTube
+  const handlePlayVideo = (video) => {
+    setActiveVideo(video);
+    setIsVideoPlayerVisible(true);
+    setIsVideoFloating(false);
+  };
+
+  // Basculer le téléchargement d'une vidéo
+  const handleToggleDownloadVideo = async (video) => {
+    await DownloadService.toggleDownload(video);
+    await refreshDownloads();
+  };
 
   // Fonction de routage intelligent selon le statut d'abonnement
   const routeUserAfterAuth = async (user) => {
@@ -49,7 +81,6 @@ export default function App() {
     if (isSubscribed) {
       setAppState('main');
     } else {
-      // Si nouvel inscrit ou non abonné -> direction Paywall obligatoire
       setAppState('paywall');
     }
   };
@@ -65,7 +96,6 @@ export default function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         setCurrentUser(session.user);
-        // Ne pas interrompre les écrans de résultat de paiement
         if (appStateRef.current !== 'payment_success' && appStateRef.current !== 'payment_cancel') {
           if (appStateRef.current === 'auth' || appStateRef.current === 'welcome') {
             await routeUserAfterAuth(session.user);
@@ -111,17 +141,18 @@ export default function App() {
     setSelectedAlbum(null);
   };
 
-  // Gestion stricte du retour Paywall : si non abonné, retour à l'écran de bienvenue / connexion
-  const handlePaywallBack = async () => {
+  const handlePaywallBack = () => {
     if (currentUser) {
-      const isSub = await SubscriptionService.isUserSubscribed(currentUser);
-      if (isSub) {
-        setAppState('main');
-        return;
-      }
+      SubscriptionService.isUserSubscribed(currentUser).then((isSub) => {
+        if (isSub) {
+          setAppState('main');
+        } else {
+          setAppState('welcome');
+        }
+      });
+    } else {
+      setAppState('welcome');
     }
-    // Pas abonné -> retour sécurisé à l'accueil onboarding
-    setAppState('welcome');
   };
 
   return (
@@ -155,7 +186,15 @@ export default function App() {
               onBack={handlePaywallBack}
               onSuccess={(txId, planType = 'monthly') => {
                 if (currentUser) {
-                  SubscriptionService.setSubscribedInMemory(currentUser.id, true);
+                  SubscriptionService.setSubscribedPermanently(
+                    currentUser.id,
+                    true,
+                    planType === 'annual'
+                      ? 'Abonnement Annuel (10 000 FCFA = 15,00 €)'
+                      : 'Abonnement Mensuel (1 000 FCFA = 1,50 €)',
+                    null,
+                    planType
+                  );
                 }
                 setLastTxId(txId);
                 setSelectedPlanType(planType);
@@ -181,11 +220,11 @@ export default function App() {
           {appState === 'payment_cancel' && (
             <PaymentCancelScreen
               onRetry={() => setAppState('paywall')}
-              onBack={handlePaywallBack}
+              onHome={() => setAppState('main')}
             />
           )}
 
-          {/* 6. Application Principale (3 Onglets) */}
+          {/* 6. Application Principale (3 Onglets Navigation) */}
           {appState === 'main' && (
             <View style={styles.mainContainer}>
               <View style={styles.contentArea}>
@@ -203,8 +242,14 @@ export default function App() {
                       <HomeScreen
                         currentUser={currentUser}
                         onSelectAlbum={handleSelectAlbum}
-                        onSelectClip={() => setActiveTab('library')}
-                        onSelectTeaching={() => setActiveTab('library')}
+                        onSelectClip={handlePlayVideo}
+                        onSelectTeaching={(teaching) => {
+                          if (teaching?.type === 'video' || teaching?.videoUrl) {
+                            handlePlayVideo(teaching);
+                          } else {
+                            setActiveTab('library');
+                          }
+                        }}
                         onOpenProfile={() => setActiveTab('profile')}
                         onOpenPaywall={() => setAppState('paywall')}
                       />
@@ -215,8 +260,12 @@ export default function App() {
                       <MediaLibraryScreen
                         currentUser={currentUser}
                         onSelectAlbum={handleSelectAlbum}
-                        onSelectClip={() => {}}
-                        onSelectTeaching={() => {}}
+                        onSelectClip={handlePlayVideo}
+                        onSelectTeaching={(teaching) => {
+                          if (teaching?.type === 'video' || teaching?.videoUrl) {
+                            handlePlayVideo(teaching);
+                          }
+                        }}
                         onOpenPaywall={() => setAppState('paywall')}
                       />
                     )}
@@ -226,6 +275,7 @@ export default function App() {
                       <ProfileScreen
                         currentUser={currentUser}
                         onOpenPaywall={() => setAppState('paywall')}
+                        onPlayVideo={handlePlayVideo}
                         onLogout={() => {
                           setAppState('welcome');
                           setActiveTab('home');
@@ -237,7 +287,7 @@ export default function App() {
               </View>
 
               {/* Lecteur Audio Mini Persistant */}
-              <MiniPlayer />
+              {!isVideoPlayerVisible && <MiniPlayer />}
 
               {/* Barre de Navigation Épurée (3 Boutons) */}
               <BottomNavigation
@@ -250,6 +300,24 @@ export default function App() {
 
               {/* Lecteur Audio Plein Écran Modal */}
               <FullAudioPlayerModal />
+
+              {/* Lecteur Vidéo YouTube & Mini-Player Flottant (Picture-in-Picture) */}
+              <YouTubeStyleVideoPlayer
+                video={activeVideo}
+                visible={isVideoPlayerVisible}
+                isFloating={isVideoFloating}
+                onClose={() => {
+                  setIsVideoPlayerVisible(false);
+                  setIsVideoFloating(false);
+                  setActiveVideo(null);
+                }}
+                onMinimize={() => setIsVideoFloating(true)}
+                onMaximize={() => setIsVideoFloating(false)}
+                isDownloaded={activeVideo ? downloadedVideoIds.has(String(activeVideo.id)) : false}
+                onToggleDownload={handleToggleDownloadVideo}
+                suggestedVideos={SAMPLE_DATA.videoClips}
+                onSelectVideo={handlePlayVideo}
+              />
             </View>
           )}
         </View>
@@ -261,11 +329,11 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#FFFFFF',
   },
   mainContainer: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    position: 'relative',
   },
   contentArea: {
     flex: 1,

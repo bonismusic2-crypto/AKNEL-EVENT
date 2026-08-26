@@ -46,13 +46,15 @@ import { THEME } from '../constants/theme';
 import { SAMPLE_DATA } from '../data/sampleData';
 import { supabase } from '../lib/supabase';
 import { SubscriptionService } from '../services/subscriptionService';
+import { DownloadService } from '../services/downloadService';
 import { useAudio } from '../context/AudioContext';
 
-export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser }) => {
+export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser, onPlayVideo }) => {
   const { history, clearHistory, removeFromHistory, playTrack } = useAudio();
   const [activeModal, setActiveModal] = useState(null);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [downloads, setDownloads] = useState([]);
   const [subscriptionDetails, setSubscriptionDetails] = useState({
     plan: 'Abonnement Bonis Musik',
     planType: 'monthly',
@@ -60,8 +62,8 @@ export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser }) => {
     expiresAt: null,
   });
 
-  // Vérifier le statut réel et la date d'échéance depuis Supabase / Cache
-  const checkVipStatus = async () => {
+  // Charger le statut et les téléchargements réels
+  const loadProfileData = async () => {
     if (currentUser) {
       const subInfo = await SubscriptionService.checkSubscription(currentUser);
       setIsSubscribed(subInfo.isSubscribed);
@@ -72,10 +74,41 @@ export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser }) => {
         expiresAt: subInfo.expiresAt || null,
       });
     }
+
+    const dls = await DownloadService.getDownloads();
+    if (dls && dls.length > 0) {
+      setDownloads(dls);
+    } else {
+      // Échantillons par défaut
+      setDownloads([
+        {
+          id: 'dl-1',
+          title: 'Tu es fidèle (Audio HD)',
+          artist: 'Chantre Boniface',
+          album: 'ÉLÉVATION',
+          size: '12.4 Mo',
+          type: 'audio',
+          thumbnail: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500',
+          url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+          duration: '04:35',
+        },
+        {
+          id: 'dl-2',
+          title: 'C\'est ma saison (Clip Vidéo 4K)',
+          artist: 'Chantre Boniface',
+          album: 'Clip Officiel',
+          size: '45.1 Mo',
+          type: 'video',
+          thumbnail: 'https://images.unsplash.com/photo-1514525253361-bee8a19740c1?w=500',
+          url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+          duration: '04:20',
+        },
+      ]);
+    }
   };
 
   useEffect(() => {
-    checkVipStatus();
+    loadProfileData();
   }, [currentUser]);
 
   // Formatage de la date d'échéance
@@ -101,7 +134,7 @@ export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser }) => {
             setCancelling(true);
             try {
               await SubscriptionService.cancelSubscription(currentUser);
-              await checkVipStatus();
+              await loadProfileData();
               setCancelling(false);
               setActiveModal(null);
               Alert.alert(
@@ -118,31 +151,25 @@ export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser }) => {
     );
   };
 
-  // État des téléchargements hors-ligne sécurisés
-  const [downloads, setDownloads] = useState([
-    {
-      id: 'dl-1',
-      title: 'Tu es fidèle',
-      artist: 'Chantre Boniface',
-      album: 'ÉLÉVATION',
-      size: '12.4 Mo',
-      type: 'audio',
-      thumbnail: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500',
-      url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-      duration: '04:35',
-    },
-    {
-      id: 'dl-2',
-      title: 'Ton amour est fidèle',
-      artist: 'Chantre Boniface',
-      album: 'ÉLÉVATION',
-      size: '14.1 Mo',
-      type: 'audio',
-      thumbnail: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500',
-      url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
-      duration: '05:12',
-    },
-  ]);
+  // Suppression d'un téléchargement
+  const handleRemoveDownload = async (item) => {
+    await DownloadService.removeDownload(item.id);
+    setDownloads((prev) => prev.filter((d) => d.id !== item.id));
+  };
+
+  // Lecture d'un contenu hors-ligne (Audio ou Vidéo)
+  const handlePlayDownloadedItem = (item) => {
+    setActiveModal(null);
+    if (item.type === 'video') {
+      if (onPlayVideo) {
+        onPlayVideo(item);
+      } else {
+        Alert.alert('Lecture Vidéo', `Lecture hors-ligne de "${item.title}"`);
+      }
+    } else {
+      playTrack(item);
+    }
+  };
 
   // États des Paramètres
   const [streamingQuality, setStreamingQuality] = useState('hd');
@@ -295,7 +322,7 @@ export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser }) => {
               </View>
               <View>
                 <Text style={styles.menuItemText}>Téléchargements hors-ligne</Text>
-                <Text style={styles.menuItemSubtext}>{downloads.length} titres chiffrés in-app</Text>
+                <Text style={styles.menuItemSubtext}>{downloads.length} titres (Audio & Vidéo) lisibles sans connexion</Text>
               </View>
             </View>
             <ChevronRight size={18} color={THEME.colors.textMuted} />
@@ -499,7 +526,7 @@ export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser }) => {
               <View style={{ flex: 1 }}>
                 <Text style={styles.securityBannerTitle}>Stockage Sécurisé & Chiffré In-App</Text>
                 <Text style={styles.securityBannerText}>
-                  Vos musiques et vidéos sont chiffrées et lisibles exclusivement à l'intérieur de l'application Bonis Musik pour la protection des œuvres de l'artiste. Aucun export MP3 externe n'est autorisé.
+                  Vos musiques et vidéos sont chiffrées et lisibles immédiatement sans Internet dans Bonis Musik pour la protection des œuvres de l'artiste.
                 </Text>
               </View>
             </View>
@@ -507,38 +534,34 @@ export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser }) => {
             {/* Espace Utilisé */}
             <View style={styles.storageCard}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                <Text style={styles.storageLabel}>Espace utilisé par les titres hors-ligne :</Text>
-                <Text style={styles.storageValue}>26.5 Mo / 2 Go</Text>
+                <Text style={styles.storageLabel}>Titres disponibles hors-ligne :</Text>
+                <Text style={styles.storageValue}>{downloads.length} fichiers ({downloads.filter(d => d.type === 'video').length} vidéos, {downloads.filter(d => d.type !== 'video').length} audios)</Text>
               </View>
               <View style={styles.storageBarBg}>
-                <View style={[styles.storageBarFill, { width: '15%' }]} />
+                <View style={[styles.storageBarFill, { width: '22%' }]} />
               </View>
             </View>
 
             {/* Liste des Pistes Téléchargées */}
-            <Text style={styles.sectionHeading}>Pistes audio disponibles hors-ligne ({downloads.length})</Text>
+            <Text style={styles.sectionHeading}>Fichiers prêts pour lecture sans connexion ({downloads.length})</Text>
             
             {downloads.map((item) => (
               <View key={item.id} style={styles.downloadCard}>
                 <Image source={{ uri: item.thumbnail }} style={styles.downloadThumb} />
                 <View style={styles.downloadInfo}>
                   <Text style={styles.downloadTitle} numberOfLines={1}>{item.title}</Text>
-                  <Text style={styles.downloadMeta}>{item.artist} • {item.size} • {item.duration}</Text>
+                  <Text style={styles.downloadMeta}>
+                    {item.type === 'video' ? '🎥 Vidéo HD' : '🎵 Audio HD'} • {item.size} • {item.duration}
+                  </Text>
                 </View>
                 <TouchableOpacity
-                  onPress={() => {
-                    playTrack(item);
-                    setActiveModal(null);
-                  }}
+                  onPress={() => handlePlayDownloadedItem(item)}
                   style={styles.playIconCircle}
                 >
                   <Play size={16} color={THEME.colors.gold} fill={THEME.colors.gold} />
                 </TouchableOpacity>
                 <TouchableOpacity
-                  onPress={() => {
-                    setDownloads(downloads.filter(d => d.id !== item.id));
-                    Alert.alert('Supprimé', 'Titre retiré de vos téléchargements hors-ligne.');
-                  }}
+                  onPress={() => handleRemoveDownload(item)}
                   style={styles.trashBtn}
                 >
                   <Trash2 size={16} color="#DC2626" />

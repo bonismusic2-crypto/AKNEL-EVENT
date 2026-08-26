@@ -1,16 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, Play } from 'lucide-react-native';
+import { Search, Play, MoreVertical } from 'lucide-react-native';
 import { THEME } from '../constants/theme';
 import { SAMPLE_DATA } from '../data/sampleData';
 import { MediaService } from '../services/mediaService';
+import { SubscriptionService } from '../services/subscriptionService';
+import { DownloadService } from '../services/downloadService';
 import { useAudio } from '../context/AudioContext';
+import { MediaOptionsMenu } from '../components/MediaOptionsMenu';
 
-export const MediaLibraryScreen = ({ onSelectAlbum, onSelectClip, onSelectTeaching }) => {
+export const MediaLibraryScreen = ({ onSelectAlbum, onSelectClip, onSelectTeaching, currentUser, onOpenPaywall }) => {
   const { playTrack } = useAudio();
   const [activeSection, setActiveSection] = useState('music'); // 'music', 'clips', 'teachings'
   const [teachingFilter, setTeachingFilter] = useState('Tous');
+  const [isMenuVisible, setIsMenuVisible] = useState(false);
+  const [selectedMenuItem, setSelectedMenuItem] = useState(null);
+
+  const checkVipAccess = async () => {
+    if (!currentUser) {
+      if (onOpenPaywall) onOpenPaywall();
+      return false;
+    }
+    const isSub = await SubscriptionService.isUserSubscribed(currentUser);
+    if (!isSub) {
+      if (onOpenPaywall) onOpenPaywall();
+      return false;
+    }
+    return true;
+  };
 
   const [albums, setAlbums] = useState(SAMPLE_DATA.audioReleases);
   const [clips, setClips] = useState(SAMPLE_DATA.videoClips);
@@ -94,7 +112,10 @@ export const MediaLibraryScreen = ({ onSelectAlbum, onSelectClip, onSelectTeachi
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.gridItem}
-              onPress={() => onSelectAlbum(item)}
+              onPress={async () => {
+                const allowed = await checkVipAccess();
+                if (allowed) onSelectAlbum(item);
+              }}
               activeOpacity={0.8}
             >
               <Image source={{ uri: item.cover }} style={styles.coverImage} />
@@ -116,7 +137,10 @@ export const MediaLibraryScreen = ({ onSelectAlbum, onSelectClip, onSelectTeachi
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.clipCard}
-              onPress={() => onSelectClip(item)}
+              onPress={async () => {
+                const allowed = await checkVipAccess();
+                if (allowed) onSelectClip(item);
+              }}
               activeOpacity={0.85}
             >
               <View style={styles.thumbnailContainer}>
@@ -131,8 +155,20 @@ export const MediaLibraryScreen = ({ onSelectAlbum, onSelectClip, onSelectTeachi
                 </View>
               </View>
               <View style={styles.infoRow}>
-                <Text style={styles.clipTitle}>{item.title}</Text>
-                <Text style={styles.meta}>{item.date || 'Récemment'} • {item.views}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.clipTitle}>{item.title}</Text>
+                  <Text style={styles.meta}>{item.date || 'Récemment'} • {item.views}</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => {
+                    setSelectedMenuItem({ ...item, type: 'video' });
+                    setIsMenuVisible(true);
+                  }}
+                  style={{ padding: 6 }}
+                  activeOpacity={0.7}
+                >
+                  <MoreVertical size={18} color={THEME.colors.textMuted} />
+                </TouchableOpacity>
               </View>
             </TouchableOpacity>
           )}
@@ -169,7 +205,10 @@ export const MediaLibraryScreen = ({ onSelectAlbum, onSelectClip, onSelectTeachi
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={styles.teachingCard}
-                onPress={() => {
+                onPress={async () => {
+                  const allowed = await checkVipAccess();
+                  if (!allowed) return;
+
                   if (item.type === 'audio' || item.url) {
                     playTrack({
                       id: item.id,
@@ -194,14 +233,46 @@ export const MediaLibraryScreen = ({ onSelectAlbum, onSelectClip, onSelectTeachi
                     {item.type === 'audio' ? '🎙️ Audio' : '🎥 Vidéo'} • {item.duration}
                   </Text>
                 </View>
-                <View style={styles.playMiniBtn}>
-                  <Play size={16} color={THEME.colors.gold} fill={THEME.colors.gold} />
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <View style={styles.playMiniBtn}>
+                    <Play size={16} color={THEME.colors.gold} fill={THEME.colors.gold} />
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setSelectedMenuItem(item);
+                      setIsMenuVisible(true);
+                    }}
+                    style={{ padding: 6 }}
+                    activeOpacity={0.7}
+                  >
+                    <MoreVertical size={18} color={THEME.colors.textMuted} />
+                  </TouchableOpacity>
                 </View>
               </TouchableOpacity>
             )}
           />
         </View>
       )}
+
+      {/* Modal Options 3 points (Téléchargement & Favoris) */}
+      <MediaOptionsMenu
+        visible={isMenuVisible}
+        onClose={() => setIsMenuVisible(false)}
+        item={selectedMenuItem}
+        onPlayDirect={(item) => {
+          if (item.type === 'video') {
+            onSelectClip(item);
+          } else {
+            playTrack(item);
+          }
+        }}
+        onToggleDownload={async (item) => {
+          await DownloadService.toggleDownload(item);
+        }}
+        onToggleFavorite={(item) => {
+          Alert.alert('Favoris', `"${item.title}" a été ajouté à vos favoris.`);
+        }}
+      />
     </SafeAreaView>
   );
 };

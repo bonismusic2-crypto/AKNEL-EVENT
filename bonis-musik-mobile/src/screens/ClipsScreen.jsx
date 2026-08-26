@@ -1,11 +1,16 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, Play } from 'lucide-react-native';
+import { Search, Play, MoreVertical } from 'lucide-react-native';
 import { THEME } from '../constants/theme';
 import { SAMPLE_DATA } from '../data/sampleData';
+import { DownloadService } from '../services/downloadService';
+import { MediaOptionsMenu } from '../components/MediaOptionsMenu';
 
 export const ClipsScreen = ({ onSelectClip }) => {
+  const [isMenuVisible, setIsMenuVisible] = useState(false);
+  const [selectedMenuItem, setSelectedMenuItem] = useState(null);
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
@@ -43,9 +48,33 @@ export const ClipsScreen = ({ onSelectClip }) => {
                 <Text style={styles.title}>{item.title}</Text>
                 <Text style={styles.meta}>{item.date} • {item.views}</Text>
               </View>
+              <TouchableOpacity
+                onPress={() => {
+                  setSelectedMenuItem({ ...item, type: 'video' });
+                  setIsMenuVisible(true);
+                }}
+                style={{ padding: 6 }}
+                activeOpacity={0.7}
+              >
+                <MoreVertical size={18} color={THEME.colors.textMuted} />
+              </TouchableOpacity>
             </View>
           </TouchableOpacity>
         )}
+      />
+
+      {/* Modal Options 3 points */}
+      <MediaOptionsMenu
+        visible={isMenuVisible}
+        onClose={() => setIsMenuVisible(false)}
+        item={selectedMenuItem}
+        onPlayDirect={(clip) => onSelectClip(clip)}
+        onToggleDownload={async (clip) => {
+          await DownloadService.toggleDownload(clip);
+        }}
+        onToggleFavorite={(clip) => {
+          Alert.alert('Favoris', `"${clip.title}" a été ajouté à vos favoris.`);
+        }}
       />
     </SafeAreaView>
   );

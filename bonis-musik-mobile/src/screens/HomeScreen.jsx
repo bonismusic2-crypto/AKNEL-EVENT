@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, RefreshControl, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Bell, Search, Play, Sparkles } from 'lucide-react-native';
+import { Bell, Search, Play, Sparkles, MoreVertical } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { SAMPLE_DATA } from '../data/sampleData';
 import { MediaService } from '../services/mediaService';
 import { SubscriptionService } from '../services/subscriptionService';
+import { DownloadService } from '../services/downloadService';
 import { useAudio } from '../context/AudioContext';
 import { NotificationsModal, INITIAL_MOBILE_NOTIFICATIONS } from '../components/NotificationsModal';
+import { MediaOptionsMenu } from '../components/MediaOptionsMenu';
 
 export const HomeScreen = ({
   currentUser,
@@ -24,10 +26,14 @@ export const HomeScreen = ({
   const [teachings, setTeachings] = useState(SAMPLE_DATA.teachings);
   const [refreshing, setRefreshing] = useState(false);
   const [isNotifModalVisible, setIsNotifModalVisible] = useState(false);
+  const [isMenuVisible, setIsMenuVisible] = useState(false);
+  const [selectedMenuItem, setSelectedMenuItem] = useState(null);
   const [notifications, setNotifications] = useState(INITIAL_MOBILE_NOTIFICATIONS);
-  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(
+    SubscriptionService.getFastSubscriptionState(currentUser?.id).isSubscribed || false
+  );
 
-  // Vérifier le statut VIP réel depuis Supabase
+  // Vérifier le statut VIP réel depuis Supabase / Persistance
   const checkVipStatus = async () => {
     if (currentUser) {
       const sub = await SubscriptionService.isUserSubscribed(currentUser);
@@ -323,12 +329,44 @@ export const HomeScreen = ({
                   <Text style={styles.teachingMeta}>Chantre Boniface • {item.duration}</Text>
                 </View>
               </View>
-              <View style={styles.playIconCircle}>
-                <Play size={14} color={THEME.colors.gold} fill={THEME.colors.gold} />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View style={styles.playIconCircle}>
+                  <Play size={14} color={THEME.colors.gold} fill={THEME.colors.gold} />
+                </View>
+                <TouchableOpacity
+                  onPress={() => {
+                    setSelectedMenuItem(item);
+                    setIsMenuVisible(true);
+                  }}
+                  style={{ padding: 6 }}
+                  activeOpacity={0.7}
+                >
+                  <MoreVertical size={18} color={THEME.colors.textMuted} />
+                </TouchableOpacity>
               </View>
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* Modal d'options 3 points */}
+        <MediaOptionsMenu
+          visible={isMenuVisible}
+          onClose={() => setIsMenuVisible(false)}
+          item={selectedMenuItem}
+          onPlayDirect={(item) => {
+            if (item.type === 'video') {
+              onSelectClip(item);
+            } else {
+              handleTeachingPress(item);
+            }
+          }}
+          onToggleDownload={async (item) => {
+            await DownloadService.toggleDownload(item);
+          }}
+          onToggleFavorite={(item) => {
+            Alert.alert('Favoris', `"${item.title}" ajouté à vos favoris.`);
+          }}
+        />
 
         {/* Espace pour MiniPlayer en bas */}
         <View style={{ height: 90 }} />
