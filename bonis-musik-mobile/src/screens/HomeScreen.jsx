@@ -9,6 +9,7 @@ import { MediaService } from '../services/mediaService';
 import { SubscriptionService } from '../services/subscriptionService';
 import { DownloadService } from '../services/downloadService';
 import { useAudio } from '../context/AudioContext';
+import { supabase } from '../lib/supabase';
 import { NotificationsModal, INITIAL_MOBILE_NOTIFICATIONS } from '../components/NotificationsModal';
 import { MediaOptionsMenu } from '../components/MediaOptionsMenu';
 import { SearchModal } from '../components/SearchModal';
