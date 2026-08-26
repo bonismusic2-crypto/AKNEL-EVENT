@@ -31,9 +31,20 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "notification": {
+      "icon": "./assets/notification.png",
+      "color": "#C59B27"
+    },
     "plugins": [
       "expo-web-browser",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification.png",
+          "color": "#C59B27"
+        }
+      ]
     ]
   }
 }
