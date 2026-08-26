@@ -1,9 +1,24 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Modal, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronDown, Play, Pause, SkipBack, SkipForward, Heart, ListMusic, AlignLeft } from 'lucide-react-native';
+import {
+  ChevronDown,
+  ArrowLeft,
+  Play,
+  Pause,
+  SkipBack,
+  SkipForward,
+  Heart,
+  Download,
+  CheckCircle,
+  MoreVertical,
+  Sliders,
+  Volume2
+} from 'lucide-react-native';
 import { THEME } from '../constants/theme';
 import { useAudio } from '../context/AudioContext';
+import { DownloadService } from '../services/downloadService';
+import { MediaOptionsMenu } from './MediaOptionsMenu';
 
 export const FullAudioPlayerModal = () => {
   const {
@@ -17,6 +32,8 @@ export const FullAudioPlayerModal = () => {
   } = useAudio();
 
   const [isLiked, setIsLiked] = useState(false);
+  const [isDownloaded, setIsDownloaded] = useState(false);
+  const [isMenuVisible, setIsMenuVisible] = useState(false);
 
   if (!currentTrack) return null;
 
@@ -30,44 +47,86 @@ export const FullAudioPlayerModal = () => {
 
   const progressPercent = durationMillis > 0 ? Math.min(100, Math.max(0, (positionMillis / durationMillis) * 100)) : 0;
 
+  const handleToggleDownload = async () => {
+    await DownloadService.toggleDownload(currentTrack);
+    setIsDownloaded(!isDownloaded);
+  };
+
   return (
     <Modal
       visible={isFullPlayerVisible}
       animationType="slide"
       presentationStyle="fullScreen"
+      onRequestClose={() => setIsFullPlayerVisible(false)}
     >
       <SafeAreaView style={styles.container}>
-        {/* Header Modal */}
+        {/* Header avec Bouton Retour Bien Visible & Options */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => setIsFullPlayerVisible(false)} style={styles.iconBtn}>
-            <ChevronDown size={28} color={THEME.colors.textPrimary} />
+          {/* Bouton Retour Flèche & Réduire */}
+          <TouchableOpacity
+            onPress={() => setIsFullPlayerVisible(false)}
+            style={styles.backBtn}
+            activeOpacity={0.7}
+          >
+            <ChevronDown size={28} color="#FFFFFF" />
           </TouchableOpacity>
+
           <View style={styles.headerTextContainer}>
-            <Text style={styles.headerSubtitle}>EN LECTURE ACTUELLE</Text>
+            <Text style={styles.headerSubtitle}>EN LECTURE</Text>
+            <Text style={styles.headerAlbum} numberOfLines={1}>
+              {currentTrack.album || 'Bonis Musik'}
+            </Text>
           </View>
-          <TouchableOpacity style={styles.iconBtn}>
-            <ListMusic size={22} color={THEME.colors.textPrimary} />
+
+          {/* Bouton 3 Points Options */}
+          <TouchableOpacity
+            style={styles.optionsBtn}
+            onPress={() => setIsMenuVisible(true)}
+            activeOpacity={0.7}
+          >
+            <MoreVertical size={22} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
 
         {/* Pochette Centrale */}
         <View style={styles.coverWrapper}>
-          <Image source={{ uri: currentTrack.cover }} style={styles.cover} />
+          <Image
+            source={{ uri: currentTrack.cover || 'https://images.unsplash.com/photo-1514525253361-bee8a19740c1?w=800' }}
+            style={styles.cover}
+          />
         </View>
 
-        {/* Titre & Artiste & Like */}
+        {/* Titre & Artiste & Boutons d'Action Rapides */}
         <View style={styles.trackInfoRow}>
           <View style={styles.titleContainer}>
-            <Text style={styles.trackTitle}>{currentTrack.title}</Text>
+            <Text style={styles.trackTitle} numberOfLines={1}>{currentTrack.title}</Text>
             <Text style={styles.artistName}>{currentTrack.artist || 'Chantre Boniface'}</Text>
           </View>
-          <TouchableOpacity onPress={() => setIsLiked(!isLiked)} style={styles.heartBtn}>
-            <Heart
-              size={22}
-              color={isLiked ? THEME.colors.gold : THEME.colors.textSecondary}
-              fill={isLiked ? THEME.colors.gold : 'transparent'}
-            />
-          </TouchableOpacity>
+          <View style={styles.quickActions}>
+            <TouchableOpacity
+              onPress={handleToggleDownload}
+              style={styles.actionIconBtn}
+              activeOpacity={0.7}
+            >
+              {isDownloaded ? (
+                <CheckCircle size={22} color={THEME.colors.gold} />
+              ) : (
+                <Download size={22} color="#9CA3AF" />
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setIsLiked(!isLiked)}
+              style={styles.actionIconBtn}
+              activeOpacity={0.7}
+            >
+              <Heart
+                size={22}
+                color={isLiked ? '#DC2626' : '#9CA3AF'}
+                fill={isLiked ? '#DC2626' : 'transparent'}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Timeline & Progression Temps Réel */}
@@ -82,10 +141,10 @@ export const FullAudioPlayerModal = () => {
           </View>
         </View>
 
-        {/* Commandes Principales */}
+        {/* Commandes Principales de Lecture */}
         <View style={styles.controlsRow}>
-          <TouchableOpacity style={styles.skipBtn}>
-            <SkipBack size={26} color={THEME.colors.textPrimary} fill={THEME.colors.textPrimary} />
+          <TouchableOpacity style={styles.skipBtn} activeOpacity={0.7}>
+            <SkipBack size={26} color="#FFFFFF" fill="#FFFFFF" />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.playPauseBtn} onPress={togglePlayPause} activeOpacity={0.85}>
@@ -96,24 +155,32 @@ export const FullAudioPlayerModal = () => {
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.skipBtn}>
-            <SkipForward size={26} color={THEME.colors.textPrimary} fill={THEME.colors.textPrimary} />
+          <TouchableOpacity style={styles.skipBtn} activeOpacity={0.7}>
+            <SkipForward size={26} color="#FFFFFF" fill="#FFFFFF" />
           </TouchableOpacity>
         </View>
 
-        {/* Actions Inférieures (Paroles / File d'attente) */}
-        <View style={styles.bottomActions}>
-          <TouchableOpacity style={styles.bottomBtn}>
-            <AlignLeft size={18} color={THEME.colors.textSecondary} />
-            <Text style={styles.bottomBtnText}>Paroles</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.bottomBtn}>
-            <ListMusic size={18} color={THEME.colors.textSecondary} />
-            <Text style={styles.bottomBtnText}>File d'attente</Text>
+        {/* Bouton de Fermeture / Retour Inférieur Clair */}
+        <View style={styles.bottomBar}>
+          <TouchableOpacity
+            style={styles.closePlayerBtn}
+            onPress={() => setIsFullPlayerVisible(false)}
+            activeOpacity={0.8}
+          >
+            <ArrowLeft size={16} color="#9CA3AF" />
+            <Text style={styles.closePlayerText}>Réduire & continuer l'écoute</Text>
           </TouchableOpacity>
         </View>
 
+        {/* Modal d'Options 3 points */}
+        <MediaOptionsMenu
+          visible={isMenuVisible}
+          onClose={() => setIsMenuVisible(false)}
+          item={{ ...currentTrack, type: 'audio' }}
+          isDownloaded={isDownloaded}
+          onToggleDownload={handleToggleDownload}
+          onToggleFavorite={() => setIsLiked(!isLiked)}
+        />
       </SafeAreaView>
     </Modal>
   );
@@ -122,69 +189,97 @@ export const FullAudioPlayerModal = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D0D0D',
+    backgroundColor: '#0F0F0F',
     paddingHorizontal: 24,
     justifyContent: 'space-between',
-    paddingBottom: 24,
+    paddingBottom: 16,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    paddingVertical: 10,
   },
-  iconBtn: {
-    padding: 6,
+  backBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#1E1E1E',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  optionsBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#1E1E1E',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTextContainer: {
     alignItems: 'center',
+    flex: 1,
+    paddingHorizontal: 12,
   },
   headerSubtitle: {
-    color: THEME.colors.textMuted,
-    fontSize: 11,
+    color: THEME.colors.gold,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+  },
+  headerAlbum: {
+    color: '#FFFFFF',
+    fontSize: 13,
     fontWeight: '700',
-    letterSpacing: 1,
+    marginTop: 2,
   },
   coverWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 20,
+    marginVertical: 10,
   },
   cover: {
-    width: 280,
-    height: 280,
-    borderRadius: 24,
+    width: 270,
+    height: 270,
+    borderRadius: 22,
     backgroundColor: '#1E1E1E',
     shadowColor: THEME.colors.gold,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 18,
     elevation: 10,
   },
   trackInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   titleContainer: {
     flex: 1,
+    paddingRight: 12,
   },
   trackTitle: {
-    color: THEME.colors.textPrimary,
-    fontSize: 22,
+    color: '#FFFFFF',
+    fontSize: 20,
     fontWeight: '800',
   },
   artistName: {
     color: THEME.colors.gold,
-    fontSize: 15,
-    marginTop: 4,
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 3,
   },
-  heartBtn: {
+  quickActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  actionIconBtn: {
     padding: 8,
   },
   progressContainer: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   progressBarBackground: {
     height: 4,
@@ -212,14 +307,15 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   timeText: {
-    color: THEME.colors.textMuted,
+    color: '#9CA3AF',
     fontSize: 12,
+    fontWeight: '500',
   },
   controlsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-evenly',
-    marginVertical: 10,
+    marginVertical: 6,
   },
   skipBtn: {
     padding: 12,
@@ -232,26 +328,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  bottomActions: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 20,
-    marginTop: 10,
+  bottomBar: {
+    alignItems: 'center',
+    marginTop: 8,
   },
-  bottomBtn: {
+  closePlayerBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 20,
-    backgroundColor: '#161616',
-    borderWidth: 1,
-    borderColor: '#262626',
+    backgroundColor: '#1E1E1E',
   },
-  bottomBtnText: {
-    color: THEME.colors.textSecondary,
+  closePlayerText: {
+    color: '#9CA3AF',
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });
