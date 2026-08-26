@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Mail, Lock, Eye, EyeOff, User, Phone, ArrowLeft } from 'lucide-react-native';
+import { Mail, Lock, Eye, EyeOff, User, Phone, ArrowLeft, AlertCircle } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { supabase } from '../lib/supabase';
 
 export const AuthScreen = ({ onSuccess, onBack }) => {
-  const [isLogin, setIsLogin] = useState(false); // Par défaut sur Inscription pour inviter les nouveaux
+  const [isLogin, setIsLogin] = useState(true);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -42,13 +42,19 @@ export const AuthScreen = ({ onSuccess, onBack }) => {
         });
 
         if (error) {
-          if (error.message.includes('Invalid login credentials')) {
-            throw new Error('Email ou mot de passe incorrect.');
+          if (error.message.includes('Invalid login credentials') || error.message.includes('invalid_credentials')) {
+            throw new Error('Email ou mot de passe incorrect. Si vous n\'avez pas encore de compte, cliquez sur Inscription.');
+          } else if (error.message.includes('Email not confirmed')) {
+            throw new Error('Votre adresse email n\'a pas encore été confirmée.');
           }
           throw error;
         }
 
-        onSuccess(data.user);
+        if (data?.user) {
+          onSuccess(data.user);
+        } else {
+          throw new Error('Impossible de récupérer la session utilisateur.');
+        }
       } else {
         // 2. INSCRIPTION SUPABASE
         const { data, error } = await supabase.auth.signUp({
@@ -64,10 +70,16 @@ export const AuthScreen = ({ onSuccess, onBack }) => {
 
         if (error) throw error;
 
-        // Redirection directe vers le Paywall sans pop-up qui referme
-        onSuccess(data.user);
+        if (data?.user) {
+          onSuccess(data.user);
+        } else {
+          // Si inscription réussie mais nécessite confirmation
+          setIsLogin(true);
+          setErrorMessage('Compte créé ! Vous pouvez maintenant vous connecter.');
+        }
       }
     } catch (err) {
+      console.warn('Erreur Auth Supabase:', err);
       setErrorMessage(err.message || 'Une erreur est survenue lors de l\'authentification.');
     } finally {
       setLoading(false);
@@ -76,135 +88,146 @@ export const AuthScreen = ({ onSuccess, onBack }) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        
-        {/* Navigation Retour */}
-        <TouchableOpacity onPress={onBack} style={styles.backBtn} activeOpacity={0.7}>
-          <ArrowLeft size={22} color={THEME.colors.textPrimary} />
-        </TouchableOpacity>
-
-        {/* Titre & Sous-titre */}
-        <View style={styles.header}>
-          <Text style={styles.brandTitle}>BONIS <Text style={{ color: THEME.colors.gold }}>MUSIK</Text></Text>
-          <Text style={styles.title}>{isLogin ? 'Bon retour parmi nous' : 'Créer votre compte'}</Text>
-          <Text style={styles.subtitle}>
-            {isLogin ? 'Connectez-vous pour retrouver vos chants' : 'Inscrivez-vous pour accéder au catalogue VIP'}
-          </Text>
-        </View>
-
-        {/* Toggle Connexion / Inscription */}
-        <View style={styles.tabToggle}>
-          <TouchableOpacity
-            style={[styles.toggleBtn, !isLogin && styles.toggleBtnActive]}
-            onPress={() => { setIsLogin(false); setErrorMessage(''); }}
-          >
-            <Text style={[styles.toggleText, !isLogin && styles.toggleTextActive]}>Inscription</Text>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+          
+          {/* Navigation Retour */}
+          <TouchableOpacity onPress={onBack} style={styles.backBtn} activeOpacity={0.7}>
+            <ArrowLeft size={22} color={THEME.colors.textPrimary} />
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.toggleBtn, isLogin && styles.toggleBtnActive]}
-            onPress={() => { setIsLogin(true); setErrorMessage(''); }}
-          >
-            <Text style={[styles.toggleText, isLogin && styles.toggleTextActive]}>Connexion</Text>
-          </TouchableOpacity>
-        </View>
 
-        {/* Message d'erreur */}
-        {errorMessage ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{errorMessage}</Text>
-          </View>
-        ) : null}
-
-        {/* Formulaire */}
-        <View style={styles.form}>
-          {!isLogin && (
-            <>
-              <View style={styles.inputWrapper}>
-                <User size={18} color={THEME.colors.textMuted} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Nom et Prénoms (ex: Jean Kouassi)"
-                  placeholderTextColor={THEME.colors.textMuted}
-                  value={fullName}
-                  onChangeText={setFullName}
-                />
-              </View>
-
-              <View style={styles.inputWrapper}>
-                <Phone size={18} color={THEME.colors.textMuted} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Numéro de téléphone (Mobile Money)"
-                  placeholderTextColor={THEME.colors.textMuted}
-                  value={phone}
-                  onChangeText={setPhone}
-                  keyboardType="phone-pad"
-                />
-              </View>
-            </>
-          )}
-
-          <View style={styles.inputWrapper}>
-            <Mail size={18} color={THEME.colors.textMuted} style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Adresse email"
-              placeholderTextColor={THEME.colors.textMuted}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
+          {/* Titre & Sous-titre */}
+          <View style={styles.header}>
+            <Text style={styles.brandTitle}>BONIS <Text style={{ color: THEME.colors.gold }}>MUSIK</Text></Text>
+            <Text style={styles.title}>{isLogin ? 'Connexion' : 'Créer un compte'}</Text>
+            <Text style={styles.subtitle}>
+              {isLogin ? 'Entrez vos identifiants pour continuer' : 'Remplissez vos informations pour vous inscrire'}
+            </Text>
           </View>
 
-          <View style={styles.inputWrapper}>
-            <Lock size={18} color={THEME.colors.textMuted} style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Mot de passe (6 caractères min)"
-              placeholderTextColor={THEME.colors.textMuted}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-            />
+          {/* Toggle Connexion / Inscription */}
+          <View style={styles.tabToggle}>
             <TouchableOpacity
-              onPress={() => setShowPassword(!showPassword)}
-              style={styles.eyeBtn}
-              activeOpacity={0.7}
+              style={[styles.toggleBtn, isLogin && styles.toggleBtnActive]}
+              onPress={() => { setIsLogin(true); setErrorMessage(''); }}
+              activeOpacity={0.8}
             >
-              {showPassword ? (
-                <EyeOff size={18} color={THEME.colors.textMuted} />
-              ) : (
-                <Eye size={18} color={THEME.colors.textMuted} />
-              )}
+              <Text style={[styles.toggleText, isLogin && styles.toggleTextActive]}>Connexion</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.toggleBtn, !isLogin && styles.toggleBtnActive]}
+              onPress={() => { setIsLogin(false); setErrorMessage(''); }}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.toggleText, !isLogin && styles.toggleTextActive]}>Inscription</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Bouton de Validation */}
-          <TouchableOpacity
-            style={styles.submitBtn}
-            onPress={handleAuth}
-            disabled={loading}
-            activeOpacity={0.85}
-          >
-            <LinearGradient
-              colors={THEME.colors.goldGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.submitGradient}
-            >
-              {loading ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
-              ) : (
-                <Text style={styles.submitText}>
-                  {isLogin ? 'Se connecter' : 'Créer mon compte & S\'abonner'}
-                </Text>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
+          {/* Message d'erreur clair et visible */}
+          {errorMessage ? (
+            <View style={styles.errorBox}>
+              <AlertCircle size={16} color="#DC2626" style={{ marginTop: 2 }} />
+              <Text style={styles.errorText}>{errorMessage}</Text>
+            </View>
+          ) : null}
 
-      </View>
+          {/* Formulaire */}
+          <View style={styles.form}>
+            {!isLogin && (
+              <>
+                <View style={styles.inputWrapper}>
+                  <User size={18} color={THEME.colors.textMuted} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Nom et Prénoms (ex: Boniface Boni)"
+                    placeholderTextColor={THEME.colors.textMuted}
+                    value={fullName}
+                    onChangeText={setFullName}
+                  />
+                </View>
+
+                <View style={styles.inputWrapper}>
+                  <Phone size={18} color={THEME.colors.textMuted} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Téléphone (Wave / Mobile Money)"
+                    placeholderTextColor={THEME.colors.textMuted}
+                    value={phone}
+                    onChangeText={setPhone}
+                    keyboardType="phone-pad"
+                  />
+                </View>
+              </>
+            )}
+
+            <View style={styles.inputWrapper}>
+              <Mail size={18} color={THEME.colors.textMuted} style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Adresse email"
+                placeholderTextColor={THEME.colors.textMuted}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+
+            <View style={styles.inputWrapper}>
+              <Lock size={18} color={THEME.colors.textMuted} style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Mot de passe"
+                placeholderTextColor={THEME.colors.textMuted}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+              />
+              <TouchableOpacity
+                onPress={() => setShowPassword(!showPassword)}
+                style={styles.eyeBtn}
+                activeOpacity={0.7}
+              >
+                {showPassword ? (
+                  <EyeOff size={18} color={THEME.colors.textMuted} />
+                ) : (
+                  <Eye size={18} color={THEME.colors.textMuted} />
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* Bouton de Validation */}
+            <TouchableOpacity
+              style={styles.submitBtn}
+              onPress={handleAuth}
+              disabled={loading}
+              activeOpacity={0.85}
+            >
+              <LinearGradient
+                colors={THEME.colors.goldGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.submitGradient}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.submitText}>
+                    {isLogin ? 'Se connecter' : 'Valider mon inscription'}
+                  </Text>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
@@ -214,15 +237,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: THEME.colors.background,
   },
-  container: {
-    flex: 1,
+  scrollContainer: {
+    flexGrow: 1,
     paddingHorizontal: 24,
+    paddingVertical: 30,
     justifyContent: 'center',
   },
   backBtn: {
-    position: 'absolute',
-    top: 20,
-    left: 20,
+    alignSelf: 'flex-start',
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -231,7 +253,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    zIndex: 10,
+    marginBottom: 20,
   },
   header: {
     alignItems: 'center',
@@ -292,12 +314,16 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderWidth: 1,
     borderColor: '#FCA5A5',
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'flex-start',
   },
   errorText: {
     color: '#DC2626',
     fontSize: 12,
-    textAlign: 'center',
     fontWeight: '600',
+    flex: 1,
+    lineHeight: 16,
   },
   form: {
     gap: 14,
