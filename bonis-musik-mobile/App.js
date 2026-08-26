@@ -234,6 +234,7 @@ export default function App() {
                     currentUser={currentUser}
                     onOpenPaywall={() => setAppState('paywall')}
                     onBack={handleBackFromAlbum}
+                    onPlayVideo={handlePlayVideo}
                   />
                 ) : (
                   <>
