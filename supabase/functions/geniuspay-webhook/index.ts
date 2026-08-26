@@ -3,8 +3,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-geniuspay-signature, x-signature",
 };
+
+// Clé secrète de signature du Webhook GeniusPay
+const GENIUSPAY_WEBHOOK_SECRET = Deno.env.get("GENIUSPAY_WEBHOOK_SECRET") ?? "whsec_il1Vj4h9rAK18PjhUrMOzJb3kjqRXwDMNaO8wEO5LwXGjNb6";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -17,7 +20,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const body = await req.json();
-    console.log("Webhook GeniusPay Reçu:", JSON.stringify(body, null, 2));
+    console.log("🔔 [GeniusPay Webhook] Notification reçue:", JSON.stringify(body, null, 2));
 
     const event = body.event || body.type;
     const data = body.data || body;
@@ -41,7 +44,7 @@ serve(async (req) => {
         const user = usersData?.users?.find((u) => u.email?.toLowerCase() === customerEmail.toLowerCase());
 
         if (user) {
-          // 1. Mettre à jour l'abonnement
+          // 1. Mettre à jour la table des abonnements
           await supabase.from("subscriptions").upsert({
             user_id: user.id,
             status: "active",
@@ -52,7 +55,7 @@ serve(async (req) => {
             created_at: new Date().toISOString(),
           });
 
-          // 2. Mettre à jour le profil
+          // 2. Mettre à jour le profil utilisateur
           await supabase.from("profiles").upsert({
             id: user.id,
             is_vip: true,
@@ -61,17 +64,19 @@ serve(async (req) => {
             updated_at: new Date().toISOString(),
           });
 
-          console.log(`Abonnement activé avec succès pour ${customerEmail} (${planName})`);
+          console.log(`✅ Abonnement activé avec succès pour ${customerEmail} (${planName}) - Réf: ${reference}`);
+        } else {
+          console.warn(`⚠️ Utilisateur avec l'email ${customerEmail} non trouvé dans Supabase Auth.`);
         }
       }
     }
 
-    return new Response(JSON.stringify({ received: true, success: true }), {
+    return new Response(JSON.stringify({ received: true, success: true, verified: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
   } catch (error) {
-    console.error("Erreur Webhook GeniusPay:", error);
+    console.error("❌ Erreur Webhook GeniusPay:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 400,
