@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { GeniusPayService } from '../services/geniusPayService';
 import { SubscriptionService } from '../services/subscriptionService';
+import { supabase } from '../lib/supabase';
 
 export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
   const [loading, setLoading] = useState(false);
@@ -42,7 +43,7 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
       id: 'monthly',
       title: 'Abonnement Mensuel',
       priceFcfa: '1 000 FCFA',
-      priceEuro: '~1,50 €',
+      priceEuro: '1,50 €',
       period: '/ mois',
       subtitle: 'Sans engagement • Annulable à tout moment',
       badge: null,
@@ -52,7 +53,7 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
       id: 'annual',
       title: 'Abonnement Annuel',
       priceFcfa: '10 000 FCFA',
-      priceEuro: '~15,00 €',
+      priceEuro: '15,00 €',
       period: '/ an',
       subtitle: 'Accès 1 an complet (Économisez 2 mois)',
       badge: '2 MOIS OFFERTS',
@@ -85,7 +86,7 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
       SubscriptionService.setSubscribedInMemory(
         currentUser.id,
         true,
-        currentPlan.title + ` (${currentPlan.priceFcfa} / ${currentPlan.priceEuro})`
+        currentPlan.title + ` (${currentPlan.priceFcfa} = ${currentPlan.priceEuro})`
       );
       SubscriptionService.activateVipSubscription(currentUser, selectedPlan).catch((err) => {
         console.warn('Erreur activation abonnement en tâche de fond:', err);
@@ -97,6 +98,35 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
       onSuccess(finalTxId, selectedPlan);
     }
   };
+
+  // 🔔 Écoute en Temps Réel Supabase (déclenché automatiquement par le Webhook GeniusPay dès réception du paiement)
+  useEffect(() => {
+    if (!currentUser?.id) return;
+
+    const channel = supabase
+      .channel('public:subscriptions-webhook-sync')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'subscriptions',
+          filter: `user_id=eq.${currentUser.id}`,
+        },
+        (payload) => {
+          const newSub = payload.new;
+          if (newSub && (newSub.status === 'active' || newSub.status === 'completed')) {
+            console.log('⚡ Webhook GeniusPay détecté en direct ! Activation automatique.');
+            completeSuccess(currentTxId || newSub.id);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUser?.id, currentTxId]);
 
   // Vérification auprès de l'API GeniusPay avant validation manuelle
   const verifyAndComplete = async () => {
@@ -266,8 +296,9 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
 
                 <View style={styles.planPriceRow}>
                   <Text style={styles.planPriceFcfa}>{p.priceFcfa}</Text>
-                  <Text style={styles.planPriceEuro}> ({p.priceEuro})</Text>
-                  <Text style={styles.planPeriod}>{p.period}</Text>
+                  <Text style={styles.planEqualSign}> = </Text>
+                  <Text style={styles.planPriceEuro}>{p.priceEuro}</Text>
+                  <Text style={styles.planPeriod}> {p.period}</Text>
                 </View>
                 <Text style={styles.planSubtitle}>{p.subtitle}</Text>
               </TouchableOpacity>
@@ -344,7 +375,7 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
               <ActivityIndicator color="#FFFFFF" size="small" />
             ) : (
               <Text style={styles.ctaText}>
-                S'abonner • {currentPlan.priceFcfa} ({currentPlan.priceEuro}) {currentPlan.period}
+                S'abonner • {currentPlan.priceFcfa} = {currentPlan.priceEuro} {currentPlan.period}
               </Text>
             )}
           </LinearGradient>
@@ -554,10 +585,15 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '900',
   },
+  planEqualSign: {
+    color: THEME.colors.textMuted,
+    fontSize: 15,
+    fontWeight: '700',
+  },
   planPriceEuro: {
     color: THEME.colors.textSecondary,
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '800',
   },
   planPeriod: {
     color: THEME.colors.textMuted,
