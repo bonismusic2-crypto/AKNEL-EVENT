@@ -185,18 +185,18 @@ export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser }) => {
             <>
               <View style={styles.statusBadge}>
                 <Sparkles size={13} color={THEME.colors.success} />
-                <Text style={styles.statusBadgeText}>ABONNEMENT VIP ACTIF</Text>
+                <Text style={styles.statusBadgeText}>ABONNEMENT ACTIF</Text>
               </View>
-              <Text style={styles.planTitle}>Abonnement VIP 2 € / mois</Text>
-              <Text style={styles.renewalText}>Accès illimité à tout le catalogue</Text>
+              <Text style={styles.planTitle}>Accès Intégral Bonis Musik</Text>
+              <Text style={styles.renewalText}>Accès illimité à tous les albums, clips & enseignements</Text>
             </>
           ) : (
             <>
               <View style={[styles.statusBadge, { backgroundColor: 'rgba(239, 68, 68, 0.12)' }]}>
                 <Text style={[styles.statusBadgeText, { color: '#DC2626' }]}>AUCUN ABONNEMENT ACTIF</Text>
               </View>
-              <Text style={styles.planTitle}>Pass VIP Illimité (2 € / mois)</Text>
-              <Text style={styles.renewalText}>Débloquez la musique HD, clips et enseignements</Text>
+              <Text style={styles.planTitle}>Abonnement Bonis Musik</Text>
+              <Text style={styles.renewalText}>1 000 F (~1,50 €) / mois ou 10 000 F (~15 €) / an</Text>
             </>
           )}
 
@@ -208,7 +208,7 @@ export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser }) => {
               style={styles.gradientBtn}
             >
               <Text style={styles.manageBtnText}>
-                {isSubscribed ? 'Gérer mon abonnement GeniusPay' : 'S\'abonner maintenant (1 300 FCFA)'}
+                {isSubscribed ? 'Gérer mon abonnement GeniusPay' : 'S\'abonner (Dès 1 000 FCFA)'}
               </Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -369,7 +369,13 @@ export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser }) => {
                   <TouchableOpacity
                     key={idx}
                     style={styles.historyCard}
-                    onPress={() => {
+                    onPress={async () => {
+                      const isSub = currentUser ? await SubscriptionService.isUserSubscribed(currentUser) : false;
+                      if (!isSub) {
+                        setActiveModal(null);
+                        if (onOpenPaywall) onOpenPaywall();
+                        return;
+                      }
                       playTrack(item);
                       setActiveModal(null);
                     }}

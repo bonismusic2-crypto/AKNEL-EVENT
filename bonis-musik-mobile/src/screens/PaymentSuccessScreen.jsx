@@ -17,24 +17,31 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 
-export const PaymentSuccessScreen = ({ txId, onContinue, currentUser }) => {
+export const PaymentSuccessScreen = ({ txId, planType = 'monthly', onContinue, currentUser }) => {
   const buyerName = currentUser?.user_metadata?.full_name || currentUser?.email?.split('@')[0] || 'Abonné Bonis';
   const buyerEmail = currentUser?.email || 'abonne@bonismusik.com';
   
-  // Date de transaction actuelle et date d'échéance (+1 mois)
+  const isAnnual = planType === 'annual';
+  const planLabel = isAnnual ? 'Abonnement Annuel (1 An)' : 'Abonnement Mensuel (1 Mois)';
+  const amountFcfa = isAnnual ? '10 000 FCFA' : '1 000 FCFA';
+  const amountEuro = isAnnual ? '~15,00 EUR' : '~1,50 EUR';
+
+  // Date de transaction actuelle et date d'échéance (+1 mois ou +1 an)
   const now = new Date();
   const options = { day: 'numeric', month: 'long', year: 'numeric' };
   const paymentDate = now.toLocaleDateString('fr-FR', options);
   
-  const nextMonth = new Date(now.setMonth(now.getMonth() + 1));
-  const dueDate = nextMonth.toLocaleDateString('fr-FR', options);
+  const dueDateTime = isAnnual
+    ? new Date(now.setFullYear(now.getFullYear() + 1))
+    : new Date(now.setMonth(now.getMonth() + 1));
+  const dueDate = dueDateTime.toLocaleDateString('fr-FR', options);
 
   const referenceCode = txId || 'GP_SANDBOX_' + Date.now().toString().slice(-8);
 
   const handleShareReceipt = async () => {
     try {
       await Share.share({
-        message: `Reçu de paiement Bonis Musik VIP\nRéférence: ${referenceCode}\nMontant: 1 300 FCFA (2 €)\nTitulaire: ${buyerName}\nProchaine échéance: ${dueDate}`,
+        message: `Reçu d'abonnement Bonis Musik\nFormule: ${planLabel}\nRéférence: ${referenceCode}\nMontant: ${amountFcfa} (${amountEuro})\nTitulaire: ${buyerName}\nProchaine échéance: ${dueDate}`,
       });
     } catch (e) {}
   };
@@ -50,11 +57,11 @@ export const PaymentSuccessScreen = ({ txId, onContinue, currentUser }) => {
           </View>
           <View style={styles.badgeSuccess}>
             <ShieldCheck size={14} color="#059669" />
-            <Text style={styles.badgeSuccessText}>TRANSACTION MOBILE MONEY VALIDÉE</Text>
+            <Text style={styles.badgeSuccessText}>TRANSACTION VALIDÉE VIA GENIUSPAY</Text>
           </View>
-          <Text style={styles.title}>Paiement Réussi !</Text>
+          <Text style={styles.title}>Abonnement Confirmé !</Text>
           <Text style={styles.subtitle}>
-            Votre souscription mensuelle a été enregistrée avec succès auprès de GeniusPay.
+            Votre souscription a été enregistrée avec succès. Vous avez accès à tous les contenus du Chantre Boniface.
           </Text>
         </View>
 
@@ -72,8 +79,8 @@ export const PaymentSuccessScreen = ({ txId, onContinue, currentUser }) => {
               </View>
             </View>
             <View style={styles.amountBox}>
-              <Text style={styles.amountText}>1 300 FCFA</Text>
-              <Text style={styles.amountSubText}>~2,00 EUR</Text>
+              <Text style={styles.amountText}>{amountFcfa}</Text>
+              <Text style={styles.amountSubText}>{amountEuro}</Text>
             </View>
           </View>
 
@@ -82,9 +89,15 @@ export const PaymentSuccessScreen = ({ txId, onContinue, currentUser }) => {
 
           {/* Corps des détails de la transaction */}
           <View style={styles.receiptBody}>
-            {/* Ligne 1 : Titulaire & Email */}
+            {/* Ligne 1 : Formule choisie */}
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Client / Titulaire</Text>
+              <Text style={styles.detailLabel}>Formule d'Accès</Text>
+              <Text style={[styles.detailValue, { color: THEME.colors.gold, fontWeight: '800' }]}>{planLabel}</Text>
+            </View>
+
+            {/* Ligne 2 : Titulaire & Email */}
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Titulaire du Compte</Text>
               <Text style={styles.detailValue}>{buyerName}</Text>
             </View>
 
@@ -93,7 +106,7 @@ export const PaymentSuccessScreen = ({ txId, onContinue, currentUser }) => {
               <Text style={styles.detailValue}>{buyerEmail}</Text>
             </View>
 
-            {/* Ligne 2 : Mode de prélèvement */}
+            {/* Ligne 3 : Mode de prélèvement */}
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Moyen de Règlement</Text>
               <View style={styles.paymentMethodTag}>
@@ -102,19 +115,19 @@ export const PaymentSuccessScreen = ({ txId, onContinue, currentUser }) => {
               </View>
             </View>
 
-            {/* Ligne 3 : Référence GeniusPay */}
+            {/* Ligne 4 : Référence GeniusPay */}
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Réf. Transaction</Text>
               <Text style={styles.monoValue}>{referenceCode}</Text>
             </View>
 
-            {/* Ligne 4 : Date de prélèvement */}
+            {/* Ligne 5 : Date de prélèvement */}
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Date du Prélèvement</Text>
+              <Text style={styles.detailLabel}>Date du Règlement</Text>
               <Text style={styles.detailValue}>{paymentDate}</Text>
             </View>
 
-            {/* Ligne 5 : Prochaine date d'échéance (Mise en valeur) */}
+            {/* Ligne 6 : Prochaine date d'échéance */}
             <View style={[styles.detailRow, styles.dueDateRow]}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <Calendar size={14} color={THEME.colors.gold} />
@@ -128,10 +141,10 @@ export const PaymentSuccessScreen = ({ txId, onContinue, currentUser }) => {
 
           {/* Footer du Reçu : Avantages Débloqués */}
           <View style={styles.receiptFooter}>
-            <View style={styles.vipPerksContainer}>
+            <View style={styles.perksContainer}>
               <View style={styles.perkItem}>
                 <CheckCircle2 size={13} color="#10B981" />
-                <Text style={styles.perkItemText}>Audio Haute Définition Illimité</Text>
+                <Text style={styles.perkItemText}>Audio HD Illimité (Tous les albums)</Text>
               </View>
               <View style={styles.perkItem}>
                 <CheckCircle2 size={13} color="#10B981" />
@@ -139,7 +152,7 @@ export const PaymentSuccessScreen = ({ txId, onContinue, currentUser }) => {
               </View>
               <View style={styles.perkItem}>
                 <CheckCircle2 size={13} color="#10B981" />
-                <Text style={styles.perkItemText}>Clips Vidéo HD & Prédications</Text>
+                <Text style={styles.perkItemText}>Clips Vidéo & Enseignements exclusifs</Text>
               </View>
             </View>
           </View>
@@ -169,7 +182,7 @@ export const PaymentSuccessScreen = ({ txId, onContinue, currentUser }) => {
               end={{ x: 1, y: 0 }}
               style={styles.continueGradient}
             >
-              <Text style={styles.continueText}>Accéder à mes musiques</Text>
+              <Text style={styles.continueText}>Accéder aux musiques</Text>
               <ArrowRight size={18} color="#FFFFFF" />
             </LinearGradient>
           </TouchableOpacity>
@@ -362,7 +375,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
   },
-  vipPerksContainer: {
+  perksContainer: {
     gap: 8,
   },
   perkItem: {

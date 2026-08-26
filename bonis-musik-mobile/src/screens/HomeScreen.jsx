@@ -124,7 +124,23 @@ export const HomeScreen = ({
 
   const heroClip = clips[0] || SAMPLE_DATA.videoClips[0];
 
-  const handleTeachingPress = (item) => {
+  const checkVipAccess = async () => {
+    if (!currentUser) {
+      if (onOpenPaywall) onOpenPaywall();
+      return false;
+    }
+    const isSub = await SubscriptionService.isUserSubscribed(currentUser);
+    if (!isSub) {
+      if (onOpenPaywall) onOpenPaywall();
+      return false;
+    }
+    return true;
+  };
+
+  const handleTeachingPress = async (item) => {
+    const allowed = await checkVipAccess();
+    if (!allowed) return;
+
     if (item.type === 'audio' || item.url) {
       playTrack({
         id: item.id,
@@ -165,12 +181,12 @@ export const HomeScreen = ({
               <Text style={styles.greeting}>Bonjour, {firstName} 👋</Text>
               {isSubscribed ? (
                 <View style={styles.vipBadge}>
-                  <Text style={styles.vipText}>👑 Abonné VIP</Text>
+                  <Text style={styles.vipText}>✓ Abonné</Text>
                 </View>
               ) : (
                 <TouchableOpacity onPress={onOpenPaywall} activeOpacity={0.7} style={styles.subscribeBadge}>
                   <Sparkles size={11} color="#FFFFFF" />
-                  <Text style={styles.subscribeBadgeText}>S'abonner VIP (2 €)</Text>
+                  <Text style={styles.subscribeBadgeText}>S'abonner (1 000 F / mois)</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -212,7 +228,10 @@ export const HomeScreen = ({
             <Text style={styles.heroTitle} numberOfLines={1}>{heroClip.title}</Text>
             <TouchableOpacity
               style={styles.watchBtn}
-              onPress={() => onSelectClip(heroClip)}
+              onPress={async () => {
+                const allowed = await checkVipAccess();
+                if (allowed) onSelectClip(heroClip);
+              }}
               activeOpacity={0.85}
             >
               <Play size={15} color="#FFFFFF" fill="#FFFFFF" />
@@ -224,7 +243,10 @@ export const HomeScreen = ({
         {/* Section Dernières Sorties Audio Synchronisées */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Dernières sorties audio</Text>
-          <TouchableOpacity onPress={() => onSelectClip(heroClip)}>
+          <TouchableOpacity onPress={async () => {
+            const allowed = await checkVipAccess();
+            if (allowed) onSelectClip(heroClip);
+          }}>
             <Text style={styles.seeAll}>Voir tout ({albums.length})</Text>
           </TouchableOpacity>
         </View>
@@ -233,7 +255,10 @@ export const HomeScreen = ({
             <TouchableOpacity
               key={album.id}
               style={styles.albumCard}
-              onPress={() => onSelectAlbum(album)}
+              onPress={async () => {
+                const allowed = await checkVipAccess();
+                if (allowed) onSelectAlbum(album);
+              }}
               activeOpacity={0.8}
             >
               <Image source={{ uri: album.cover }} style={styles.albumCover} />
@@ -246,7 +271,10 @@ export const HomeScreen = ({
         {/* Section Clips Récents Synchronisés */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Clips récents</Text>
-          <TouchableOpacity onPress={() => onSelectClip(heroClip)}>
+          <TouchableOpacity onPress={async () => {
+            const allowed = await checkVipAccess();
+            if (allowed) onSelectClip(heroClip);
+          }}>
             <Text style={styles.seeAll}>Voir tout ({clips.length})</Text>
           </TouchableOpacity>
         </View>
@@ -255,7 +283,10 @@ export const HomeScreen = ({
             <TouchableOpacity
               key={clip.id}
               style={styles.clipCard}
-              onPress={() => onSelectClip(clip)}
+              onPress={async () => {
+                const allowed = await checkVipAccess();
+                if (allowed) onSelectClip(clip);
+              }}
               activeOpacity={0.8}
             >
               <View style={styles.clipThumbnailContainer}>

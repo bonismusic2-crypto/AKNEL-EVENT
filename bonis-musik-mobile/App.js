@@ -26,6 +26,7 @@ export default function App() {
   const [selectedAlbum, setSelectedAlbum] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [lastTxId, setLastTxId] = useState(null);
+  const [selectedPlanType, setSelectedPlanType] = useState('monthly');
 
   // Refs pour éviter les fermetures obsolètes (stale closures) et les re-renders intempestifs
   const appStateRef = useRef(appState);
@@ -147,16 +148,17 @@ export default function App() {
             />
           )}
 
-          {/* 3. Écran Paywall GeniusPay (2 € / mois) */}
+          {/* 3. Écran d'Abonnement GeniusPay */}
           {appState === 'paywall' && (
             <PaywallScreen
               currentUser={currentUser}
               onBack={handlePaywallBack}
-              onSuccess={(txId) => {
+              onSuccess={(txId, planType = 'monthly') => {
                 if (currentUser) {
                   SubscriptionService.setSubscribedInMemory(currentUser.id, true);
                 }
                 setLastTxId(txId);
+                setSelectedPlanType(planType);
                 setAppState('payment_success');
               }}
             />
@@ -166,6 +168,7 @@ export default function App() {
           {appState === 'payment_success' && (
             <PaymentSuccessScreen
               txId={lastTxId}
+              planType={selectedPlanType}
               currentUser={currentUser}
               onContinue={() => {
                 setAppState('main');

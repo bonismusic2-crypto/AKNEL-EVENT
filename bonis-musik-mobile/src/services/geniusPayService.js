@@ -12,13 +12,21 @@ export const GENIUSPAY_CONFIG = {
 
 export const GeniusPayService = {
   /**
-   * Initialise un paiement d'abonnement VIP (1 300 FCFA / ~2€)
+   * Initialise un paiement d'abonnement :
+   * - Mensuel : 1 000 FCFA (~1,50 €)
+   * - Annuel : 10 000 FCFA (~15,00 €)
    */
-  async createSubscriptionPayment({ user, amount = 1300, paymentMethod = 'wave' }) {
+  async createSubscriptionPayment({ user, planType = 'monthly', amount = 1000, paymentMethod = 'wave' }) {
+    const isAnnual = planType === 'annual' || Number(amount) >= 10000;
+    const finalAmount = isAnnual ? 10000 : 1000;
+    const planDescription = isAnnual
+      ? 'Abonnement Bonis Musik - Accès Intégral 1 An (10 000 FCFA / ~15 €)'
+      : 'Abonnement Bonis Musik - Accès Intégral 1 Mois (1 000 FCFA / ~1,50 €)';
+
     const payload = {
-      amount: Number(amount),
+      amount: Number(finalAmount),
       currency: GENIUSPAY_CONFIG.currency,
-      description: 'Abonnement Bonis Musik Premium VIP (1 mois)',
+      description: planDescription,
       customer: {
         email: user?.email || 'abonne@bonismusik.com',
         name: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Abonne Bonis',
@@ -73,7 +81,8 @@ export const GeniusPayService = {
       success: true,
       tx_id: txId,
       checkoutUrl: checkoutUrl,
-      amount: amount,
+      amount: finalAmount,
+      planType: isAnnual ? 'annual' : 'monthly',
       status: 'pending',
       raw: resData,
     };
