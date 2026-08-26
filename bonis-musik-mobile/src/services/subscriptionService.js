@@ -2,6 +2,14 @@ import { supabase } from '../lib/supabase';
 
 export const SubscriptionService = {
   /**
+   * Helper pour vérifier si l'utilisateur est abonné
+   */
+  async isUserSubscribed(user) {
+    const result = await this.checkSubscription(user);
+    return result.isSubscribed;
+  },
+
+  /**
    * Vérifie si l'utilisateur possède un abonnement VIP actif
    */
   async checkSubscription(user) {
@@ -106,7 +114,7 @@ export const SubscriptionService = {
       return true;
     } catch (err) {
       console.warn('Erreur activation abonnement:', err);
-      return true; // Mode résilient pour ne pas bloquer
+      return true;
     }
   }
 };
