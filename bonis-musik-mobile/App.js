@@ -61,11 +61,11 @@ export default function App() {
     });
 
     // Écoute des retours Deep Link (bonismusik://payment-success ou payment-cancel)
-    const handleDeepLink = (event) => {
+    const handleDeepLink = async (event) => {
       const url = event.url;
       if (url && url.includes('payment-success')) {
         if (currentUser) {
-          SubscriptionService.activateVipSubscription(currentUser);
+          await SubscriptionService.activateVipSubscription(currentUser);
         }
         setAppState('payment_success');
       } else if (url && url.includes('payment-cancel')) {
@@ -73,16 +73,16 @@ export default function App() {
       }
     };
 
-    const linkingSub = Linking.addEventListener('url', handleDeepLink);
+    const linkSub = Linking.addEventListener('url', handleDeepLink);
     Linking.getInitialURL().then((url) => {
       if (url) handleDeepLink({ url });
     });
 
     return () => {
-      subscription.unsubscribe();
-      linkingSub.remove();
+      subscription?.unsubscribe();
+      linkSub.remove();
     };
-  }, []);
+  }, [currentUser]);
 
   const handleSelectAlbum = (album) => {
     setSelectedAlbum(album);
@@ -92,11 +92,23 @@ export default function App() {
     setSelectedAlbum(null);
   };
 
+  // Gestion stricte du retour Paywall : si non abonné, retour à l'écran de bienvenue / connexion
+  const handlePaywallBack = async () => {
+    if (currentUser) {
+      const isSub = await SubscriptionService.isUserSubscribed(currentUser);
+      if (isSub) {
+        setAppState('main');
+        return;
+      }
+    }
+    // Pas abonné -> retour sécurisé à l'accueil onboarding
+    setAppState('welcome');
+  };
+
   return (
     <SafeAreaProvider>
       <AudioProvider>
         <View style={styles.container}>
-          {/* StatusBar sombre sur fond clair */}
           <StatusBar style="dark" />
 
           {/* 1. Écran de Bienvenue Onboarding */}
@@ -121,7 +133,7 @@ export default function App() {
           {appState === 'paywall' && (
             <PaywallScreen
               currentUser={currentUser}
-              onBack={() => setAppState('main')}
+              onBack={handlePaywallBack}
               onSuccess={(txId) => {
                 setLastTxId(txId);
                 setAppState('payment_success');
@@ -129,24 +141,27 @@ export default function App() {
             />
           )}
 
-          {/* 4. Écran de Succès du Paiement Mobile */}
+          {/* 4. Écran de Confirmation Paiement Réussi */}
           {appState === 'payment_success' && (
             <PaymentSuccessScreen
               txId={lastTxId}
               currentUser={currentUser}
-              onContinue={() => setAppState('main')}
+              onContinue={() => {
+                setAppState('main');
+                setActiveTab('home');
+              }}
             />
           )}
 
-          {/* 5. Écran d'Annulation du Paiement Mobile */}
+          {/* 5. Écran d'Annulation / Échec de Paiement */}
           {appState === 'payment_cancel' && (
             <PaymentCancelScreen
               onRetry={() => setAppState('paywall')}
-              onBack={() => setAppState('main')}
+              onBack={handlePaywallBack}
             />
           )}
 
-          {/* 6. Application Principale avec 3 Onglets Épurés */}
+          {/* 6. Application Principale (3 Onglets) */}
           {appState === 'main' && (
             <View style={styles.mainContainer}>
               <View style={styles.contentArea}>

@@ -68,11 +68,15 @@ export const SubscriptionService = {
 
       // 3. Vérification dans user_metadata
       if (user.user_metadata?.is_vip === true || user.user_metadata?.subscription_status === 'active') {
-        return {
-          isSubscribed: true,
-          plan: 'Abonnement VIP 2 € / mois',
-          expiresAt: null,
-        };
+        const vipUntil = user.user_metadata?.vip_until;
+        const isNotExpired = !vipUntil || new Date(vipUntil) > new Date();
+        if (isNotExpired) {
+          return {
+            isSubscribed: true,
+            plan: 'Abonnement VIP 2 € / mois',
+            expiresAt: vipUntil || null,
+          };
+        }
       }
 
       return { isSubscribed: false, plan: null, expiresAt: null };
@@ -92,8 +96,8 @@ export const SubscriptionService = {
       const now = new Date();
       const oneMonthLater = new Date(now.setMonth(now.getMonth() + 1)).toISOString();
 
-      // Mettre à jour profiles ou subscriptions
-      await supabase.from('subscriptions').upsert({
+      // Mettre à jour profiles et subscriptions
+      const { error: subErr } = await supabase.from('subscriptions').upsert({
         user_id: user.id,
         status: 'active',
         plan_name: 'Abonnement VIP 2 € / mois',
@@ -103,7 +107,7 @@ export const SubscriptionService = {
         created_at: new Date().toISOString(),
       });
 
-      await supabase.from('profiles').upsert({
+      const { error: profErr } = await supabase.from('profiles').upsert({
         id: user.id,
         is_vip: true,
         subscription_status: 'active',
@@ -111,10 +115,15 @@ export const SubscriptionService = {
         updated_at: new Date().toISOString(),
       });
 
+      if (subErr && profErr) {
+        console.warn('Erreur mise à jour abonnement Supabase:', subErr, profErr);
+        return false;
+      }
+
       return true;
     } catch (err) {
       console.warn('Erreur activation abonnement:', err);
-      return true;
+      return false;
     }
   }
 };

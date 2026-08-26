@@ -41,20 +41,12 @@ const INITIAL_HISTORY = [
 
 export const AudioProvider = ({ children }) => {
   const [sound, setSound] = useState(null);
-  const [currentTrack, setCurrentTrack] = useState({
-    id: 101,
-    title: 'Tu es fidèle',
-    artist: 'Chantre Boniface',
-    album: 'ÉLÉVATION',
-    cover: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500',
-    duration: '04:25',
-    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'
-  });
+  const [currentTrack, setCurrentTrack] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [positionMillis, setPositionMillis] = useState(0);
   const [durationMillis, setDurationMillis] = useState(1);
   const [isFullPlayerVisible, setIsFullPlayerVisible] = useState(false);
-  const [history, setHistory] = useState(INITIAL_HISTORY);
+  const [history, setHistory] = useState([]);
 
   useEffect(() => {
     // Configurer le mode audio pour autoriser la lecture en tâche de fond
