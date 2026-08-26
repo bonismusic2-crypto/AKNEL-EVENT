@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { Music, Plus, Edit2, Trash2, Film, BookOpen, Layers, CheckCircle2, AlertCircle, Disc } from 'lucide-react';
+import { Music, Plus, Edit2, Trash2, Film, BookOpen, Layers, CheckCircle2, AlertCircle, Disc, UploadCloud } from 'lucide-react';
 import { FileUploader } from '../components/admin-ui/FileUploader';
 
 const ManageMusic = () => {
@@ -14,6 +14,9 @@ const ManageMusic = () => {
     const [modalType, setModalType] = useState('album'); // 'album', 'song', 'clip', 'teaching'
     const [editingItem, setEditingItem] = useState(null); // Élément en cours de modification (null si ajout)
     
+    // Liste des fichiers multiples téléversés pour l'album ou les chansons groupées
+    const [multiUploadedSongs, setMultiUploadedSongs] = useState([]);
+
     const [formData, setFormData] = useState({
         title: '',
         album_id: '',
@@ -58,6 +61,7 @@ const ManageMusic = () => {
     const handleOpenCreate = (type) => {
         setEditingItem(null);
         setModalType(type);
+        setMultiUploadedSongs([]);
         setFormData({
             title: '',
             album_id: albums[0]?.id || '',
@@ -76,6 +80,7 @@ const ManageMusic = () => {
     const handleEditAlbum = (album) => {
         setEditingItem(album);
         setModalType('album');
+        setMultiUploadedSongs([]);
         setFormData({
             title: album.title || '',
             album_id: album.id,
@@ -94,6 +99,7 @@ const ManageMusic = () => {
     const handleEditSong = (song, parentAlbum) => {
         setEditingItem(song);
         setModalType('song');
+        setMultiUploadedSongs([]);
         setFormData({
             title: song.title || '',
             album_id: song.album_id || parentAlbum?.id || '',
@@ -112,6 +118,7 @@ const ManageMusic = () => {
     const handleEditMedia = (media) => {
         setEditingItem(media);
         setModalType(media.category === 'video_clip' ? 'clip' : 'teaching');
+        setMultiUploadedSongs([]);
         setFormData({
             title: media.title || '',
             album_id: media.album_id || '',
@@ -141,6 +148,19 @@ const ManageMusic = () => {
                         artist_name: formData.speaker_or_artist || 'Chantre Boniface',
                     }).eq('id', editingItem.id);
                     if (error) throw error;
+
+                    // Si des chansons supplémentaires ont été ajoutées en lot lors de la modification de l'album
+                    if (multiUploadedSongs.length > 0) {
+                        const songInserts = multiUploadedSongs.map((s, idx) => ({
+                            album_id: editingItem.id,
+                            title: s.title,
+                            audio_url: s.url,
+                            duration: s.duration || '04:30',
+                            track_number: (editingItem.songs?.length || 0) + idx + 1,
+                            artist_name: formData.speaker_or_artist || 'Chantre Boniface',
+                        }));
+                        await supabase.from('songs').insert(songInserts);
+                    }
                 } else if (modalType === 'song') {
                     const { error } = await supabase.from('songs').update({
                         album_id: formData.album_id,
@@ -165,6 +185,7 @@ const ManageMusic = () => {
             } else {
                 // ==================== MODE CRÉATION ====================
                 if (modalType === 'album') {
+                    // 1. Création de l'album
                     const { data: newAlbum, error } = await supabase.from('albums').insert([{
                         title: formData.title,
                         price: parseFloat(formData.price) || 0,
@@ -174,23 +195,55 @@ const ManageMusic = () => {
                     }]).select();
                     if (error) throw error;
 
-                    if (formData.media_url && newAlbum && newAlbum[0]) {
+                    const createdAlbumId = newAlbum && newAlbum[0] ? newAlbum[0].id : null;
+
+                    // Insertion de toutes les chansons sélectionnées en lot
+                    if (createdAlbumId && multiUploadedSongs.length > 0) {
+                        const songInserts = multiUploadedSongs.map((s, idx) => ({
+                            album_id: createdAlbumId,
+                            title: s.title,
+                            audio_url: s.url,
+                            duration: s.duration || '04:30',
+                            track_number: idx + 1,
+                            artist_name: formData.speaker_or_artist || 'Chantre Boniface',
+                        }));
+                        await supabase.from('songs').insert(songInserts);
+                    } else if (createdAlbumId && formData.media_url) {
                         await supabase.from('songs').insert([{
-                            album_id: newAlbum[0].id,
+                            album_id: createdAlbumId,
                             title: formData.title,
                             audio_url: formData.media_url,
                             duration: formData.duration || '04:30',
+                            track_number: 1,
+                            artist_name: formData.speaker_or_artist || 'Chantre Boniface',
                         }]);
                     }
                 } else if (modalType === 'song') {
-                    const { error } = await supabase.from('songs').insert([{
-                        album_id: formData.album_id || (albums[0] ? albums[0].id : null),
-                        title: formData.title,
-                        audio_url: formData.media_url,
-                        duration: formData.duration || '04:30',
-                        artist_name: formData.speaker_or_artist || 'Chantre Boniface',
-                    }]);
-                    if (error) throw error;
+                    const targetAlbumId = formData.album_id || (albums[0] ? albums[0].id : null);
+                    
+                    // Si plusieurs chansons ont été sélectionnées en même temps
+                    if (multiUploadedSongs.length > 0) {
+                        const songInserts = multiUploadedSongs.map((s, idx) => ({
+                            album_id: targetAlbumId,
+                            title: s.title,
+                            audio_url: s.url,
+                            duration: s.duration || '04:30',
+                            track_number: idx + 1,
+                            artist_name: formData.speaker_or_artist || 'Chantre Boniface',
+                        }));
+                        const { error } = await supabase.from('songs').insert(songInserts);
+                        if (error) throw error;
+                    } else {
+                        const { error } = await supabase.from('songs').insert([{
+                            album_id: targetAlbumId,
+                            title: formData.title,
+                            audio_url: formData.media_url,
+                            duration: formData.duration || '04:30',
+                            track_number: 1,
+                            artist_name: formData.speaker_or_artist || 'Chantre Boniface',
+                        }]);
+                        if (error) throw error;
+                    }
                 } else {
                     const { error } = await supabase.from('media_contents').insert([{
                         title: formData.title,
@@ -207,6 +260,7 @@ const ManageMusic = () => {
 
             setShowModal(false);
             setEditingItem(null);
+            setMultiUploadedSongs([]);
             fetchData();
         } catch (err) {
             alert('Erreur lors de l\'enregistrement : ' + err.message);
@@ -240,7 +294,7 @@ const ManageMusic = () => {
                 <div>
                     <h1 className="text-3xl font-serif font-bold text-dark">Gestion des Contenus Mobile (Bonis Musik)</h1>
                     <p className="text-gray-500 text-sm mt-1">
-                        Publiez, modifiez ou mettez à jour vos albums, chansons, clips vidéo HD et enseignements spirituels.
+                        Publiez, modifiez ou téléversez plusieurs fichiers MP3/MP4 en une seule fois dans vos albums.
                     </p>
                 </div>
 
@@ -249,13 +303,13 @@ const ManageMusic = () => {
                         onClick={() => handleOpenCreate('album')}
                         className="bg-dark text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 hover:bg-gold hover:text-dark transition-all shadow-md cursor-pointer"
                     >
-                        <Plus size={16} /> 1. Créer un Album
+                        <Plus size={16} /> 1. Créer Album (Multi-Pistes)
                     </button>
                     <button
                         onClick={() => handleOpenCreate('song')}
                         className="bg-amber-600 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 hover:bg-amber-700 transition-all shadow-md cursor-pointer"
                     >
-                        <Plus size={16} /> 2. Ajouter Chanson dans Album
+                        <UploadCloud size={16} /> 2. Ajouter Chansons (Multi-fichiers)
                     </button>
                     <button
                         onClick={() => handleOpenCreate('clip')}
@@ -483,7 +537,7 @@ const ManageMusic = () => {
                         <div className="flex justify-between items-center">
                             <h3 className="text-xl font-serif font-bold text-dark">
                                 {editingItem ? '✏️ Modifier : ' : '➕ Nouveau : '}
-                                {modalType === 'album' ? 'Album Officiel' : modalType === 'song' ? 'Chanson dans un Album' : modalType === 'clip' ? 'Clip Vidéo lié à un Album' : 'Enseignement'}
+                                {modalType === 'album' ? 'Album (Ajout Multi-Pistes)' : modalType === 'song' ? 'Chansons dans un Album' : modalType === 'clip' ? 'Clip Vidéo lié à un Album' : 'Enseignement'}
                             </h3>
                             <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-dark font-bold text-lg cursor-pointer">✕</button>
                         </div>
@@ -507,24 +561,27 @@ const ManageMusic = () => {
                                         ))}
                                     </select>
                                     <p className="text-[10px] text-gray-400 font-normal normal-case mt-1">
-                                        Le {modalType === 'clip' ? 'clip' : 'morceau'} apparaîtra automatiquement à l'intérieur de cet album sur l'application mobile.
+                                        Les fichiers apparaîtront automatiquement à l'intérieur de cet album sur l'application mobile.
                                     </p>
                                 </div>
                             )}
 
-                            <div>
-                                <label className="block mb-1">
-                                    {modalType === 'album' ? "Titre de l'Album" : modalType === 'song' ? "Titre de la Chanson" : modalType === 'clip' ? "Titre du Clip Vidéo" : "Titre de l'Enseignement"}
-                                </label>
-                                <input
-                                    type="text"
-                                    required
-                                    placeholder="Ex: Jésus règne à jamais"
-                                    value={formData.title}
-                                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gold normal-case font-normal"
-                                />
-                            </div>
+                            {/* Titre (masqué en mode multi-sélection car chaque chanson prend son propre nom de fichier) */}
+                            {(!multiUploadedSongs.length || modalType === 'album' || modalType === 'clip' || modalType === 'teaching') && (
+                                <div>
+                                    <label className="block mb-1">
+                                        {modalType === 'album' ? "Titre de l'Album" : modalType === 'song' ? "Titre de la Chanson" : modalType === 'clip' ? "Titre du Clip Vidéo" : "Titre de l'Enseignement"}
+                                    </label>
+                                    <input
+                                        type="text"
+                                        required={!multiUploadedSongs.length}
+                                        placeholder="Ex: Jésus règne à jamais"
+                                        value={formData.title}
+                                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gold normal-case font-normal"
+                                    />
+                                </div>
+                            )}
 
                             {modalType === 'teaching' && (
                                 <div>
@@ -546,22 +603,30 @@ const ManageMusic = () => {
                                     label={modalType === 'album' ? "Pochette de l'Album (Image PNG/JPG)" : "Miniature Vidéo (Image PNG/JPG)"}
                                     accept="image/*"
                                     bucket="covers"
+                                    multiple={false}
                                     required={!editingItem}
-                                    helperText="Glissez ou sélectionnez l'image pour mettre à jour la pochette"
+                                    helperText="Glissez ou sélectionnez l'image de couverture"
                                     currentPreviewUrl={formData.thumbnail_url}
                                     onUploadSuccess={(url) => setFormData(prev => ({ ...prev, thumbnail_url: url }))}
                                 />
                             )}
 
-                            {/* 2. Upload / Remplacement du Fichier Réel (Audio MP3 ou Vidéo MP4) */}
+                            {/* 2. Upload Multiple ou Simple pour les Chansons / Albums / Clips */}
                             <FileUploader
-                                label={modalType === 'clip' || (modalType === 'teaching' && formData.category === 'teaching_video') ? "Fichier Vidéo HD (MP4 / WebM)" : "Fichier Audio HD (MP3 / WAV)"}
+                                label={modalType === 'clip' || (modalType === 'teaching' && formData.category === 'teaching_video') ? "Fichier Vidéo HD (MP4 / WebM)" : "Fichiers Audio HD (MP3 / WAV) — Multi-sélection possible"}
                                 accept={modalType === 'clip' || (modalType === 'teaching' && formData.category === 'teaching_video') ? "video/*" : "audio/*"}
                                 bucket="media"
-                                required={!editingItem && modalType !== 'album'}
-                                helperText={editingItem ? "Optionnel : sélectionnez un nouveau fichier pour remplacer l'actuel" : (modalType === 'clip' ? "Sélectionnez le clip vidéo MP4" : "Sélectionnez le fichier audio MP3")}
+                                multiple={modalType === 'album' || modalType === 'song'} // ✅ MULTI-SÉLECTION ACTIVÉE
+                                required={!editingItem && modalType !== 'album' && !multiUploadedSongs.length}
+                                helperText={modalType === 'album' || modalType === 'song' ? "Sélectionnez un ou plusieurs fichiers audio MP3 à la fois" : "Sélectionnez le fichier vidéo MP4"}
                                 currentPreviewUrl={formData.media_url}
                                 onUploadSuccess={(url) => setFormData(prev => ({ ...prev, media_url: url }))}
+                                onMultiUploadSuccess={(list) => {
+                                    setMultiUploadedSongs(list);
+                                    if (list.length > 0 && !formData.title && modalType !== 'album') {
+                                        setFormData(prev => ({ ...prev, title: list[0].title }));
+                                    }
+                                }}
                             />
 
                             <div className="grid grid-cols-2 gap-4">
@@ -575,7 +640,7 @@ const ManageMusic = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block mb-1">Durée (Ex: 04:30)</label>
+                                    <label className="block mb-1">Durée par défaut (Ex: 04:30)</label>
                                     <input
                                         type="text"
                                         placeholder="04:30"
@@ -591,7 +656,13 @@ const ManageMusic = () => {
                                 disabled={saving}
                                 className="w-full bg-gold text-dark py-3.5 rounded-xl font-bold uppercase tracking-wider text-xs hover:bg-dark hover:text-white transition-all shadow-md cursor-pointer"
                             >
-                                {saving ? 'Enregistrement en cours...' : editingItem ? '💾 Enregistrer les Modifications' : '🚀 Publier Immédiatement sur l\'App'}
+                                {saving
+                                    ? 'Enregistrement et Téléversement en lot...'
+                                    : editingItem
+                                    ? '💾 Enregistrer les Modifications'
+                                    : multiUploadedSongs.length > 1
+                                    ? `🚀 Publier ces ${multiUploadedSongs.length} Chansons en lot`
+                                    : '🚀 Publier Immédiatement sur l\'App'}
                             </button>
                         </form>
                     </div>
