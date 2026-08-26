@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, Check, ShieldCheck, Sparkles, X, Smartphone, CreditCard } from 'lucide-react-native';
+import { ChevronLeft, Check, ShieldCheck, Sparkles, X, Smartphone, CreditCard, ExternalLink } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
-import { SubscriptionService } from '../services/subscriptionService';
 import { GeniusPayService } from '../services/geniusPayService';
 
 export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
@@ -30,37 +29,27 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
   const handleSubscribe = async () => {
     setLoading(true);
     try {
-      // 1. Initialisation Transaction Sandbox GeniusPay
+      // 1. Initialisation Transaction Sandbox GeniusPay STRICT (Aucune simulation locale)
       const paymentResult = await GeniusPayService.createSubscriptionPayment({
         user: currentUser,
         amount: 1300,
         paymentMethod: selectedMethod,
       });
 
-      // 2. Si GeniusPay renvoie l'URL de paiement officielle, ouverture dans le navigateur du téléphone
-      if (paymentResult.checkoutUrl) {
-        setLoading(false);
-        const supported = await Linking.canOpenURL(paymentResult.checkoutUrl);
-        if (supported) {
-          await Linking.openURL(paymentResult.checkoutUrl);
-        } else {
-          Alert.alert('Paiement', `Veuillez finaliser votre paiement sur : ${paymentResult.checkoutUrl}`);
-        }
-        return;
-      }
-
-      // 3. Activation de l'abonnement VIP dans Supabase
-      if (currentUser) {
-        await SubscriptionService.activateVipSubscription(currentUser);
-      }
-
       setLoading(false);
-      if (onSuccess) {
-        onSuccess(paymentResult.tx_id);
+
+      // 2. Ouverture OBLIGATOIRE du Guichet de Paiement GeniusPay
+      if (paymentResult && paymentResult.checkoutUrl) {
+        await Linking.openURL(paymentResult.checkoutUrl);
+      } else {
+        throw new Error('L\'API GeniusPay n\'a pas retourné l\'URL de paiement requise.');
       }
     } catch (err) {
       setLoading(false);
-      Alert.alert('Erreur GeniusPay', err.message || 'Impossible d\'initialiser le paiement.');
+      Alert.alert(
+        'Erreur Passerelle GeniusPay',
+        err.message || 'Impossible d\'initialiser le paiement sécurisé GeniusPay. Veuillez réessayer.'
+      );
     }
   };
 
@@ -166,7 +155,10 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
             {loading ? (
               <ActivityIndicator color="#FFFFFF" size="small" />
             ) : (
-              <Text style={styles.ctaText}>Payer 1 300 FCFA (2 €) via GeniusPay</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={styles.ctaText}>Payer 1 300 FCFA (2 €) via GeniusPay</Text>
+                <ExternalLink size={16} color="#FFFFFF" />
+              </View>
             )}
           </LinearGradient>
         </TouchableOpacity>
