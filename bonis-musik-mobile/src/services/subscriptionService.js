@@ -7,12 +7,12 @@ export const SubscriptionService = {
   /**
    * Enregistre l'état d'abonnement directement dans le cache mémoire instantané
    */
-  setSubscribedInMemory(userId, isSubscribed = true, plan = 'Abonnement Mensuel (1 000 FCFA / ~1,50 €)', expiresAt = null) {
+  setSubscribedInMemory(userId, isSubscribed = true, plan = 'Abonnement Mensuel (1 000 FCFA = 1,50 €)', expiresAt = null) {
     if (!userId) return;
     const expiry = expiresAt || new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
     memorySubscriptionCache.set(userId, {
       isSubscribed: !!isSubscribed,
-      plan: plan || 'Abonnement Mensuel (1 000 FCFA / ~1,50 €)',
+      plan: plan || 'Abonnement Mensuel (1 000 FCFA = 1,50 €)',
       expiresAt: expiry,
       timestamp: Date.now(),
     });
@@ -56,15 +56,15 @@ export const SubscriptionService = {
   },
 
   /**
-   * Vérifie si l'utilisateur possède un abonnement actif
+   * Vérifie si l'utilisateur possède un abonnement actif et retourne les détails complets
    */
   async checkSubscription(user) {
     if (!user || !user.id) {
-      return { isSubscribed: false, plan: null, expiresAt: null };
+      return { isSubscribed: false, plan: null, planType: 'monthly', expiresAt: null };
     }
 
     if (user.isGuest || user.email === 'visiteur@bonismusik.com') {
-      return { isSubscribed: false, plan: null, expiresAt: null };
+      return { isSubscribed: false, plan: null, planType: 'monthly', expiresAt: null };
     }
 
     try {
@@ -83,10 +83,13 @@ export const SubscriptionService = {
         const isNotExpired = !expiry || new Date(expiry) > new Date();
 
         if (isActive && isNotExpired) {
+          const isAnnual = sub.plan_name?.toLowerCase().includes('annuel') || Number(sub.amount) >= 10;
           this.setSubscribedInMemory(user.id, true, sub.plan_name, expiry);
           return {
             isSubscribed: true,
-            plan: sub.plan_name || 'Abonnement Bonis Musik',
+            plan: sub.plan_name || (isAnnual ? 'Abonnement Annuel (10 000 FCFA = 15,00 €)' : 'Abonnement Mensuel (1 000 FCFA = 1,50 €)'),
+            planType: isAnnual ? 'annual' : 'monthly',
+            amount: isAnnual ? '10 000 FCFA = 15,00 €' : '1 000 FCFA = 1,50 €',
             expiresAt: expiry || null,
           };
         }
@@ -107,16 +110,18 @@ export const SubscriptionService = {
             return {
               isSubscribed: true,
               plan: 'Abonnement Bonis Musik',
+              planType: 'monthly',
+              amount: '1 000 FCFA = 1,50 €',
               expiresAt: profile.vip_until,
             };
           }
         }
       }
 
-      return { isSubscribed: false, plan: null, expiresAt: null };
+      return { isSubscribed: false, plan: null, planType: 'monthly', expiresAt: null };
     } catch (err) {
       console.warn('Erreur vérification abonnement Supabase:', err);
-      return { isSubscribed: false, plan: null, expiresAt: null };
+      return { isSubscribed: false, plan: null, planType: 'monthly', expiresAt: null };
     }
   },
 
@@ -132,15 +137,15 @@ export const SubscriptionService = {
       const durationDays = isAnnual ? 365 : 30;
       const expiryDate = new Date(now.getTime() + durationDays * 24 * 3600 * 1000).toISOString();
       const planName = isAnnual
-        ? 'Abonnement Annuel (10 000 FCFA / ~15 €)'
-        : 'Abonnement Mensuel (1 000 FCFA / ~1,50 €)';
+        ? 'Abonnement Annuel (10 000 FCFA = 15,00 €)'
+        : 'Abonnement Mensuel (1 000 FCFA = 1,50 €)';
       const amount = isAnnual ? 15.00 : 1.50;
 
       // 1. Cache mémoire immédiat
       this.setSubscribedInMemory(user.id, true, planName, expiryDate);
 
       // 2. Persistance asynchrone Supabase
-      const results = await Promise.allSettled([
+      await Promise.allSettled([
         supabase.from('subscriptions').upsert({
           user_id: user.id,
           status: 'active',
@@ -162,6 +167,43 @@ export const SubscriptionService = {
       return true;
     } catch (err) {
       console.warn('Erreur activation abonnement:', err);
+      return false;
+    }
+  },
+
+  /**
+   * Annule l'abonnement en cours de l'utilisateur
+   */
+  async cancelSubscription(user) {
+    if (!user || !user.id) return false;
+
+    try {
+      // 1. Vider le cache mémoire immédiat
+      this.clearMemoryCache(user.id);
+
+      // 2. Mettre à jour Supabase subscriptions et profiles
+      await Promise.allSettled([
+        supabase
+          .from('subscriptions')
+          .update({
+            status: 'cancelled',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', user.id),
+        supabase
+          .from('profiles')
+          .update({
+            is_vip: false,
+            subscription_status: 'cancelled',
+            vip_until: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', user.id)
+      ]);
+
+      return true;
+    } catch (err) {
+      console.warn('Erreur annulation abonnement Supabase:', err);
       return false;
     }
   }

@@ -9,7 +9,8 @@ import {
   Alert,
   Modal,
   Switch,
-  Linking
+  Linking,
+  ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -34,7 +35,11 @@ import {
   Music,
   BookOpen,
   Film,
-  Calendar
+  Calendar,
+  AlertTriangle,
+  RefreshCw,
+  XCircle,
+  Check
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
@@ -47,8 +52,11 @@ export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser }) => {
   const { history, clearHistory, removeFromHistory, playTrack } = useAudio();
   const [activeModal, setActiveModal] = useState(null);
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [subscriptionDetails, setSubscriptionDetails] = useState({
     plan: 'Abonnement Bonis Musik',
+    planType: 'monthly',
+    amount: '1 000 FCFA = 1,50 €',
     expiresAt: null,
   });
 
@@ -59,6 +67,8 @@ export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser }) => {
       setIsSubscribed(subInfo.isSubscribed);
       setSubscriptionDetails({
         plan: subInfo.plan || 'Accès Intégral Bonis Musik',
+        planType: subInfo.planType || 'monthly',
+        amount: subInfo.amount || '1 000 FCFA = 1,50 €',
         expiresAt: subInfo.expiresAt || null,
       });
     }
@@ -76,6 +86,37 @@ export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser }) => {
         year: 'numeric',
       })
     : 'Dans 30 jours';
+
+  // Action d'annulation de l'abonnement
+  const handleCancelSubscription = async () => {
+    Alert.alert(
+      'Annuler mon abonnement',
+      'Êtes-vous sûr de vouloir résilier votre abonnement ? Vous perdrez l\'accès au streaming illimité et aux téléchargements hors-ligne.',
+      [
+        { text: 'Non, conserver', style: 'cancel' },
+        {
+          text: 'Oui, résilier',
+          style: 'destructive',
+          onPress: async () => {
+            setCancelling(true);
+            try {
+              await SubscriptionService.cancelSubscription(currentUser);
+              await checkVipStatus();
+              setCancelling(false);
+              setActiveModal(null);
+              Alert.alert(
+                'Abonnement résilié',
+                'Votre abonnement a été annulé. Vous pouvez vous réabonner à tout moment quand vous le souhaitez.'
+              );
+            } catch (err) {
+              setCancelling(false);
+              Alert.alert('Erreur', 'Impossible de résilier l\'abonnement pour le moment.');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   // État des téléchargements hors-ligne sécurisés
   const [downloads, setDownloads] = useState([
@@ -198,6 +239,21 @@ export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser }) => {
                 </Text>
               </View>
               <Text style={styles.renewalText}>Accès illimité à tous les albums, clips & enseignements</Text>
+
+              <TouchableOpacity
+                style={styles.manageBtn}
+                onPress={() => setActiveModal('manage_subscription')}
+                activeOpacity={0.85}
+              >
+                <LinearGradient
+                  colors={THEME.colors.goldGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.gradientBtn}
+                >
+                  <Text style={styles.manageBtnText}>Gérer mon abonnement</Text>
+                </LinearGradient>
+              </TouchableOpacity>
             </>
           ) : (
             <>
@@ -206,21 +262,23 @@ export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser }) => {
               </View>
               <Text style={styles.planTitle}>Abonnement Bonis Musik</Text>
               <Text style={styles.renewalText}>1 000 FCFA = 1,50 € / mois ou 10 000 FCFA = 15,00 € / an</Text>
+
+              <TouchableOpacity
+                style={styles.manageBtn}
+                onPress={onOpenPaywall}
+                activeOpacity={0.85}
+              >
+                <LinearGradient
+                  colors={THEME.colors.goldGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.gradientBtn}
+                >
+                  <Text style={styles.manageBtnText}>S'abonner (Dès 1 000 FCFA)</Text>
+                </LinearGradient>
+              </TouchableOpacity>
             </>
           )}
-
-          <TouchableOpacity style={styles.manageBtn} onPress={onOpenPaywall} activeOpacity={0.85}>
-            <LinearGradient
-              colors={THEME.colors.goldGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.gradientBtn}
-            >
-              <Text style={styles.manageBtnText}>
-                {isSubscribed ? 'Gérer / Renouveler mon abonnement' : 'S\'abonner (Dès 1 000 FCFA)'}
-              </Text>
-            </LinearGradient>
-          </TouchableOpacity>
         </View>
 
         {/* Menu d'options interactif */}
@@ -311,6 +369,108 @@ export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser }) => {
         <Text style={styles.versionText}>Bonis Musik App • Version 1.0.0 (Édition Officielle)</Text>
 
       </ScrollView>
+
+      {/* ========================================================= */}
+      {/* 0. MODAL GÉRER MON ABONNEMENT (CHANGER / RÉSILIER) */}
+      {/* ========================================================= */}
+      <Modal
+        visible={activeModal === 'manage_subscription'}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setActiveModal(null)}
+      >
+        <SafeAreaView style={styles.modalSafeArea}>
+          <View style={styles.modalHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <ShieldCheck size={20} color={THEME.colors.gold} />
+              <Text style={styles.modalTitle}>Gestion de l'Abonnement</Text>
+            </View>
+            <TouchableOpacity onPress={() => setActiveModal(null)} style={styles.closeBtn}>
+              <X size={20} color={THEME.colors.textPrimary} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalBody}>
+            {/* Carte Récapitulatif de l'offre en cours */}
+            <View style={styles.currentSubCard}>
+              <View style={styles.statusBadge}>
+                <Sparkles size={12} color={THEME.colors.success} />
+                <Text style={styles.statusBadgeText}>FORMULE ACTIVE</Text>
+              </View>
+              <Text style={styles.currentSubTitle}>{subscriptionDetails.plan}</Text>
+              <Text style={styles.currentSubPrice}>
+                {subscriptionDetails.amount || (subscriptionDetails.planType === 'annual' ? '10 000 FCFA = 15,00 € / an' : '1 000 FCFA = 1,50 € / mois')}
+              </Text>
+              
+              <View style={styles.subDetailDivider} />
+
+              <View style={styles.subDetailRow}>
+                <Text style={styles.subDetailLabel}>Date d'échéance :</Text>
+                <Text style={styles.subDetailValue}>{formattedExpiryDate}</Text>
+              </View>
+
+              <View style={styles.subDetailRow}>
+                <Text style={styles.subDetailLabel}>Statut du compte :</Text>
+                <Text style={[styles.subDetailValue, { color: THEME.colors.success }]}>Actif & Débloqué</Text>
+              </View>
+            </View>
+
+            {/* Option 1 : Changer de Formule */}
+            <Text style={styles.sectionHeading}>Changer de formule</Text>
+            <View style={styles.switchPlanCard}>
+              <Text style={styles.switchPlanTitle}>
+                {subscriptionDetails.planType === 'annual' ? 'Basculer vers l\'abonnement Mensuel' : 'Passer à l\'Abonnement Annuel (2 mois offerts)'}
+              </Text>
+              <Text style={styles.switchPlanDesc}>
+                {subscriptionDetails.planType === 'annual'
+                  ? 'Passez au tarif mensuel à 1 000 FCFA = 1,50 € / mois sans engagement.'
+                  : 'Économisez 2 000 FCFA en réglant 10 000 FCFA = 15,00 € pour 1 an complet de streaming.'}
+              </Text>
+              <TouchableOpacity
+                style={styles.switchPlanBtn}
+                onPress={() => {
+                  setActiveModal(null);
+                  if (onOpenPaywall) onOpenPaywall();
+                }}
+                activeOpacity={0.85}
+              >
+                <RefreshCw size={15} color="#FFFFFF" />
+                <Text style={styles.switchPlanBtnText}>Changer mon forfait</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Option 2 : Annuler l'abonnement */}
+            <Text style={[styles.sectionHeading, { color: '#DC2626', marginTop: 24 }]}>Zone de résiliation</Text>
+            <View style={styles.cancelCard}>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+                <AlertTriangle size={18} color="#DC2626" style={{ marginTop: 2 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cancelTitle}>Résilier mon abonnement</Text>
+                  <Text style={styles.cancelDesc}>
+                    En annulant votre abonnement, votre compte sera immédiatement désactivé et vous n'aurez plus accès aux pistes audio et vidéos du Chantre Boniface.
+                  </Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={handleCancelSubscription}
+                disabled={cancelling}
+                activeOpacity={0.8}
+              >
+                {cancelling ? (
+                  <ActivityIndicator color="#DC2626" size="small" />
+                ) : (
+                  <>
+                    <XCircle size={16} color="#DC2626" />
+                    <Text style={styles.cancelBtnText}>Confirmer la résiliation</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
 
       {/* ========================================================= */}
       {/* 1. MODAL TÉLÉCHARGEMENTS HORS-LIGNE CHIFFRÉS IN-APP */}
@@ -763,6 +923,115 @@ const styles = StyleSheet.create({
   },
   modalBody: {
     padding: 20,
+  },
+  currentSubCard: {
+    backgroundColor: '#FFFFFF',
+    padding: 18,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: THEME.colors.gold,
+    marginBottom: 20,
+  },
+  currentSubTitle: {
+    color: THEME.colors.textPrimary,
+    fontSize: 16,
+    fontWeight: '900',
+    marginBottom: 2,
+  },
+  currentSubPrice: {
+    color: THEME.colors.gold,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  subDetailDivider: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+    marginVertical: 12,
+  },
+  subDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  subDetailLabel: {
+    color: THEME.colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  subDetailValue: {
+    color: THEME.colors.textPrimary,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  switchPlanCard: {
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 12,
+  },
+  switchPlanTitle: {
+    color: THEME.colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  switchPlanDesc: {
+    color: THEME.colors.textSecondary,
+    fontSize: 12,
+    lineHeight: 16,
+    marginBottom: 12,
+  },
+  switchPlanBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: THEME.colors.gold,
+    paddingVertical: 12,
+    borderRadius: 20,
+  },
+  switchPlanBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  cancelCard: {
+    backgroundColor: '#FFF5F5',
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
+    marginBottom: 30,
+  },
+  cancelTitle: {
+    color: '#DC2626',
+    fontSize: 13.5,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  cancelDesc: {
+    color: '#7F1D1D',
+    fontSize: 11.5,
+    lineHeight: 16,
+    marginBottom: 14,
+  },
+  cancelBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#FCA5A5',
+    paddingVertical: 12,
+    borderRadius: 20,
+  },
+  cancelBtnText: {
+    color: '#DC2626',
+    fontSize: 13,
+    fontWeight: '800',
   },
   securityBanner: {
     flexDirection: 'row',
