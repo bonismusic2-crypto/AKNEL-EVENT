@@ -27,12 +27,27 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [lastTxId, setLastTxId] = useState(null);
 
+  // Fonction de routage intelligent selon le statut d'abonnement
+  const routeUserAfterAuth = async (user) => {
+    setCurrentUser(user);
+    if (!user) {
+      setAppState('welcome');
+      return;
+    }
+    const isSubscribed = await SubscriptionService.isUserSubscribed(user);
+    if (isSubscribed) {
+      setAppState('main');
+    } else {
+      // Si nouvel inscrit ou non abonné -> direction Paywall obligatoire
+      setAppState('paywall');
+    }
+  };
+
   // Vérifier la session active au lancement de l'application
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        setCurrentUser(session.user);
-        setAppState('main');
+        routeUserAfterAuth(session.user);
       }
     });
 
@@ -41,6 +56,7 @@ export default function App() {
         setCurrentUser(session.user);
       } else {
         setCurrentUser(null);
+        setAppState('welcome');
       }
     });
 
@@ -66,7 +82,7 @@ export default function App() {
       subscription.unsubscribe();
       linkingSub.remove();
     };
-  }, [currentUser]);
+  }, []);
 
   const handleSelectAlbum = (album) => {
     setSelectedAlbum(album);
@@ -95,14 +111,7 @@ export default function App() {
           {appState === 'auth' && (
             <AuthScreen
               onSuccess={async (user) => {
-                setCurrentUser(user);
-                // Vérifier si abonné actif
-                const isSubscribed = await SubscriptionService.isUserSubscribed(user);
-                if (isSubscribed) {
-                  setAppState('main');
-                } else {
-                  setAppState('paywall');
-                }
+                await routeUserAfterAuth(user);
               }}
               onBack={() => setAppState('welcome')}
             />

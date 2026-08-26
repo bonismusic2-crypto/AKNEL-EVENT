@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Mail, Lock, Eye, EyeOff, User, Phone } from 'lucide-react-native';
+import { Mail, Lock, Eye, EyeOff, User, Phone, ArrowLeft } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { supabase } from '../lib/supabase';
 
 export const AuthScreen = ({ onSuccess, onBack }) => {
-  const [isLogin, setIsLogin] = useState(true);
+  const [isLogin, setIsLogin] = useState(false); // Par défaut sur Inscription pour inviter les nouveaux
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -42,7 +42,6 @@ export const AuthScreen = ({ onSuccess, onBack }) => {
         });
 
         if (error) {
-          // Si compte inexistant ou mot de passe faux
           if (error.message.includes('Invalid login credentials')) {
             throw new Error('Email ou mot de passe incorrect.');
           }
@@ -65,12 +64,8 @@ export const AuthScreen = ({ onSuccess, onBack }) => {
 
         if (error) throw error;
 
-        // Auto-connexion ou message de succès
-        Alert.alert(
-          'Compte créé avec succès !',
-          'Bienvenue dans l\'univers Bonis Musik.',
-          [{ text: 'Continuer', onPress: () => onSuccess(data.user) }]
-        );
+        // Redirection directe vers le Paywall sans pop-up qui referme
+        onSuccess(data.user);
       }
     } catch (err) {
       setErrorMessage(err.message || 'Une erreur est survenue lors de l\'authentification.');
@@ -83,32 +78,37 @@ export const AuthScreen = ({ onSuccess, onBack }) => {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         
+        {/* Navigation Retour */}
+        <TouchableOpacity onPress={onBack} style={styles.backBtn} activeOpacity={0.7}>
+          <ArrowLeft size={22} color={THEME.colors.textPrimary} />
+        </TouchableOpacity>
+
         {/* Titre & Sous-titre */}
         <View style={styles.header}>
-          <Text style={styles.title}>Bonis Musik</Text>
+          <Text style={styles.brandTitle}>BONIS <Text style={{ color: THEME.colors.gold }}>MUSIK</Text></Text>
+          <Text style={styles.title}>{isLogin ? 'Bon retour parmi nous' : 'Créer votre compte'}</Text>
           <Text style={styles.subtitle}>
-            {isLogin ? 'Connectez-vous à votre compte' : 'Créez votre compte en quelques secondes'}
+            {isLogin ? 'Connectez-vous pour retrouver vos chants' : 'Inscrivez-vous pour accéder au catalogue VIP'}
           </Text>
         </View>
 
         {/* Toggle Connexion / Inscription */}
         <View style={styles.tabToggle}>
           <TouchableOpacity
-            style={[styles.toggleBtn, isLogin && styles.toggleBtnActive]}
-            onPress={() => { setIsLogin(true); setErrorMessage(''); }}
-          >
-            <Text style={[styles.toggleText, isLogin && styles.toggleTextActive]}>Connexion</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
             style={[styles.toggleBtn, !isLogin && styles.toggleBtnActive]}
             onPress={() => { setIsLogin(false); setErrorMessage(''); }}
           >
             <Text style={[styles.toggleText, !isLogin && styles.toggleTextActive]}>Inscription</Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.toggleBtn, isLogin && styles.toggleBtnActive]}
+            onPress={() => { setIsLogin(true); setErrorMessage(''); }}
+          >
+            <Text style={[styles.toggleText, isLogin && styles.toggleTextActive]}>Connexion</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Message d'erreur s'il y a lieu */}
+        {/* Message d'erreur */}
         {errorMessage ? (
           <View style={styles.errorBox}>
             <Text style={styles.errorText}>{errorMessage}</Text>
@@ -116,14 +116,14 @@ export const AuthScreen = ({ onSuccess, onBack }) => {
         ) : null}
 
         {/* Formulaire */}
-        <View style={styles.formContainer}>
+        <View style={styles.form}>
           {!isLogin && (
             <>
               <View style={styles.inputWrapper}>
-                <User size={18} color={THEME.colors.textMuted} />
+                <User size={18} color={THEME.colors.textMuted} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="Nom & Prénoms"
+                  placeholder="Nom et Prénoms (ex: Jean Kouassi)"
                   placeholderTextColor={THEME.colors.textMuted}
                   value={fullName}
                   onChangeText={setFullName}
@@ -131,10 +131,10 @@ export const AuthScreen = ({ onSuccess, onBack }) => {
               </View>
 
               <View style={styles.inputWrapper}>
-                <Phone size={18} color={THEME.colors.textMuted} />
+                <Phone size={18} color={THEME.colors.textMuted} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="Numéro WhatsApp / Mobile Money"
+                  placeholder="Numéro de téléphone (Mobile Money)"
                   placeholderTextColor={THEME.colors.textMuted}
                   value={phone}
                   onChangeText={setPhone}
@@ -145,29 +145,33 @@ export const AuthScreen = ({ onSuccess, onBack }) => {
           )}
 
           <View style={styles.inputWrapper}>
-            <Mail size={18} color={THEME.colors.textMuted} />
+            <Mail size={18} color={THEME.colors.textMuted} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="Adresse email"
               placeholderTextColor={THEME.colors.textMuted}
               value={email}
               onChangeText={setEmail}
-              autoCapitalize="none"
               keyboardType="email-address"
+              autoCapitalize="none"
             />
           </View>
 
           <View style={styles.inputWrapper}>
-            <Lock size={18} color={THEME.colors.textMuted} />
+            <Lock size={18} color={THEME.colors.textMuted} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
-              placeholder="Mot de passe (min 6 car.)"
+              placeholder="Mot de passe (6 caractères min)"
               placeholderTextColor={THEME.colors.textMuted}
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
             />
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+            <TouchableOpacity
+              onPress={() => setShowPassword(!showPassword)}
+              style={styles.eyeBtn}
+              activeOpacity={0.7}
+            >
               {showPassword ? (
                 <EyeOff size={18} color={THEME.colors.textMuted} />
               ) : (
@@ -176,7 +180,7 @@ export const AuthScreen = ({ onSuccess, onBack }) => {
             </TouchableOpacity>
           </View>
 
-          {/* Bouton Principal Authentification */}
+          {/* Bouton de Validation */}
           <TouchableOpacity
             style={styles.submitBtn}
             onPress={handleAuth}
@@ -187,37 +191,18 @@ export const AuthScreen = ({ onSuccess, onBack }) => {
               colors={THEME.colors.goldGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
-              style={styles.gradientBtn}
+              style={styles.submitGradient}
             >
               {loading ? (
                 <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
-                <Text style={styles.submitText}>{isLogin ? 'Se connecter' : "Créer mon compte"}</Text>
+                <Text style={styles.submitText}>
+                  {isLogin ? 'Se connecter' : 'Créer mon compte & S\'abonner'}
+                </Text>
               )}
             </LinearGradient>
           </TouchableOpacity>
         </View>
-
-        {/* Séparateur */}
-        <View style={styles.dividerRow}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>OU</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        {/* Accès Démo Rapide / Visiteur */}
-        <TouchableOpacity
-          style={styles.guestBtn}
-          onPress={() => onSuccess({ email: 'visiteur@bonismusik.com', user_metadata: { full_name: 'Visiteur' } })}
-        >
-          <Text style={styles.guestBtnText}>⚡ Continuer en mode Découverte</Text>
-        </TouchableOpacity>
-
-        {/* Mentions Légales */}
-        <Text style={styles.termsText}>
-          En continuant, vous acceptez nos{'\n'}
-          <Text style={styles.termsHighlight}>Conditions d'utilisation et Politique de confidentialité</Text>
-        </Text>
 
       </View>
     </SafeAreaView>
@@ -234,34 +219,54 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     justifyContent: 'center',
   },
+  backBtn: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    zIndex: 10,
+  },
   header: {
     alignItems: 'center',
     marginBottom: 24,
   },
-  title: {
-    color: THEME.colors.gold,
-    fontSize: 28,
+  brandTitle: {
+    color: THEME.colors.textPrimary,
+    fontSize: 18,
     fontWeight: '900',
-    letterSpacing: 0.5,
+    letterSpacing: 2,
+    marginBottom: 8,
+  },
+  title: {
+    color: THEME.colors.textPrimary,
+    fontSize: 22,
+    fontWeight: '900',
+    marginBottom: 6,
   },
   subtitle: {
     color: THEME.colors.textSecondary,
     fontSize: 13,
-    marginTop: 4,
     textAlign: 'center',
   },
   tabToggle: {
     flexDirection: 'row',
-    backgroundColor: '#E5E7EB',
-    borderRadius: 25,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 14,
     padding: 4,
-    marginBottom: 16,
+    marginBottom: 20,
   },
   toggleBtn: {
     flex: 1,
     paddingVertical: 10,
     alignItems: 'center',
-    borderRadius: 22,
+    borderRadius: 10,
   },
   toggleBtnActive: {
     backgroundColor: '#FFFFFF',
@@ -274,7 +279,7 @@ const styles = StyleSheet.create({
   toggleText: {
     color: THEME.colors.textSecondary,
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   toggleTextActive: {
     color: THEME.colors.gold,
@@ -282,9 +287,9 @@ const styles = StyleSheet.create({
   },
   errorBox: {
     backgroundColor: '#FEE2E2',
-    padding: 10,
-    borderRadius: 10,
-    marginBottom: 12,
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: '#FCA5A5',
   },
@@ -294,82 +299,49 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '600',
   },
-  formContainer: {
-    gap: 12,
+  form: {
+    gap: 14,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#E5E7EB',
-    gap: 10,
+    paddingHorizontal: 14,
+    height: 52,
+  },
+  inputIcon: {
+    marginRight: 10,
   },
   input: {
     flex: 1,
     color: THEME.colors.textPrimary,
     fontSize: 14,
   },
+  eyeBtn: {
+    padding: 6,
+  },
   submitBtn: {
     borderRadius: 30,
     overflow: 'hidden',
     marginTop: 8,
+    shadowColor: THEME.colors.gold,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
   },
-  gradientBtn: {
-    paddingVertical: 15,
+  submitGradient: {
+    paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   submitText: {
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '800',
-  },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 16,
-    gap: 12,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#E5E7EB',
-  },
-  dividerText: {
-    color: THEME.colors.textMuted,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  guestBtn: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    paddingVertical: 13,
-    borderRadius: 25,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  guestBtnText: {
-    color: THEME.colors.textPrimary,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  termsText: {
-    color: THEME.colors.textMuted,
-    fontSize: 11,
-    textAlign: 'center',
-    marginTop: 20,
-    lineHeight: 16,
-  },
-  termsHighlight: {
-    color: THEME.colors.textSecondary,
+    fontWeight: '900',
+    letterSpacing: 0.3,
   },
 });
