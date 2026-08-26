@@ -9,12 +9,14 @@ const ManageMusic = () => {
     const [mediaContents, setMediaContents] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // Modal & Formulaire d'ajout
+    // Modal & Formulaire d'ajout / modification
     const [showModal, setShowModal] = useState(false);
-    const [modalType, setModalType] = useState('album'); // 'album', 'clip', 'teaching'
+    const [modalType, setModalType] = useState('album'); // 'album', 'song', 'clip', 'teaching'
+    const [editingItem, setEditingItem] = useState(null); // Élément en cours de modification (null si ajout)
+    
     const [formData, setFormData] = useState({
         title: '',
-        album_id: '', // Lier le clip ou le titre à un album précis
+        album_id: '',
         category: 'video_clip', // 'video_clip', 'teaching_audio', 'teaching_video'
         media_url: '',
         thumbnail_url: '',
@@ -52,65 +54,159 @@ const ManageMusic = () => {
         fetchData();
     }, []);
 
-    const handleCreateMedia = async (e) => {
+    // Ouvrir le formulaire en mode création
+    const handleOpenCreate = (type) => {
+        setEditingItem(null);
+        setModalType(type);
+        setFormData({
+            title: '',
+            album_id: albums[0]?.id || '',
+            category: type === 'clip' ? 'video_clip' : 'teaching_audio',
+            media_url: '',
+            thumbnail_url: '',
+            duration: '',
+            price: '0',
+            speaker_or_artist: 'Chantre Boniface',
+            year: '2026'
+        });
+        setShowModal(true);
+    };
+
+    // Ouvrir le formulaire en mode modification pour un Album
+    const handleEditAlbum = (album) => {
+        setEditingItem(album);
+        setModalType('album');
+        setFormData({
+            title: album.title || '',
+            album_id: album.id,
+            category: 'album',
+            media_url: '',
+            thumbnail_url: album.cover_url || '',
+            duration: '',
+            price: album.price ? album.price.toString() : '0',
+            speaker_or_artist: album.artist_name || 'Chantre Boniface',
+            year: album.release_date ? new Date(album.release_date).getFullYear().toString() : '2026'
+        });
+        setShowModal(true);
+    };
+
+    // Ouvrir le formulaire en mode modification pour une Chanson
+    const handleEditSong = (song, parentAlbum) => {
+        setEditingItem(song);
+        setModalType('song');
+        setFormData({
+            title: song.title || '',
+            album_id: song.album_id || parentAlbum?.id || '',
+            category: 'song',
+            media_url: song.audio_url || song.file_url || song.url || '',
+            thumbnail_url: parentAlbum?.cover_url || '',
+            duration: song.duration || '04:30',
+            price: '0',
+            speaker_or_artist: song.artist_name || parentAlbum?.artist_name || 'Chantre Boniface',
+            year: '2026'
+        });
+        setShowModal(true);
+    };
+
+    // Ouvrir le formulaire en mode modification pour un Clip ou Enseignement
+    const handleEditMedia = (media) => {
+        setEditingItem(media);
+        setModalType(media.category === 'video_clip' ? 'clip' : 'teaching');
+        setFormData({
+            title: media.title || '',
+            album_id: media.album_id || '',
+            category: media.category || 'video_clip',
+            media_url: media.media_url || '',
+            thumbnail_url: media.thumbnail_url || '',
+            duration: media.duration || '05:00',
+            price: '0',
+            speaker_or_artist: media.speaker_or_artist || 'Chantre Boniface',
+            year: '2026'
+        });
+        setShowModal(true);
+    };
+
+    // Enregistrement (Création OU Mise à jour)
+    const handleSave = async (e) => {
         e.preventDefault();
         setSaving(true);
         try {
-            if (modalType === 'album') {
-                // 1. Création d'un Album Audio
-                const { data: newAlbum, error } = await supabase.from('albums').insert([{
-                    title: formData.title,
-                    price: parseFloat(formData.price) || 0,
-                    cover_url: formData.thumbnail_url,
-                    artist_name: formData.speaker_or_artist || 'Chantre Boniface',
-                    release_date: new Date().toISOString()
-                }]).select();
-                if (error) throw error;
-
-                // Si un fichier audio MP3 initial a été joint lors de la création de l'album
-                if (formData.media_url && newAlbum && newAlbum[0]) {
-                    await supabase.from('songs').insert([{
-                        album_id: newAlbum[0].id,
+            if (editingItem) {
+                // ==================== MODE MODIFICATION ====================
+                if (modalType === 'album') {
+                    const { error } = await supabase.from('albums').update({
+                        title: formData.title,
+                        price: parseFloat(formData.price) || 0,
+                        cover_url: formData.thumbnail_url,
+                        artist_name: formData.speaker_or_artist || 'Chantre Boniface',
+                    }).eq('id', editingItem.id);
+                    if (error) throw error;
+                } else if (modalType === 'song') {
+                    const { error } = await supabase.from('songs').update({
+                        album_id: formData.album_id,
                         title: formData.title,
                         audio_url: formData.media_url,
                         duration: formData.duration || '04:30',
-                    }]);
+                        artist_name: formData.speaker_or_artist || 'Chantre Boniface',
+                    }).eq('id', editingItem.id);
+                    if (error) throw error;
+                } else {
+                    const { error } = await supabase.from('media_contents').update({
+                        title: formData.title,
+                        album_id: formData.album_id || null,
+                        category: modalType === 'clip' ? 'video_clip' : formData.category,
+                        media_url: formData.media_url,
+                        thumbnail_url: formData.thumbnail_url,
+                        duration: formData.duration || '05:00',
+                        speaker_or_artist: formData.speaker_or_artist || 'Chantre Boniface'
+                    }).eq('id', editingItem.id);
+                    if (error) throw error;
                 }
-            } else if (modalType === 'song') {
-                // 2. Ajout d'un Morceau Audio dans un Album existant
-                const { error } = await supabase.from('songs').insert([{
-                    album_id: formData.album_id || (albums[0] ? albums[0].id : null),
-                    title: formData.title,
-                    audio_url: formData.media_url,
-                    duration: formData.duration || '04:30',
-                }]);
-                if (error) throw error;
             } else {
-                // 3. Ajout d'un Clip Vidéo HD lié à un Album ou d'un Enseignement
-                const { error } = await supabase.from('media_contents').insert([{
-                    title: formData.title,
-                    album_id: formData.album_id || null, // Liaison directe du clip à son album parent
-                    category: modalType === 'clip' ? 'video_clip' : formData.category,
-                    media_url: formData.media_url,
-                    thumbnail_url: formData.thumbnail_url,
-                    duration: formData.duration || '05:00',
-                    speaker_or_artist: formData.speaker_or_artist || 'Chantre Boniface'
-                }]);
-                if (error) throw error;
+                // ==================== MODE CRÉATION ====================
+                if (modalType === 'album') {
+                    const { data: newAlbum, error } = await supabase.from('albums').insert([{
+                        title: formData.title,
+                        price: parseFloat(formData.price) || 0,
+                        cover_url: formData.thumbnail_url,
+                        artist_name: formData.speaker_or_artist || 'Chantre Boniface',
+                        release_date: new Date().toISOString()
+                    }]).select();
+                    if (error) throw error;
+
+                    if (formData.media_url && newAlbum && newAlbum[0]) {
+                        await supabase.from('songs').insert([{
+                            album_id: newAlbum[0].id,
+                            title: formData.title,
+                            audio_url: formData.media_url,
+                            duration: formData.duration || '04:30',
+                        }]);
+                    }
+                } else if (modalType === 'song') {
+                    const { error } = await supabase.from('songs').insert([{
+                        album_id: formData.album_id || (albums[0] ? albums[0].id : null),
+                        title: formData.title,
+                        audio_url: formData.media_url,
+                        duration: formData.duration || '04:30',
+                        artist_name: formData.speaker_or_artist || 'Chantre Boniface',
+                    }]);
+                    if (error) throw error;
+                } else {
+                    const { error } = await supabase.from('media_contents').insert([{
+                        title: formData.title,
+                        album_id: formData.album_id || null,
+                        category: modalType === 'clip' ? 'video_clip' : formData.category,
+                        media_url: formData.media_url,
+                        thumbnail_url: formData.thumbnail_url,
+                        duration: formData.duration || '05:00',
+                        speaker_or_artist: formData.speaker_or_artist || 'Chantre Boniface'
+                    }]);
+                    if (error) throw error;
+                }
             }
 
             setShowModal(false);
-            setFormData({
-                title: '',
-                album_id: '',
-                category: 'video_clip',
-                media_url: '',
-                thumbnail_url: '',
-                duration: '',
-                price: '0',
-                speaker_or_artist: 'Chantre Boniface',
-                year: '2026'
-            });
+            setEditingItem(null);
             fetchData();
         } catch (err) {
             alert('Erreur lors de l\'enregistrement : ' + err.message);
@@ -122,6 +218,12 @@ const ManageMusic = () => {
     const handleDeleteAlbum = async (id) => {
         if (!window.confirm('Supprimer cet album et tous ses titres ?')) return;
         await supabase.from('albums').delete().eq('id', id);
+        fetchData();
+    };
+
+    const handleDeleteSong = async (id) => {
+        if (!window.confirm('Supprimer cette chanson ?')) return;
+        await supabase.from('songs').delete().eq('id', id);
         fetchData();
     };
 
@@ -138,31 +240,31 @@ const ManageMusic = () => {
                 <div>
                     <h1 className="text-3xl font-serif font-bold text-dark">Gestion des Contenus Mobile (Bonis Musik)</h1>
                     <p className="text-gray-500 text-sm mt-1">
-                        Publiez des albums, des pistes audios, des clips vidéos rattachés aux albums et des enseignements spirituels.
+                        Publiez, modifiez ou mettez à jour vos albums, chansons, clips vidéo HD et enseignements spirituels.
                     </p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
                     <button
-                        onClick={() => { setModalType('album'); setShowModal(true); }}
+                        onClick={() => handleOpenCreate('album')}
                         className="bg-dark text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 hover:bg-gold hover:text-dark transition-all shadow-md cursor-pointer"
                     >
                         <Plus size={16} /> 1. Créer un Album
                     </button>
                     <button
-                        onClick={() => { setModalType('song'); setShowModal(true); }}
+                        onClick={() => handleOpenCreate('song')}
                         className="bg-amber-600 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 hover:bg-amber-700 transition-all shadow-md cursor-pointer"
                     >
                         <Plus size={16} /> 2. Ajouter Chanson dans Album
                     </button>
                     <button
-                        onClick={() => { setModalType('clip'); setShowModal(true); }}
+                        onClick={() => handleOpenCreate('clip')}
                         className="bg-gold text-dark px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 hover:bg-dark hover:text-white transition-all shadow-md cursor-pointer"
                     >
                         <Plus size={16} /> 3. Ajouter Clip Vidéo dans Album
                     </button>
                     <button
-                        onClick={() => { setModalType('teaching'); setShowModal(true); }}
+                        onClick={() => handleOpenCreate('teaching')}
                         className="bg-gray-100 text-gray-800 px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 hover:bg-gray-200 transition-all shadow-sm cursor-pointer"
                     >
                         <Plus size={16} /> 4. Publier Enseignement
@@ -215,7 +317,7 @@ const ManageMusic = () => {
                                                         <Music size={28} className="text-gold" />
                                                     )}
                                                 </div>
-                                                <div>
+                                                <div className="flex-1">
                                                     <span className="text-[10px] font-bold uppercase tracking-wider text-gold bg-gold/10 px-2 py-0.5 rounded">Album Officiel</span>
                                                     <h3 className="text-lg font-serif font-bold text-dark mt-1 leading-tight">{album.title}</h3>
                                                     <p className="text-gray-500 text-xs mt-1">
@@ -224,32 +326,56 @@ const ManageMusic = () => {
                                                 </div>
                                             </div>
 
-                                            {/* Liste des chansons dans cet album */}
+                                            {/* Liste des chansons dans cet album avec boutons Modifier/Supprimer */}
                                             {album.songs && album.songs.length > 0 && (
-                                                <div className="bg-gray-50 rounded-xl p-3 mb-3 space-y-1.5 border border-gray-100">
+                                                <div className="bg-gray-50 rounded-xl p-3 mb-3 space-y-2 border border-gray-100">
                                                     <p className="text-[10px] font-extrabold uppercase text-gray-400">Pistes Audio ({album.songs.length})</p>
-                                                    {album.songs.slice(0, 3).map((s, idx) => (
-                                                        <div key={s.id || idx} className="flex justify-between items-center text-xs text-gray-700">
-                                                            <span className="truncate font-medium">{idx + 1}. {s.title}</span>
-                                                            <span className="text-[10px] text-gray-400 font-mono">{s.duration || '04:30'}</span>
+                                                    {album.songs.map((s, idx) => (
+                                                        <div key={s.id || idx} className="flex justify-between items-center text-xs bg-white p-2 rounded-lg border border-gray-100 shadow-2xs">
+                                                            <div className="flex-1 truncate mr-2">
+                                                                <span className="font-bold text-dark">{idx + 1}. {s.title}</span>
+                                                                <span className="text-[10px] text-gray-400 font-mono block">{s.duration || '04:30'}</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-1">
+                                                                <button
+                                                                    onClick={() => handleEditSong(s, album)}
+                                                                    className="p-1.5 text-gray-400 hover:text-gold hover:bg-gold/10 rounded-md cursor-pointer"
+                                                                    title="Modifier la chanson"
+                                                                >
+                                                                    <Edit2 size={13} />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleDeleteSong(s.id)}
+                                                                    className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md cursor-pointer"
+                                                                    title="Supprimer la chanson"
+                                                                >
+                                                                    <Trash2 size={13} />
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     ))}
-                                                    {album.songs.length > 3 && (
-                                                        <p className="text-[10px] text-gold font-bold text-center pt-1">+ {album.songs.length - 3} autres titres</p>
-                                                    )}
                                                 </div>
                                             )}
                                         </div>
 
                                         <div className="pt-3 border-t border-gray-100 flex justify-between items-center text-xs">
                                             <span className="text-green-600 font-bold">● Streaming Illimité Débloqué</span>
-                                            <button
-                                                onClick={() => handleDeleteAlbum(album.id)}
-                                                className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                                                title="Supprimer l'album"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => handleEditAlbum(album)}
+                                                    className="p-2 text-gray-500 hover:text-gold hover:bg-gold/10 rounded-lg transition-colors cursor-pointer flex items-center gap-1 font-bold"
+                                                    title="Modifier l'album"
+                                                >
+                                                    <Edit2 size={15} /> Modifier
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteAlbum(album.id)}
+                                                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                                    title="Supprimer l'album"
+                                                >
+                                                    <Trash2 size={15} />
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 );
@@ -272,7 +398,7 @@ const ManageMusic = () => {
                                                     <Film size={28} className="text-gold" />
                                                 )}
                                             </div>
-                                            <div>
+                                            <div className="flex-1">
                                                 <span className="text-[10px] font-bold uppercase tracking-wider text-gold bg-gold/10 px-2 py-0.5 rounded">
                                                     {parentAlbum ? `Clip de l'album: ${parentAlbum.title}` : 'Clip Vidéo HD'}
                                                 </span>
@@ -282,12 +408,21 @@ const ManageMusic = () => {
                                         </div>
                                         <div className="pt-3 border-t border-gray-100 flex justify-between items-center text-xs">
                                             <span className="text-green-600 font-bold">● Vidéo 4K Débloquée</span>
-                                            <button
-                                                onClick={() => handleDeleteMedia(item.id)}
-                                                className="p-2 text-red-500 hover:bg-red-50 rounded-lg cursor-pointer"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => handleEditMedia(item)}
+                                                    className="p-2 text-gray-500 hover:text-gold hover:bg-gold/10 rounded-lg cursor-pointer flex items-center gap-1 font-bold"
+                                                    title="Modifier le clip"
+                                                >
+                                                    <Edit2 size={15} /> Modifier
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteMedia(item.id)}
+                                                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg cursor-pointer"
+                                                >
+                                                    <Trash2 size={15} />
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 );
@@ -308,7 +443,7 @@ const ManageMusic = () => {
                                                 <BookOpen size={28} className="text-gold" />
                                             )}
                                         </div>
-                                        <div>
+                                        <div className="flex-1">
                                             <span className="text-[10px] font-bold uppercase tracking-wider text-dark bg-gray-100 px-2 py-0.5 rounded">
                                                 {item.category === 'teaching_audio' ? '🎙️ Audio' : '🎥 Vidéo'}
                                             </span>
@@ -318,12 +453,21 @@ const ManageMusic = () => {
                                     </div>
                                     <div className="pt-3 border-t border-gray-100 flex justify-between items-center text-xs">
                                         <span className="text-green-600 font-bold">● Streaming Illimité VIP</span>
-                                        <button
-                                            onClick={() => handleDeleteMedia(item.id)}
-                                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg cursor-pointer"
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => handleEditMedia(item)}
+                                                className="p-2 text-gray-500 hover:text-gold hover:bg-gold/10 rounded-lg cursor-pointer flex items-center gap-1 font-bold"
+                                                title="Modifier l'enseignement"
+                                            >
+                                                <Edit2 size={15} /> Modifier
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteMedia(item.id)}
+                                                className="p-2 text-red-500 hover:bg-red-50 rounded-lg cursor-pointer"
+                                            >
+                                                <Trash2 size={15} />
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -332,18 +476,19 @@ const ManageMusic = () => {
                 </>
             )}
 
-            {/* MODAL D'AJOUT DE CONTENU */}
+            {/* MODAL D'AJOUT ET MODIFICATION DE CONTENU */}
             {showModal && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-3xl p-8 max-w-lg w-full shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
                         <div className="flex justify-between items-center">
                             <h3 className="text-xl font-serif font-bold text-dark">
-                                {modalType === 'album' ? '1. Nouvel Album Officiel' : modalType === 'song' ? '2. Nouvelle Chanson dans un Album' : modalType === 'clip' ? '3. Nouveau Clip Vidéo lié à un Album' : '4. Nouvel Enseignement'}
+                                {editingItem ? '✏️ Modifier : ' : '➕ Nouveau : '}
+                                {modalType === 'album' ? 'Album Officiel' : modalType === 'song' ? 'Chanson dans un Album' : modalType === 'clip' ? 'Clip Vidéo lié à un Album' : 'Enseignement'}
                             </h3>
                             <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-dark font-bold text-lg cursor-pointer">✕</button>
                         </div>
 
-                        <form onSubmit={handleCreateMedia} className="space-y-4 text-xs font-bold uppercase tracking-wider text-gray-700">
+                        <form onSubmit={handleSave} className="space-y-4 text-xs font-bold uppercase tracking-wider text-gray-700">
                             {/* Choix de l'album de rattachement pour les Chansons et les Clips */}
                             {(modalType === 'song' || modalType === 'clip') && (
                                 <div>
@@ -395,26 +540,26 @@ const ManageMusic = () => {
                                 </div>
                             )}
 
-                            {/* 1. Upload de la Pochette / Miniature Image (pour Albums, Clips et Enseignements) */}
+                            {/* 1. Upload / Modification de la Pochette ou Miniature Image */}
                             {modalType !== 'song' && (
                                 <FileUploader
                                     label={modalType === 'album' ? "Pochette de l'Album (Image PNG/JPG)" : "Miniature Vidéo (Image PNG/JPG)"}
                                     accept="image/*"
                                     bucket="covers"
-                                    required={true}
-                                    helperText="Glissez ou sélectionnez l'image depuis votre ordinateur"
+                                    required={!editingItem}
+                                    helperText="Glissez ou sélectionnez l'image pour mettre à jour la pochette"
                                     currentPreviewUrl={formData.thumbnail_url}
                                     onUploadSuccess={(url) => setFormData(prev => ({ ...prev, thumbnail_url: url }))}
                                 />
                             )}
 
-                            {/* 2. Upload du Fichier Réel (MP3 pour Chansons / Albums, MP4 pour Clips et Vidéos) */}
+                            {/* 2. Upload / Remplacement du Fichier Réel (Audio MP3 ou Vidéo MP4) */}
                             <FileUploader
                                 label={modalType === 'clip' || (modalType === 'teaching' && formData.category === 'teaching_video') ? "Fichier Vidéo HD (MP4 / WebM)" : "Fichier Audio HD (MP3 / WAV)"}
                                 accept={modalType === 'clip' || (modalType === 'teaching' && formData.category === 'teaching_video') ? "video/*" : "audio/*"}
                                 bucket="media"
-                                required={modalType !== 'album'}
-                                helperText={modalType === 'clip' ? "Sélectionnez le clip vidéo MP4" : "Sélectionnez le fichier audio MP3 de la chanson"}
+                                required={!editingItem && modalType !== 'album'}
+                                helperText={editingItem ? "Optionnel : sélectionnez un nouveau fichier pour remplacer l'actuel" : (modalType === 'clip' ? "Sélectionnez le clip vidéo MP4" : "Sélectionnez le fichier audio MP3")}
                                 currentPreviewUrl={formData.media_url}
                                 onUploadSuccess={(url) => setFormData(prev => ({ ...prev, media_url: url }))}
                             />
@@ -446,7 +591,7 @@ const ManageMusic = () => {
                                 disabled={saving}
                                 className="w-full bg-gold text-dark py-3.5 rounded-xl font-bold uppercase tracking-wider text-xs hover:bg-dark hover:text-white transition-all shadow-md cursor-pointer"
                             >
-                                {saving ? 'Enregistrement et Téléversement...' : 'Publier Immédiatement sur l\'App'}
+                                {saving ? 'Enregistrement en cours...' : editingItem ? '💾 Enregistrer les Modifications' : '🚀 Publier Immédiatement sur l\'App'}
                             </button>
                         </form>
                     </div>
