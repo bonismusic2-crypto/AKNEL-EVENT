@@ -22,12 +22,11 @@ export const GeniusPayService = {
       customer: {
         email: user?.email || 'abonne@bonismusik.com',
         name: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Abonne Bonis',
-        phone: user?.user_metadata?.phone || '',
       },
-      success_url: 'bonismusik://payment-success',
-      error_url: 'bonismusik://payment-cancel',
-      return_url: 'bonismusik://payment-success',
-      cancel_url: 'bonismusik://payment-cancel',
+      success_url: 'https://bonismusik.vercel.app/payment-success',
+      error_url: 'https://bonismusik.vercel.app/payment-cancel',
+      return_url: 'https://bonismusik.vercel.app/payment-success',
+      cancel_url: 'https://bonismusik.vercel.app/payment-cancel',
     };
 
     const response = await fetch(`${GENIUSPAY_CONFIG.baseUrl}/payments`, {
@@ -46,6 +45,7 @@ export const GeniusPayService = {
     if (!response.ok || !resData || resData.success === false) {
       const errorMsg =
         resData?.message ||
+        resData?.error?.message ||
         resData?.error ||
         (typeof resData?.errors === 'object' ? JSON.stringify(resData.errors) : null) ||
         `Erreur GeniusPay (Code HTTP ${response.status})`;
