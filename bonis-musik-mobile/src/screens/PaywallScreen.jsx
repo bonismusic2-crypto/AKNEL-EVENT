@@ -25,7 +25,7 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
   const [paymentUrl, setPaymentUrl] = useState(null);
   const [currentTxId, setCurrentTxId] = useState(null);
   const [webviewLoading, setWebviewLoading] = useState(true);
-  const isCompletingRef = useRef(false);
+  const completedRef = useRef(false);
 
   const benefits = [
     'Accès illimité à tous les albums et singles audio.',
@@ -43,10 +43,34 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
     { id: 'card', name: 'Carte VISA / Mastercard', color: '#1A1F71', type: 'Carte Bancaire' },
   ];
 
+  // Helper pour basculer instantanément sur l'écran succès
+  const completeSuccess = (txId) => {
+    if (completedRef.current) return;
+    completedRef.current = true;
+
+    const finalTxId = txId || currentTxId || 'GP_' + Date.now().toString().slice(-8);
+
+    // 1. Fermeture immédiate de la modal WebView
+    setShowWebview(false);
+
+    // 2. Déclenchement de l'activation Supabase et cache mémoire
+    if (currentUser) {
+      SubscriptionService.setSubscribedInMemory(currentUser.id, true);
+      SubscriptionService.activateVipSubscription(currentUser).catch((err) => {
+        console.warn('Erreur activation VIP en tâche de fond:', err);
+      });
+    }
+
+    // 3. Bascule immédiate et infaillible vers PaymentSuccessScreen
+    if (onSuccess) {
+      onSuccess(finalTxId);
+    }
+  };
+
   // 1. Initialiser la transaction et ouvrir le WebView intégré à l'écran
   const handleSubscribe = async () => {
+    completedRef.current = false;
     setLoading(true);
-    isCompletingRef.current = false;
     try {
       const paymentResult = await GeniusPayService.createSubscriptionPayment({
         user: currentUser,
@@ -73,34 +97,11 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
     }
   };
 
-  // Helper pour basculer instantanément sur l'écran succès
-  const completeSuccess = (tx) => {
-    if (isCompletingRef.current) return;
-    isCompletingRef.current = true;
-    
-    // Fermer immédiatement le WebView
-    setShowWebview(false);
-
-    // Mettre à jour le cache mémoire et Supabase
-    if (currentUser) {
-      SubscriptionService.setSubscribedInMemory(currentUser.id, true);
-      SubscriptionService.activateVipSubscription(currentUser).catch((e) => {
-        console.warn('Background VIP activation warning:', e);
-      });
-    }
-
-    // Basculer sans attendre vers PaymentSuccessScreen
-    if (onSuccess) {
-      onSuccess(tx || currentTxId || 'GP_SUCCESS_' + Date.now().toString().slice(-6));
-    }
-  };
-
   // 2. Intercepter le succès directement dans le WebView
   const handleNavigationStateChange = (navState) => {
     const { url } = navState;
     if (!url) return;
 
-    // Détection de la page de succès ou de retour
     if (
       url.includes('payment-success') ||
       url.includes('success') ||
