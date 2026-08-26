@@ -182,20 +182,20 @@ export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser, onPlayVide
   const displayEmail = currentUser?.email || SAMPLE_DATA.user.email;
   const displayPhone = currentUser?.user_metadata?.phone || SAMPLE_DATA.user.phone;
 
-  // Gestion du Support WhatsApp direct
+  // Gestion du Contact WhatsApp direct avec le Chantre Boniface
   const handleWhatsAppSupport = async () => {
-    const phone = '2250556018787';
-    const msg = encodeURIComponent("Bonjour Chantre Boniface, j'ai une question concernant l'application Bonis Musik.");
+    const phone = '2250709191277';
+    const msg = encodeURIComponent("Bonjour Chantre Boniface, je vous contacte depuis l'application Bonis Musik.");
     const url = `https://wa.me/${phone}?text=${msg}`;
     try {
       const supported = await Linking.canOpenURL(url);
       if (supported) {
         await Linking.openURL(url);
       } else {
-        Alert.alert('Support Bonis Musik', 'Contactez le support au +225 05 56 01 87 87');
+        Alert.alert('Contacter le Chantre', 'Contactez le Chantre Boniface au +225 07 09 19 12 77');
       }
     } catch (e) {
-      Alert.alert('Support', 'Contactez le support au +225 05 56 01 87 87');
+      Alert.alert('Contact', 'Contactez le Chantre Boniface au +225 07 09 19 12 77');
     }
   };
 
@@ -364,7 +364,7 @@ export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser, onPlayVide
             <ChevronRight size={18} color={THEME.colors.textMuted} />
           </TouchableOpacity>
 
-          {/* 4. Support & Contact WhatsApp */}
+          {/* 4. Contacter le Chantre WhatsApp */}
           <TouchableOpacity
             style={styles.menuItem}
             onPress={handleWhatsAppSupport}
@@ -375,8 +375,8 @@ export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser, onPlayVide
                 <MessageCircle size={18} color="#25D366" />
               </View>
               <View>
-                <Text style={styles.menuItemText}>Support & Ministère</Text>
-                <Text style={styles.menuItemSubtext}>Écrire au Chantre Boniface sur WhatsApp</Text>
+                <Text style={styles.menuItemText}>Contacter le Chantre</Text>
+                <Text style={styles.menuItemSubtext}>Échanger directement sur WhatsApp (+225 07 09 19 12 77)</Text>
               </View>
             </View>
             <ExternalLink size={16} color={THEME.colors.textMuted} />
