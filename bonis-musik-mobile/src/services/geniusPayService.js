@@ -23,13 +23,29 @@ export const GeniusPayService = {
       ? 'Abonnement Bonis Musik - Accès Intégral 1 An (10 000 FCFA / ~15 €)'
       : 'Abonnement Bonis Musik - Accès Intégral 1 Mois (1 000 FCFA / ~1,50 €)';
 
+    const userId = user?.id || null;
+    const userEmail = user?.email || 'abonne@bonismusik.com';
+    const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Abonne Bonis';
+
     const payload = {
       amount: Number(finalAmount),
       currency: GENIUSPAY_CONFIG.currency,
-      description: planDescription,
+      description: `${planDescription}${userId ? ` [UID:${userId}]` : ''}`,
       customer: {
-        email: user?.email || 'abonne@bonismusik.com',
-        name: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Abonne Bonis',
+        email: userEmail,
+        name: userName,
+      },
+      metadata: {
+        user_id: userId,
+        user_email: userEmail,
+        plan_type: isAnnual ? 'annual' : 'monthly',
+        amount: Number(finalAmount),
+        payment_method: paymentMethod,
+      },
+      custom_data: {
+        user_id: userId,
+        user_email: userEmail,
+        plan_type: isAnnual ? 'annual' : 'monthly',
       },
       success_url: 'https://bonismusik.vercel.app/payment-success',
       error_url: 'https://bonismusik.vercel.app/payment-cancel',
