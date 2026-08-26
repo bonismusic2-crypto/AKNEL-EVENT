@@ -676,13 +676,26 @@ const ManageMusic = () => {
                                 bucket="media"
                                 multiple={modalType === 'album' || modalType === 'song'} // ✅ MULTI-SÉLECTION ACTIVÉE
                                 required={!editingItem && modalType !== 'album' && !multiUploadedSongs.length}
-                                helperText={modalType === 'album' || modalType === 'song' ? "Sélectionnez un ou plusieurs fichiers audio MP3 à la fois" : "Sélectionnez le fichier vidéo MP4"}
+                                helperText={modalType === 'album' || modalType === 'song' ? "Sélectionnez un ou plusieurs fichiers audio MP3 à la fois (durée calculée automatiquement)" : "Sélectionnez le fichier vidéo MP4 (durée calculée automatiquement)"}
                                 currentPreviewUrl={formData.media_url}
-                                onUploadSuccess={(url) => setFormData(prev => ({ ...prev, media_url: url }))}
+                                onDurationDetected={(dur) => {
+                                    if (dur) setFormData(prev => ({ ...prev, duration: dur }));
+                                }}
+                                onUploadSuccess={(url, file, dur) => {
+                                    setFormData(prev => ({
+                                        ...prev,
+                                        media_url: url,
+                                        duration: dur || prev.duration || '04:30'
+                                    }));
+                                }}
                                 onMultiUploadSuccess={(list) => {
                                     setMultiUploadedSongs(list);
-                                    if (list.length > 0 && !formData.title && modalType !== 'album') {
-                                        setFormData(prev => ({ ...prev, title: list[0].title }));
+                                    if (list.length > 0) {
+                                        setFormData(prev => ({
+                                            ...prev,
+                                            title: prev.title || list[0].title,
+                                            duration: list[0].duration || '04:30'
+                                        }));
                                     }
                                 }}
                             />

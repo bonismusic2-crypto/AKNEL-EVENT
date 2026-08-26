@@ -2,13 +2,48 @@ import React, { useState, useRef } from 'react';
 import { Upload, X, CheckCircle2, AlertCircle, FileAudio, FileVideo, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 
+/**
+ * Calcule la durée exacte d'un fichier audio ou vidéo via l'API HTML5 Media
+ */
+export const getMediaDurationFormatted = (file) => {
+  return new Promise((resolve) => {
+    try {
+      const isVideo = file.type.startsWith('video/');
+      const element = document.createElement(isVideo ? 'video' : 'audio');
+      element.preload = 'metadata';
+      element.src = URL.createObjectURL(file);
+
+      element.onloadedmetadata = () => {
+        URL.revokeObjectURL(element.src);
+        const durationSec = element.duration;
+        if (!durationSec || isNaN(durationSec) || durationSec === Infinity) {
+          resolve('04:30');
+          return;
+        }
+
+        const minutes = Math.floor(durationSec / 60);
+        const seconds = Math.floor(durationSec % 60);
+        const formatted = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        resolve(formatted);
+      };
+
+      element.onerror = () => {
+        resolve('04:30');
+      };
+    } catch (e) {
+      resolve('04:30');
+    }
+  });
+};
+
 export const FileUploader = ({
   label,
   accept = 'image/*',
   bucket = 'media',
   multiple = false, // Permet la sélection multiple de fichiers à la fois
-  onUploadSuccess,
-  onMultiUploadSuccess, // Callback recevant la liste des fichiers uploadés : [{ name, title, url, duration }]
+  onUploadSuccess, // (url, file, duration)
+  onMultiUploadSuccess, // [{ name, title, url, duration }]
+  onDurationDetected, // Callback quand la durée du fichier est captée
   required = false,
   helperText,
   currentPreviewUrl,
@@ -19,6 +54,7 @@ export const FileUploader = ({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadedUrl, setUploadedUrl] = useState(currentPreviewUrl || '');
   const [uploadedList, setUploadedList] = useState([]);
+  const [detectedDuration, setDetectedDuration] = useState('');
   const [error, setError] = useState('');
   const fileInputRef = useRef(null);
 
@@ -33,11 +69,11 @@ export const FileUploader = ({
     setError('');
 
     if (multiple) {
-      // Téléversement multiple de plusieurs fichiers en parallèle
+      // Téléversement multiple de plusieurs fichiers en parallèle avec détection automatique des durées
       setFiles(selectedFiles);
       await uploadMultipleToSupabase(selectedFiles);
     } else {
-      // Téléversement d'un seul fichier
+      // Téléversement d'un seul fichier avec détection automatique de durée
       const singleFile = selectedFiles[0];
       setFiles([singleFile]);
 
@@ -58,6 +94,16 @@ export const FileUploader = ({
     setError('');
 
     try {
+      // 1. Détection automatique de la durée réelle pour l'audio ou la vidéo
+      let mediaDuration = '';
+      if (selectedFile.type.startsWith('audio/') || selectedFile.type.startsWith('video/')) {
+        mediaDuration = await getMediaDurationFormatted(selectedFile);
+        setDetectedDuration(mediaDuration);
+        if (onDurationDetected) {
+          onDurationDetected(mediaDuration);
+        }
+      }
+
       const cleanFileName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
       const filePath = `${Date.now()}_${cleanFileName}`;
 
@@ -85,7 +131,7 @@ export const FileUploader = ({
       setUploadProgress(100);
 
       if (onUploadSuccess) {
-        onUploadSuccess(publicUrl, selectedFile);
+        onUploadSuccess(publicUrl, selectedFile, mediaDuration);
       }
     } catch (err) {
       console.error('Upload error:', err);
@@ -105,6 +151,13 @@ export const FileUploader = ({
       const total = fileList.length;
       for (let i = 0; i < total; i++) {
         const fileItem = fileList[i];
+        
+        // Détecter la durée réelle de chaque fichier individuel
+        let itemDuration = '04:30';
+        if (fileItem.type.startsWith('audio/') || fileItem.type.startsWith('video/')) {
+          itemDuration = await getMediaDurationFormatted(fileItem);
+        }
+
         const cleanFileName = fileItem.name.replace(/[^a-zA-Z0-9._-]/g, '_');
         const filePath = `${Date.now()}_${i}_${cleanFileName}`;
 
@@ -134,7 +187,7 @@ export const FileUploader = ({
           name: fileItem.name,
           title: cleanTitle || fileItem.name,
           url: url,
-          duration: '04:30',
+          duration: itemDuration, // ✅ DURÉE RÉELLE DÉTECTÉE
         });
 
         setUploadProgress(Math.round(((i + 1) / total) * 100));
@@ -158,12 +211,13 @@ export const FileUploader = ({
     setPreview('');
     setUploadedUrl('');
     setUploadedList([]);
+    setDetectedDuration('');
     setUploadProgress(0);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
     if (onUploadSuccess) {
-      onUploadSuccess('');
+      onUploadSuccess('', null, '');
     }
     if (onMultiUploadSuccess) {
       onMultiUploadSuccess([]);
@@ -208,7 +262,7 @@ export const FileUploader = ({
           <div className="py-4 flex flex-col items-center gap-2">
             <Loader2 size={28} className="animate-spin text-gold" />
             <p className="text-xs font-bold text-dark">
-              {multiple ? `Téléversement multiple en cours (${files.length} fichiers)... ${uploadProgress}%` : `Téléversement en cours... ${uploadProgress}%`}
+              {multiple ? `Téléversement multiple en cours (${files.length} fichiers)... ${uploadProgress}%` : `Téléversement et calcul de durée... ${uploadProgress}%`}
             </p>
             <div className="w-48 h-1.5 bg-gray-200 rounded-full overflow-hidden">
               <div
@@ -223,7 +277,7 @@ export const FileUploader = ({
               <div className="flex items-center gap-1.5">
                 <CheckCircle2 size={16} className="text-emerald-600" />
                 <span className="text-xs font-extrabold text-emerald-800">
-                  {uploadedList.length} fichier(s) téléversé(s) avec succès
+                  {uploadedList.length} fichier(s) téléversé(s) avec durées calculées
                 </span>
               </div>
               <button
@@ -242,14 +296,19 @@ export const FileUploader = ({
                     <FileAudio size={14} className="text-emerald-600 shrink-0" />
                     <span className="truncate font-semibold text-dark">{idx + 1}. {item.title}</span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={(e) => handleRemoveSingleFromList(idx, e)}
-                    className="text-gray-400 hover:text-red-500 p-1 rounded"
-                    title="Retirer"
-                  >
-                    <X size={13} />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded font-bold">
+                      ⏱️ {item.duration}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => handleRemoveSingleFromList(idx, e)}
+                      className="text-gray-400 hover:text-red-500 p-1 rounded cursor-pointer"
+                      title="Retirer"
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -280,7 +339,9 @@ export const FileUploader = ({
               <div className="text-left">
                 <div className="flex items-center gap-1.5">
                   <CheckCircle2 size={15} className="text-emerald-600" />
-                  <p className="text-xs font-extrabold text-emerald-800">Fichier prêt & hébergé</p>
+                  <p className="text-xs font-extrabold text-emerald-800">
+                    Fichier prêt & hébergé {detectedDuration ? `• ⏱️ ${detectedDuration}` : ''}
+                  </p>
                 </div>
                 <p className="text-[11px] text-gray-500 font-medium truncate max-w-[200px]">
                   {files[0] ? files[0].name : 'Fichier en ligne'}
@@ -311,7 +372,7 @@ export const FileUploader = ({
                 )}
               </p>
               <p className="text-[11px] text-gray-400 mt-0.5">
-                {helperText || (multiple ? 'Sélectionnez plusieurs audios MP3/WAV ou vidéos MP4' : isImage ? 'JPG, PNG, WEBP (Max 10 Mo)' : isVideo ? 'Vidéo MP4 HD (Max 200 Mo)' : 'Audio MP3 / WAV')}
+                {helperText || (multiple ? 'Sélectionnez plusieurs audios MP3/WAV ou vidéos MP4 (durée calculée automatiquement)' : isImage ? 'JPG, PNG, WEBP (Max 10 Mo)' : isVideo ? 'Vidéo MP4 HD (Max 200 Mo)' : 'Audio MP3 / WAV')}
               </p>
             </div>
           </div>
