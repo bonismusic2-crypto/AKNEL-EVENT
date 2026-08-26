@@ -25,6 +25,7 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
   const [paymentUrl, setPaymentUrl] = useState(null);
   const [currentTxId, setCurrentTxId] = useState(null);
   const [webviewLoading, setWebviewLoading] = useState(true);
+  const isCompletingRef = useRef(false);
 
   const benefits = [
     'Accès illimité à tous les albums et singles audio.',
@@ -45,6 +46,7 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
   // 1. Initialiser la transaction et ouvrir le WebView intégré à l'écran
   const handleSubscribe = async () => {
     setLoading(true);
+    isCompletingRef.current = false;
     try {
       const paymentResult = await GeniusPayService.createSubscriptionPayment({
         user: currentUser,
@@ -71,8 +73,30 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
     }
   };
 
+  // Helper pour basculer instantanément sur l'écran succès
+  const completeSuccess = (tx) => {
+    if (isCompletingRef.current) return;
+    isCompletingRef.current = true;
+    
+    // Fermer immédiatement le WebView
+    setShowWebview(false);
+
+    // Mettre à jour le cache mémoire et Supabase
+    if (currentUser) {
+      SubscriptionService.setSubscribedInMemory(currentUser.id, true);
+      SubscriptionService.activateVipSubscription(currentUser).catch((e) => {
+        console.warn('Background VIP activation warning:', e);
+      });
+    }
+
+    // Basculer sans attendre vers PaymentSuccessScreen
+    if (onSuccess) {
+      onSuccess(tx || currentTxId || 'GP_SUCCESS_' + Date.now().toString().slice(-6));
+    }
+  };
+
   // 2. Intercepter le succès directement dans le WebView
-  const handleNavigationStateChange = async (navState) => {
+  const handleNavigationStateChange = (navState) => {
     const { url } = navState;
     if (!url) return;
 
@@ -83,14 +107,7 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
       url.includes('bonismusik://payment-success') ||
       url.includes('/status/success')
     ) {
-      setShowWebview(false);
-      // Activation de l'abonnement VIP dans Supabase
-      if (currentUser) {
-        await SubscriptionService.activateVipSubscription(currentUser);
-      }
-      if (onSuccess) {
-        onSuccess(currentTxId || 'GP_SUCCESS');
-      }
+      completeSuccess(currentTxId);
     } else if (
       url.includes('payment-cancel') ||
       url.includes('cancel') ||
@@ -101,8 +118,23 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
     }
   };
 
+  // Interception anticipée des requêtes WebView
+  const handleShouldStartLoadWithRequest = (request) => {
+    const url = request.url;
+    if (
+      url.includes('payment-success') ||
+      url.includes('success') ||
+      url.includes('bonismusik://payment-success') ||
+      url.includes('/status/success')
+    ) {
+      completeSuccess(currentTxId);
+      return false;
+    }
+    return true;
+  };
+
   // Bouton pour fermer manuellement le WebView
-  const handleCloseWebview = async () => {
+  const handleCloseWebview = () => {
     Alert.alert(
       'Fermer le guichet de paiement',
       'Avez-vous finalisé votre paiement sur GeniusPay ?',
@@ -114,14 +146,8 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
         },
         {
           text: 'Oui, j\'ai payé',
-          onPress: async () => {
-            setShowWebview(false);
-            if (currentUser) {
-              await SubscriptionService.activateVipSubscription(currentUser);
-            }
-            if (onSuccess) {
-              onSuccess(currentTxId || 'GP_SUCCESS');
-            }
+          onPress: () => {
+            completeSuccess(currentTxId);
           },
         },
       ]
@@ -276,11 +302,23 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
               style={styles.webview}
               onLoadEnd={() => setWebviewLoading(false)}
               onNavigationStateChange={handleNavigationStateChange}
+              onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
               javaScriptEnabled={true}
               domStorageEnabled={true}
               startInLoadingState={true}
             />
           )}
+
+          {/* Barre d'Action Rapide de Confirmation In-App */}
+          <View style={styles.webviewBottomBar}>
+            <TouchableOpacity
+              style={styles.confirmPaidBtn}
+              onPress={() => completeSuccess(currentTxId)}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.confirmPaidBtnText}>J'ai validé mon paiement ✓</Text>
+            </TouchableOpacity>
+          </View>
         </SafeAreaView>
       </Modal>
 
@@ -553,5 +591,24 @@ const styles = StyleSheet.create({
   webview: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+  },
+  webviewBottomBar: {
+    backgroundColor: '#161616',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#262626',
+  },
+  confirmPaidBtn: {
+    backgroundColor: THEME.colors.gold,
+    paddingVertical: 13,
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmPaidBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
   },
 });

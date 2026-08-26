@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, Alert, Linking } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -27,11 +27,21 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [lastTxId, setLastTxId] = useState(null);
 
+  // Refs pour éviter les fermetures obsolètes (stale closures) et les re-renders intempestifs
+  const appStateRef = useRef(appState);
+  appStateRef.current = appState;
+  const currentUserRef = useRef(currentUser);
+  currentUserRef.current = currentUser;
+
   // Fonction de routage intelligent selon le statut d'abonnement
   const routeUserAfterAuth = async (user) => {
     setCurrentUser(user);
     if (!user) {
       setAppState('welcome');
+      return;
+    }
+    // Ne pas écraser les écrans de fin de paiement
+    if (appStateRef.current === 'payment_success' || appStateRef.current === 'payment_cancel') {
       return;
     }
     const isSubscribed = await SubscriptionService.isUserSubscribed(user);
@@ -43,7 +53,7 @@ export default function App() {
     }
   };
 
-  // Vérifier la session active au lancement de l'application
+  // Vérifier la session active et configurer les listeners globaux une seule fois au montage
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
@@ -51,24 +61,32 @@ export default function App() {
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         setCurrentUser(session.user);
+        // Ne pas interrompre les écrans de résultat de paiement
+        if (appStateRef.current !== 'payment_success' && appStateRef.current !== 'payment_cancel') {
+          if (appStateRef.current === 'auth' || appStateRef.current === 'welcome') {
+            await routeUserAfterAuth(session.user);
+          }
+        }
       } else {
         setCurrentUser(null);
+        SubscriptionService.clearMemoryCache();
         setAppState('welcome');
       }
     });
 
     // Écoute des retours Deep Link (bonismusik://payment-success ou payment-cancel)
     const handleDeepLink = async (event) => {
-      const url = event.url;
-      if (url && url.includes('payment-success')) {
-        if (currentUser) {
-          await SubscriptionService.activateVipSubscription(currentUser);
+      const url = event?.url;
+      if (url && (url.includes('payment-success') || url.includes('success'))) {
+        const user = currentUserRef.current || (await supabase.auth.getUser())?.data?.user;
+        if (user) {
+          await SubscriptionService.activateVipSubscription(user);
         }
         setAppState('payment_success');
-      } else if (url && url.includes('payment-cancel')) {
+      } else if (url && (url.includes('payment-cancel') || url.includes('cancel'))) {
         setAppState('payment_cancel');
       }
     };
@@ -82,7 +100,7 @@ export default function App() {
       subscription?.unsubscribe();
       linkSub.remove();
     };
-  }, [currentUser]);
+  }, []);
 
   const handleSelectAlbum = (album) => {
     setSelectedAlbum(album);
@@ -135,6 +153,9 @@ export default function App() {
               currentUser={currentUser}
               onBack={handlePaywallBack}
               onSuccess={(txId) => {
+                if (currentUser) {
+                  SubscriptionService.setSubscribedInMemory(currentUser.id, true);
+                }
                 setLastTxId(txId);
                 setAppState('payment_success');
               }}
@@ -168,6 +189,8 @@ export default function App() {
                 {selectedAlbum ? (
                   <AlbumDetailScreen
                     album={selectedAlbum}
+                    currentUser={currentUser}
+                    onOpenPaywall={() => setAppState('paywall')}
                     onBack={handleBackFromAlbum}
                   />
                 ) : (
@@ -187,9 +210,11 @@ export default function App() {
                     {/* Onglet 2 : MÉDIATHÈQUE UNIFIÉE (Musique, Clips & Enseignements) */}
                     {activeTab === 'library' && (
                       <MediaLibraryScreen
+                        currentUser={currentUser}
                         onSelectAlbum={handleSelectAlbum}
                         onSelectClip={() => {}}
                         onSelectTeaching={() => {}}
+                        onOpenPaywall={() => setAppState('paywall')}
                       />
                     )}
 

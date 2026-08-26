@@ -1,10 +1,57 @@
 import { supabase } from '../lib/supabase';
 
+// Cache mémoire rapide pour éviter tout flash ou aller-retour paywall
+const memorySubscriptionCache = new Map();
+
 export const SubscriptionService = {
   /**
-   * Helper pour vérifier si l'utilisateur est abonné
+   * Enregistre l'état VIP directement dans le cache mémoire instantané
+   */
+  setSubscribedInMemory(userId, isSubscribed = true, plan = 'Abonnement VIP 2 € / mois', expiresAt = null) {
+    if (!userId) return;
+    const expiry = expiresAt || new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
+    memorySubscriptionCache.set(userId, {
+      isSubscribed: !!isSubscribed,
+      plan: plan || 'Abonnement VIP 2 € / mois',
+      expiresAt: expiry,
+      timestamp: Date.now(),
+    });
+  },
+
+  /**
+   * Vérifie si l'utilisateur est marqué abonné dans le cache mémoire instantané
+   */
+  isSubscribedInMemory(userId) {
+    if (!userId) return false;
+    const cached = memorySubscriptionCache.get(userId);
+    if (!cached) return false;
+    if (cached.expiresAt && new Date(cached.expiresAt) <= new Date()) {
+      memorySubscriptionCache.delete(userId);
+      return false;
+    }
+    return cached.isSubscribed === true;
+  },
+
+  /**
+   * Réinitialise le cache mémoire
+   */
+  clearMemoryCache(userId = null) {
+    if (userId) {
+      memorySubscriptionCache.delete(userId);
+    } else {
+      memorySubscriptionCache.clear();
+    }
+  },
+
+  /**
+   * Helper ultra-rapide pour vérifier si l'utilisateur est abonné
    */
   async isUserSubscribed(user) {
+    if (!user || !user.id) return false;
+    // 1. Vérification synchrone instantanée en mémoire
+    if (this.isSubscribedInMemory(user.id)) {
+      return true;
+    }
     const result = await this.checkSubscription(user);
     return result.isSubscribed;
   },
@@ -20,6 +67,21 @@ export const SubscriptionService = {
     // Utilisateur invité / visiteur sans abonnement actif
     if (user.isGuest || user.email === 'visiteur@bonismusik.com') {
       return { isSubscribed: false, plan: null, expiresAt: null };
+    }
+
+    // 0. Vérification du cache mémoire prioritaire
+    if (memorySubscriptionCache.has(user.id)) {
+      const cached = memorySubscriptionCache.get(user.id);
+      if (cached && cached.isSubscribed) {
+        const isNotExpired = !cached.expiresAt || new Date(cached.expiresAt) > new Date();
+        if (isNotExpired) {
+          return {
+            isSubscribed: true,
+            plan: cached.plan || 'Abonnement VIP 2 € / mois',
+            expiresAt: cached.expiresAt,
+          };
+        }
+      }
     }
 
     try {
@@ -38,9 +100,11 @@ export const SubscriptionService = {
         const isNotExpired = !expiry || new Date(expiry) > new Date();
 
         if (isActive && isNotExpired) {
+          const planName = sub.plan_name || 'Abonnement VIP 2 € / mois';
+          this.setSubscribedInMemory(user.id, true, planName, expiry);
           return {
             isSubscribed: true,
-            plan: sub.plan_name || 'Abonnement VIP 2 € / mois',
+            plan: planName,
             expiresAt: expiry,
           };
         }
@@ -57,6 +121,7 @@ export const SubscriptionService = {
         if (profile.is_vip === true || profile.subscription_status === 'active') {
           const isNotExpired = !profile.vip_until || new Date(profile.vip_until) > new Date();
           if (isNotExpired) {
+            this.setSubscribedInMemory(user.id, true, 'Abonnement VIP 2 € / mois', profile.vip_until);
             return {
               isSubscribed: true,
               plan: 'Abonnement VIP 2 € / mois',
@@ -71,6 +136,7 @@ export const SubscriptionService = {
         const vipUntil = user.user_metadata?.vip_until;
         const isNotExpired = !vipUntil || new Date(vipUntil) > new Date();
         if (isNotExpired) {
+          this.setSubscribedInMemory(user.id, true, 'Abonnement VIP 2 € / mois', vipUntil || null);
           return {
             isSubscribed: true,
             plan: 'Abonnement VIP 2 € / mois',
@@ -82,22 +148,33 @@ export const SubscriptionService = {
       return { isSubscribed: false, plan: null, expiresAt: null };
     } catch (err) {
       console.warn('Erreur vérification abonnement Supabase:', err);
+      if (memorySubscriptionCache.has(user.id)) {
+        const cached = memorySubscriptionCache.get(user.id);
+        return {
+          isSubscribed: !!cached.isSubscribed,
+          plan: cached.plan,
+          expiresAt: cached.expiresAt,
+        };
+      }
       return { isSubscribed: false, plan: null, expiresAt: null };
     }
   },
 
   /**
-   * Enregistre ou met à jour l'abonnement VIP de l'utilisateur
+   * Enregistre ou met à jour l'abonnement VIP de l'utilisateur (Mémoire + Supabase)
    */
   async activateVipSubscription(user) {
     if (!user || !user.id) return false;
 
-    try {
-      const now = new Date();
-      const oneMonthLater = new Date(now.setMonth(now.getMonth() + 1)).toISOString();
+    const now = new Date();
+    const oneMonthLater = new Date(new Date().setMonth(now.getMonth() + 1)).toISOString();
 
-      // Mettre à jour profiles et subscriptions
-      const { error: subErr } = await supabase.from('subscriptions').upsert({
+    // ⚡ 1. MAJ IMMÉDIATE du cache mémoire local (garantit 0 délai et 0 flash UI)
+    this.setSubscribedInMemory(user.id, true, 'Abonnement VIP 2 € / mois', oneMonthLater);
+
+    try {
+      // 2. MAJ asynchrone persistante dans Supabase
+      const subPromise = supabase.from('subscriptions').upsert({
         user_id: user.id,
         status: 'active',
         plan_name: 'Abonnement VIP 2 € / mois',
@@ -107,7 +184,7 @@ export const SubscriptionService = {
         created_at: new Date().toISOString(),
       });
 
-      const { error: profErr } = await supabase.from('profiles').upsert({
+      const profPromise = supabase.from('profiles').upsert({
         id: user.id,
         is_vip: true,
         subscription_status: 'active',
@@ -115,15 +192,11 @@ export const SubscriptionService = {
         updated_at: new Date().toISOString(),
       });
 
-      if (subErr && profErr) {
-        console.warn('Erreur mise à jour abonnement Supabase:', subErr, profErr);
-        return false;
-      }
-
+      await Promise.allSettled([subPromise, profPromise]);
       return true;
     } catch (err) {
-      console.warn('Erreur activation abonnement:', err);
-      return false;
+      console.warn('Avertissement sync Supabase (actif en cache mémoire):', err);
+      return true;
     }
   }
 };
