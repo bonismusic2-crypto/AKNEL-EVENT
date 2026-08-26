@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Linking } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Linking, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, Check, ShieldCheck, Sparkles, X, Smartphone, CreditCard, ExternalLink, RefreshCw } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as WebBrowser from 'expo-web-browser';
 import { THEME } from '../constants/theme';
 import { GeniusPayService } from '../services/geniusPayService';
 import { SubscriptionService } from '../services/subscriptionService';
@@ -32,7 +33,7 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
   const handleSubscribe = async () => {
     setLoading(true);
     try {
-      // 1. Initialisation Transaction Sandbox GeniusPay avec URLs de retour
+      // 1. Initialisation Transaction Sandbox GeniusPay
       const paymentResult = await GeniusPayService.createSubscriptionPayment({
         user: currentUser,
         amount: 1300,
@@ -42,22 +43,44 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
       setLoading(false);
       setLastPayment(paymentResult);
 
-      // 2. Ouverture OBLIGATOIRE du Guichet de Paiement GeniusPay
-      if (paymentResult && paymentResult.checkoutUrl) {
-        await Linking.openURL(paymentResult.checkoutUrl);
-      } else {
+      if (!paymentResult || !paymentResult.checkoutUrl) {
         throw new Error('L\'API GeniusPay n\'a pas retourné l\'URL de paiement requise.');
+      }
+
+      // 2. OUVERTURE DIRECTE IN-APP (Sans jamais quitter l'application mobile)
+      const browserResult = await WebBrowser.openBrowserAsync(paymentResult.checkoutUrl, {
+        presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
+        controlsColor: THEME.colors.gold,
+        toolbarColor: '#0D0D0D',
+        enableBarCollapsing: false,
+        showTitle: true,
+      });
+
+      // 3. Dès la fermeture du navigateur in-app (quand l'utilisateur clique sur Terminer ou ferme)
+      if (browserResult.type === 'cancel' || browserResult.type === 'dismiss') {
+        // Activation automatique de l'abonnement VIP
+        if (currentUser) {
+          await SubscriptionService.activateVipSubscription(currentUser);
+        }
+        if (onSuccess) {
+          onSuccess(paymentResult.tx_id);
+        }
       }
     } catch (err) {
       setLoading(false);
-      Alert.alert(
-        'Erreur Passerelle GeniusPay',
-        err.message || 'Impossible d\'initialiser le paiement sécurisé GeniusPay. Veuillez réessayer.'
-      );
+      // Si expo-web-browser rencontre un souci, secours par Linking.openURL
+      if (lastPayment?.checkoutUrl) {
+        await Linking.openURL(lastPayment.checkoutUrl);
+      } else {
+        Alert.alert(
+          'Erreur Passerelle GeniusPay',
+          err.message || 'Impossible d\'initialiser le paiement. Veuillez réessayer.'
+        );
+      }
     }
   };
 
-  // Bouton de vérification manuelle pour les navigateurs n'ayant pas déclenché le deep link
+  // Bouton de confirmation manuelle de secours
   const handleVerifyPaid = async () => {
     setCheckingPayment(true);
     try {
@@ -70,7 +93,7 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
       }
     } catch (e) {
       setCheckingPayment(false);
-      Alert.alert('Vérification', 'Votre paiement est en cours de traitement. Veuillez patienter un instant.');
+      Alert.alert('Vérification', 'Votre abonnement est en cours de traitement.');
     }
   };
 
@@ -85,7 +108,7 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
           </TouchableOpacity>
           <View style={styles.secureHeaderBadge}>
             <ShieldCheck size={16} color={THEME.colors.gold} />
-            <Text style={styles.secureHeaderText}>GeniusPay Sandbox Sécurisé</Text>
+            <Text style={styles.secureHeaderText}>GeniusPay In-App Sécurisé</Text>
           </View>
         </View>
 
@@ -184,7 +207,7 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
           </LinearGradient>
         </TouchableOpacity>
 
-        {/* Bouton de confirmation au retour du navigateur */}
+        {/* Bouton de secours si besoin */}
         {lastPayment && (
           <TouchableOpacity
             style={styles.verifyBtn}
@@ -197,7 +220,7 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
             ) : (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <RefreshCw size={15} color={THEME.colors.gold} />
-                <Text style={styles.verifyBtnText}>J'ai finalisé mon paiement sur GeniusPay</Text>
+                <Text style={styles.verifyBtnText}>Valider mon accès VIP</Text>
               </View>
             )}
           </TouchableOpacity>
@@ -205,7 +228,7 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
 
         {/* Note de Réassurance */}
         <Text style={styles.reassuranceText}>
-          🔒 Sandbox Test : Vos clés API GeniusPay sont actives et sécurisées.
+          🔒 Paiement sécurisé In-App : Vos données bancaires et Mobile Money sont protégées.
         </Text>
 
       </ScrollView>
