@@ -1,144 +1,118 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, ImageBackground } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 
 export const WelcomeScreen = ({ onStart, onLogin }) => {
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        
-        {/* Logo & Titre Doré */}
-        <View style={styles.logoSection}>
-          <View style={styles.emblemContainer}>
-            <Text style={styles.emblemCrown}>👑</Text>
-            <Text style={styles.emblemLetter}>B</Text>
-          </View>
-          <Text style={styles.brandTitle}>BONIS</Text>
-          <Text style={styles.brandSubtitle}>MUSIK</Text>
-        </View>
+    <View style={styles.container}>
+      {/* Visuel immersif plein écran officiel (screen 1.png) */}
+      <ImageBackground
+        source={require('../../assets/screen 1.png')}
+        style={styles.backgroundImage}
+        resizeMode="cover"
+      >
+        <LinearGradient
+          colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.5)', 'rgba(0,0,0,0.92)']}
+          style={styles.gradientOverlay}
+        >
+          <SafeAreaView style={styles.safeContent}>
+            
+            {/* Header avec Logo Officiel Icon */}
+            <View style={styles.logoContainer}>
+              <Image
+                source={require('../../assets/icon boni musik.png')}
+                style={styles.officialLogo}
+                resizeMode="contain"
+              />
+            </View>
 
-        {/* Image du Chantre Boniface */}
-        <View style={styles.imageContainer}>
-          <Image
-            source={{ uri: 'https://images.unsplash.com/photo-1514525253361-bee8a19740c1?w=800' }}
-            style={styles.artistImage}
-          />
-          <LinearGradient
-            colors={['transparent', 'rgba(13, 13, 13, 0.95)', '#0D0D0D']}
-            style={styles.gradientOverlay}
-          />
-          <View style={styles.captionContainer}>
-            <Text style={styles.captionText}>
-              Entrez dans la dimension de l'adoration et de la parole avec le Chantre Boniface.
-            </Text>
-          </View>
-        </View>
+            {/* Texte d'Accroche & Boutons d'Action */}
+            <View style={styles.bottomSection}>
+              <Text style={styles.tagline}>
+                Entrez dans la dimension de l'adoration et de la parole avec le Chantre Boniface.
+              </Text>
 
-        {/* Boutons d'Action */}
-        <View style={styles.actionsContainer}>
-          <TouchableOpacity style={styles.startBtn} onPress={onStart} activeOpacity={0.85}>
-            <LinearGradient
-              colors={THEME.colors.goldGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.startGradient}
-            >
-              <Text style={styles.startBtnText}>Commencer</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+              {/* Bouton Commencer */}
+              <TouchableOpacity style={styles.startBtn} onPress={onStart} activeOpacity={0.85}>
+                <LinearGradient
+                  colors={THEME.colors.goldGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.startGradient}
+                >
+                  <Text style={styles.startBtnText}>Commencer</Text>
+                </LinearGradient>
+              </TouchableOpacity>
 
-          <TouchableOpacity style={styles.loginRow} onPress={onLogin}>
-            <Text style={styles.loginText}>
-              Déjà un compte ? <Text style={styles.loginHighlight}>Se connecter</Text>
-            </Text>
-          </TouchableOpacity>
-        </View>
+              {/* Lien Se Connecter */}
+              <TouchableOpacity style={styles.loginRow} onPress={onLogin} activeOpacity={0.7}>
+                <Text style={styles.loginText}>
+                  Déjà un compte ? <Text style={styles.loginHighlight}>Se connecter</Text>
+                </Text>
+              </TouchableOpacity>
+            </View>
 
-      </View>
-    </SafeAreaView>
+          </SafeAreaView>
+        </LinearGradient>
+      </ImageBackground>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: THEME.colors.background,
-  },
   container: {
+    flex: 1,
+    backgroundColor: '#0D0D0D',
+  },
+  backgroundImage: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  gradientOverlay: {
+    flex: 1,
+  },
+  safeContent: {
     flex: 1,
     justifyContent: 'space-between',
     paddingHorizontal: 24,
     paddingVertical: 20,
   },
-  logoSection: {
+  logoContainer: {
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: 10,
   },
-  emblemContainer: {
-    alignItems: 'center',
-    marginBottom: 4,
+  officialLogo: {
+    width: 130,
+    height: 130,
+    borderRadius: 65,
+    borderWidth: 2,
+    borderColor: THEME.colors.gold,
   },
-  emblemCrown: {
-    fontSize: 20,
-    marginBottom: -6,
+  bottomSection: {
+    marginBottom: 20,
   },
-  emblemLetter: {
-    fontSize: 38,
-    fontWeight: '900',
-    color: THEME.colors.gold,
-  },
-  brandTitle: {
-    color: THEME.colors.gold,
-    fontSize: 20,
-    fontWeight: '900',
-    letterSpacing: 6,
-  },
-  brandSubtitle: {
-    color: THEME.colors.textMuted,
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 4,
-    marginTop: 2,
-  },
-  imageContainer: {
-    flex: 1,
-    position: 'relative',
-    marginVertical: 10,
-    borderRadius: 24,
-    overflow: 'hidden',
-  },
-  artistImage: {
-    width: '100%',
-    height: '100%',
-  },
-  gradientOverlay: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: '60%',
-  },
-  captionContainer: {
-    position: 'absolute',
-    bottom: 16,
-    left: 16,
-    right: 16,
-  },
-  captionText: {
-    color: THEME.colors.textPrimary,
-    fontSize: 14,
+  tagline: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
     textAlign: 'center',
-    lineHeight: 20,
-  },
-  actionsContainer: {
-    gap: 16,
-    marginBottom: 10,
+    lineHeight: 23,
+    marginBottom: 24,
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   startBtn: {
     borderRadius: 30,
     overflow: 'hidden',
+    shadowColor: THEME.colors.gold,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 6,
   },
   startGradient: {
     paddingVertical: 16,
@@ -146,19 +120,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   startBtnText: {
-    color: '#0D0D0D',
+    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
   loginRow: {
+    marginTop: 16,
     alignItems: 'center',
   },
   loginText: {
-    color: THEME.colors.textMuted,
+    color: '#E5E7EB',
     fontSize: 13,
+    fontWeight: '500',
   },
   loginHighlight: {
     color: THEME.colors.gold,
-    fontWeight: '700',
+    fontWeight: '800',
   },
 });
