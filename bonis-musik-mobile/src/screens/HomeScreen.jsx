@@ -8,6 +8,7 @@ import { SAMPLE_DATA } from '../data/sampleData';
 import { MediaService } from '../services/mediaService';
 import { SubscriptionService } from '../services/subscriptionService';
 import { DownloadService } from '../services/downloadService';
+import { NotificationService } from '../services/notificationService';
 import { useAudio } from '../context/AudioContext';
 import { supabase } from '../lib/supabase';
 import { NotificationsModal, INITIAL_MOBILE_NOTIFICATIONS } from '../components/NotificationsModal';
@@ -46,6 +47,8 @@ export const HomeScreen = ({
 
   useEffect(() => {
     checkVipStatus();
+    // 🔔 Demander et initialiser les permissions de notifications push système
+    NotificationService.registerForPushNotificationsAsync();
   }, [currentUser]);
 
   // Extraction dynamique du prénom réel de l'utilisateur connecté
@@ -177,6 +180,13 @@ export const HomeScreen = ({
               actionText: n.action_text || 'Consulter',
             };
             setNotifications((prev) => [newNotif, ...prev]);
+
+            // 🚀 DÉCLENCHEMENT D'UNE VRAIE NOTIFICATION PUSH BANNIÈRE SYSTÈME + SON
+            NotificationService.sendLocalNotification(
+              n.title,
+              n.message,
+              { id: n.id, type: n.type, actionType: n.action_type }
+            );
           } else if (payload.eventType === 'UPDATE') {
             setNotifications((prev) =>
               prev.map((item) => (item.id === payload.new.id ? { ...item, isRead: payload.new.is_read } : item))
