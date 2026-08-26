@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, RefreshControl, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Bell, Search, Play } from 'lucide-react-native';
+import { Bell, Search, Play, Sparkles } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { SAMPLE_DATA } from '../data/sampleData';
 import { MediaService } from '../services/mediaService';
+import { SubscriptionService } from '../services/subscriptionService';
 import { useAudio } from '../context/AudioContext';
 import { NotificationsModal, INITIAL_MOBILE_NOTIFICATIONS } from '../components/NotificationsModal';
 
@@ -24,6 +25,19 @@ export const HomeScreen = ({
   const [refreshing, setRefreshing] = useState(false);
   const [isNotifModalVisible, setIsNotifModalVisible] = useState(false);
   const [notifications, setNotifications] = useState(INITIAL_MOBILE_NOTIFICATIONS);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+
+  // Vérifier le statut VIP réel depuis Supabase
+  const checkVipStatus = async () => {
+    if (currentUser) {
+      const sub = await SubscriptionService.isUserSubscribed(currentUser);
+      setIsSubscribed(sub);
+    }
+  };
+
+  useEffect(() => {
+    checkVipStatus();
+  }, [currentUser]);
 
   // Extraction dynamique du prénom réel de l'utilisateur connecté
   const getFirstName = () => {
@@ -104,7 +118,7 @@ export const HomeScreen = ({
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadLiveData();
+    await Promise.all([loadLiveData(), checkVipStatus()]);
     setRefreshing(false);
   };
 
@@ -149,9 +163,16 @@ export const HomeScreen = ({
             />
             <View>
               <Text style={styles.greeting}>Bonjour, {firstName} 👋</Text>
-              <TouchableOpacity onPress={onOpenPaywall} activeOpacity={0.7} style={styles.vipBadge}>
-                <Text style={styles.vipText}>👑 Abonné VIP</Text>
-              </TouchableOpacity>
+              {isSubscribed ? (
+                <View style={styles.vipBadge}>
+                  <Text style={styles.vipText}>👑 Abonné VIP</Text>
+                </View>
+              ) : (
+                <TouchableOpacity onPress={onOpenPaywall} activeOpacity={0.7} style={styles.subscribeBadge}>
+                  <Sparkles size={11} color="#FFFFFF" />
+                  <Text style={styles.subscribeBadgeText}>S'abonner VIP (2 €)</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </TouchableOpacity>
 
@@ -249,47 +270,50 @@ export const HomeScreen = ({
           ))}
         </ScrollView>
 
-        {/* Section Enseignements Populaires Synchronisés */}
+        {/* Section Enseignements & Prédications Synchronisés */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Enseignements populaires</Text>
-          <TouchableOpacity onPress={() => onSelectTeaching(teachings[0])}>
+          <Text style={styles.sectionTitle}>Enseignements & Prédications</Text>
+          <TouchableOpacity onPress={() => onSelectClip(heroClip)}>
             <Text style={styles.seeAll}>Voir tout ({teachings.length})</Text>
           </TouchableOpacity>
         </View>
         <View style={styles.teachingsList}>
-          {teachings.slice(0, 4).map((item) => (
+          {teachings.map((item) => (
             <TouchableOpacity
               key={item.id}
-              style={styles.teachingItem}
+              style={styles.teachingCard}
               onPress={() => handleTeachingPress(item)}
               activeOpacity={0.7}
             >
-              <Image source={{ uri: item.thumbnail }} style={styles.teachingThumb} />
-              <View style={styles.teachingInfo}>
-                <Text style={styles.teachingTitle} numberOfLines={1}>{item.title}</Text>
-                <Text style={styles.teachingMeta}>
-                  {item.type === 'audio' ? '🎙️ Audio' : '🎥 Vidéo'} • {item.duration}
-                </Text>
+              <View style={styles.teachingLeft}>
+                <Image source={{ uri: item.thumbnail }} style={styles.teachingThumbnail} />
+                <View style={styles.teachingInfo}>
+                  <Text style={styles.teachingTitle} numberOfLines={1}>{item.title}</Text>
+                  <Text style={styles.teachingMeta}>Chantre Boniface • {item.duration}</Text>
+                </View>
               </View>
-              <View style={styles.playMiniBtn}>
+              <View style={styles.playIconCircle}>
                 <Play size={14} color={THEME.colors.gold} fill={THEME.colors.gold} />
               </View>
             </TouchableOpacity>
           ))}
         </View>
 
-      </ScrollView>
+        {/* Espace pour MiniPlayer en bas */}
+        <View style={{ height: 90 }} />
 
-      {/* Centre de Notifications Modal Interactif */}
-      <NotificationsModal
-        visible={isNotifModalVisible}
-        onClose={() => setIsNotifModalVisible(false)}
-        notifications={notifications}
-        onMarkAsRead={handleMarkAsRead}
-        onMarkAllAsRead={handleMarkAllAsRead}
-        onDeleteNotification={handleDeleteNotification}
-        onNavigateAction={handleNavigateAction}
-      />
+        {/* Modal de Notifications Interactif */}
+        <NotificationsModal
+          visible={isNotifModalVisible}
+          onClose={() => setIsNotifModalVisible(false)}
+          notifications={notifications}
+          onMarkAsRead={handleMarkAsRead}
+          onMarkAllAsRead={handleMarkAllAsRead}
+          onDeleteNotification={handleDeleteNotification}
+          onNavigateAction={handleNavigateAction}
+        />
+
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -334,6 +358,22 @@ const styles = StyleSheet.create({
     color: THEME.colors.gold,
     fontSize: 11,
     fontWeight: '700',
+  },
+  subscribeBadge: {
+    marginTop: 3,
+    alignSelf: 'flex-start',
+    backgroundColor: THEME.colors.gold,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 2.5,
+    borderRadius: 10,
+  },
+  subscribeBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
   },
   iconBtn: {
     width: 40,
@@ -479,22 +519,19 @@ const styles = StyleSheet.create({
   horizontalList: {
     gap: 14,
     paddingRight: 20,
-    marginBottom: 20,
+    marginBottom: 24,
   },
   albumCard: {
-    width: 130,
+    width: 140,
   },
   albumCover: {
-    width: 130,
-    height: 130,
+    width: 140,
+    height: 140,
     borderRadius: 16,
-    backgroundColor: '#F3F4F6',
     marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   albumTitle: {
     color: THEME.colors.textPrimary,
@@ -539,7 +576,7 @@ const styles = StyleSheet.create({
   durationText: {
     color: '#FFFFFF',
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   clipTitle: {
     color: THEME.colors.textPrimary,
@@ -553,25 +590,27 @@ const styles = StyleSheet.create({
   },
   teachingsList: {
     gap: 12,
+    marginBottom: 20,
   },
-  teachingItem: {
+  teachingCard: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 12,
-    gap: 12,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 2,
   },
-  teachingThumb: {
-    width: 48,
-    height: 48,
+  teachingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  teachingThumbnail: {
+    width: 50,
+    height: 50,
     borderRadius: 10,
     backgroundColor: '#F3F4F6',
   },
@@ -580,20 +619,21 @@ const styles = StyleSheet.create({
   },
   teachingTitle: {
     color: THEME.colors.textPrimary,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
+    marginBottom: 4,
   },
   teachingMeta: {
     color: THEME.colors.textMuted,
-    fontSize: 12,
-    marginTop: 4,
+    fontSize: 11,
   },
-  playMiniBtn: {
+  playIconCircle: {
     width: 32,
     height: 32,
     borderRadius: 16,
     backgroundColor: 'rgba(197, 155, 39, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
+    marginLeft: 8,
   },
 });
