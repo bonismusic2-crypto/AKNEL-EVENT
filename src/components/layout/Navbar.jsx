@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, Bell } from 'lucide-react';
+import { supabase } from '../../lib/supabaseClient';
 import { NotificationCenterModal, INITIAL_WEB_NOTIFICATIONS } from '../NotificationCenterModal';
 
 const Navbar = () => {
@@ -20,6 +21,74 @@ const Navbar = () => {
         return INITIAL_WEB_NOTIFICATIONS;
     });
     const location = useLocation();
+
+    // 1. Charger les notifications en direct depuis Supabase
+    const fetchLiveNotifications = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('notifications')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(20);
+
+            if (!error && data && data.length > 0) {
+                const mapped = data.map(n => ({
+                    id: n.id,
+                    type: n.type || 'general',
+                    title: n.title,
+                    message: n.message,
+                    time: n.created_at ? new Date(n.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : 'Récemment',
+                    isRead: n.is_read || false,
+                    badge: n.badge || 'AKNEL Event',
+                    badgeColor: 'bg-amber-100 text-amber-900 border-amber-300',
+                    actionText: n.action_text || 'Voir les détails',
+                    actionLink: n.action_type === 'concert' ? '/events' : n.action_type === 'subscription' ? '/events' : '/contact',
+                }));
+                setNotifications(mapped);
+            }
+        } catch (err) {
+            console.warn('Web notifications fetch warning:', err);
+        }
+    };
+
+    // 2. Écouter les événements en temps réel Supabase
+    useEffect(() => {
+        fetchLiveNotifications();
+
+        const notifChannel = supabase
+            .channel('aknel-web-notifications-realtime')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'notifications' },
+                (payload) => {
+                    if (payload.eventType === 'INSERT') {
+                        const n = payload.new;
+                        const newNotif = {
+                            id: n.id,
+                            type: n.type || 'general',
+                            title: n.title,
+                            message: n.message,
+                            time: 'À l\'instant',
+                            isRead: false,
+                            badge: n.badge || 'Nouveau',
+                            badgeColor: 'bg-emerald-100 text-emerald-900 border-emerald-300',
+                            actionText: n.action_text || 'Consulter',
+                            actionLink: '/events',
+                        };
+                        setNotifications(prev => [newNotif, ...prev]);
+                    } else if (payload.eventType === 'UPDATE') {
+                        setNotifications(prev =>
+                            prev.map(item => (item.id === payload.new.id ? { ...item, isRead: payload.new.is_read } : item))
+                        );
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(notifChannel);
+        };
+    }, []);
 
     useEffect(() => {
         localStorage.setItem('aknel_web_notifications', JSON.stringify(notifications));
