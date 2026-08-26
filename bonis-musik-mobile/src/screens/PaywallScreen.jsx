@@ -81,12 +81,14 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
     // 1. Fermeture immédiate de la modal WebView
     setShowWebview(false);
 
-    // 2. Déclenchement de l'activation Supabase et cache mémoire
+    // 2. Déclenchement de l'activation permanente et synchronisation Supabase
     if (currentUser) {
-      SubscriptionService.setSubscribedInMemory(
+      SubscriptionService.setSubscribedPermanently(
         currentUser.id,
         true,
-        currentPlan.title + ` (${currentPlan.priceFcfa} = ${currentPlan.priceEuro})`
+        currentPlan.title + ` (${currentPlan.priceFcfa} = ${currentPlan.priceEuro})`,
+        null,
+        selectedPlan
       );
       SubscriptionService.activateVipSubscription(currentUser, selectedPlan).catch((err) => {
         console.warn('Erreur activation abonnement en tâche de fond:', err);
@@ -150,12 +152,12 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
         completeSuccess(currentTxId);
       } else {
         Alert.alert(
-          'Paiement en attente ou non complété',
-          `GeniusPay n'a pas encore confirmé la réception de vos ${currentPlan.priceFcfa}. Veuillez terminer la transaction sur le guichet avant de valider.`,
+          'Paiement non finalisé',
+          `GeniusPay indique que le paiement est "${status || 'en attente'}". Veuillez renseigner votre numéro Mobile Money ou carte sur le guichet et valider avant de cliquer ici.`,
           [
             { text: 'Continuer le paiement', style: 'default' },
             {
-              text: 'Annuler',
+              text: 'Fermer',
               style: 'cancel',
               onPress: () => setShowWebview(false),
             }
@@ -164,7 +166,10 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
       }
     } catch (e) {
       setVerifying(false);
-      completeSuccess(currentTxId);
+      Alert.alert(
+        'Vérification impossible',
+        'Impossible de joindre le serveur GeniusPay pour confirmer le paiement. Veuillez réessayer dans un instant.'
+      );
     }
   };
 
@@ -199,25 +204,23 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
     }
   };
 
-  // 2. Intercepter le succès automatiquement lorsque GeniusPay redirige
+  // 2. Intercepter le retour de GeniusPay uniquement sur les URL de callback officiel de succès
   const handleNavigationStateChange = (navState) => {
     const { url } = navState;
     if (!url) return;
 
+    // GeniusPay redirige vers success_url uniquement après confirmation du prélèvement
     if (
-      url.includes('payment-success') ||
-      url.includes('success') ||
-      url.includes('bonismusik://payment-success') ||
-      url.includes('/status/success')
+      url.includes('bonismusik.vercel.app/payment-success') ||
+      url.includes('bonismusik://payment-success')
     ) {
       completeSuccess(currentTxId);
     } else if (
-      url.includes('payment-cancel') ||
-      url.includes('cancel') ||
+      url.includes('bonismusik.vercel.app/payment-cancel') ||
       url.includes('bonismusik://payment-cancel')
     ) {
       setShowWebview(false);
-      Alert.alert('Paiement interrompu', 'La transaction n\'a pas été complétée.');
+      Alert.alert('Paiement annulé', 'La transaction a été annulée sur le guichet.');
     }
   };
 
