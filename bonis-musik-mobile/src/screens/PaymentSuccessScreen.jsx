@@ -1,13 +1,12 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CheckCircle2, Sparkles, Music, ArrowRight, ShieldCheck, Download, Award, Calendar, QrCode } from 'lucide-react-native';
+import { CheckCircle2, Sparkles, Music, ArrowRight, ShieldCheck, Download, Award } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 
 export const PaymentSuccessScreen = ({ txId, onContinue, currentUser }) => {
   const buyerName = currentUser?.user_metadata?.full_name || currentUser?.email?.split('@')[0] || 'Abonné VIP';
-  const qrCodeToken = 'VIP-' + (txId || 'BONIS').slice(-8).toUpperCase();
   const renewalDate = '24 Septembre 2026';
 
   return (
@@ -23,7 +22,6 @@ export const PaymentSuccessScreen = ({ txId, onContinue, currentUser }) => {
             <ShieldCheck size={14} color="#059669" />
             <Text style={styles.badgeSuccessText}>PAIEMENT VALIDÉ PAR GENIUSPAY</Text>
           </View>
-          <h1 style={{ display: 'none' }}>Success</h1>
           <Text style={styles.title}>Bienvenue dans le Club VIP !</Text>
           <Text style={styles.subtitle}>
             Votre abonnement mensuel à 2 € (~1 300 FCFA) est actif. Vous avez désormais un accès illimité à tout le catalogue du Chantre Boniface.
