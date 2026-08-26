@@ -1,15 +1,22 @@
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 
-// Configuration du comportement des notifications lorsqu'elles arrivent quand l'application est ouverte
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+// Chargement sécurisé et dynamique de expo-notifications pour éviter tout blocage bundler
+let NotificationsModule = null;
+try {
+  NotificationsModule = require('expo-notifications');
+  if (NotificationsModule && NotificationsModule.setNotificationHandler) {
+    NotificationsModule.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+      }),
+    });
+  }
+} catch (e) {
+  console.log('Info expo-notifications fallback mode:', e.message);
+}
 
 export const NotificationService = {
   /**
@@ -17,33 +24,37 @@ export const NotificationService = {
    */
   async registerForPushNotificationsAsync() {
     let token = null;
-
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('default', {
-        name: 'Bonis Musik Notifications',
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#C59B27',
-      });
-    }
-
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
-
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
-
-    if (finalStatus !== 'granted') {
-      console.log('Permission de notification non accordée.');
-      return null;
-    }
+    if (!NotificationsModule) return null;
 
     try {
-      token = (await Notifications.getExpoPushTokenAsync()).data;
+      if (Platform.OS === 'android' && NotificationsModule.setNotificationChannelAsync) {
+        await NotificationsModule.setNotificationChannelAsync('default', {
+          name: 'Bonis Musik Notifications',
+          importance: NotificationsModule.AndroidImportance ? NotificationsModule.AndroidImportance.MAX : 5,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#C59B27',
+        });
+      }
+
+      if (NotificationsModule.getPermissionsAsync && NotificationsModule.requestPermissionsAsync) {
+        const { status: existingStatus } = await NotificationsModule.getPermissionsAsync();
+        let finalStatus = existingStatus;
+
+        if (existingStatus !== 'granted') {
+          const { status } = await NotificationsModule.requestPermissionsAsync();
+          finalStatus = status;
+        }
+
+        if (finalStatus !== 'granted') {
+          return null;
+        }
+
+        if (NotificationsModule.getExpoPushTokenAsync) {
+          token = (await NotificationsModule.getExpoPushTokenAsync()).data;
+        }
+      }
     } catch (e) {
-      console.log('Info Push Token (nécessite un projectId Expo en standalone):', e.message);
+      console.log('Info Push Token setup:', e.message);
     }
 
     return token;
@@ -54,18 +65,20 @@ export const NotificationService = {
    */
   async sendLocalNotification(title, body, data = {}) {
     try {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: title,
-          body: body,
-          data: data,
-          sound: true,
-          color: '#C59B27',
-        },
-        trigger: null, // trigger immédiat
-      });
+      if (NotificationsModule && NotificationsModule.scheduleNotificationAsync) {
+        await NotificationsModule.scheduleNotificationAsync({
+          content: {
+            title: title,
+            body: body,
+            data: data,
+            sound: true,
+            color: '#C59B27',
+          },
+          trigger: null, // trigger immédiat
+        });
+      }
     } catch (err) {
-      console.warn('Erreur envoi notification locale:', err);
+      console.warn('Notification locale non affichée:', err?.message || err);
     }
   },
 
