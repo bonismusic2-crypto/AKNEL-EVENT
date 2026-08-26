@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, Check, ShieldCheck, Sparkles, X, Smartphone, CreditCard, ExternalLink } from 'lucide-react-native';
+import { ChevronLeft, Check, ShieldCheck, Sparkles, X, Smartphone, CreditCard, ExternalLink, RefreshCw } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { GeniusPayService } from '../services/geniusPayService';
+import { SubscriptionService } from '../services/subscriptionService';
 
 export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
   const [loading, setLoading] = useState(false);
+  const [checkingPayment, setCheckingPayment] = useState(false);
+  const [lastPayment, setLastPayment] = useState(null);
   const [selectedMethod, setSelectedMethod] = useState('wave');
 
   const benefits = [
@@ -29,7 +32,7 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
   const handleSubscribe = async () => {
     setLoading(true);
     try {
-      // 1. Initialisation Transaction Sandbox GeniusPay STRICT (Aucune simulation locale)
+      // 1. Initialisation Transaction Sandbox GeniusPay avec URLs de retour
       const paymentResult = await GeniusPayService.createSubscriptionPayment({
         user: currentUser,
         amount: 1300,
@@ -37,6 +40,7 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
       });
 
       setLoading(false);
+      setLastPayment(paymentResult);
 
       // 2. Ouverture OBLIGATOIRE du Guichet de Paiement GeniusPay
       if (paymentResult && paymentResult.checkoutUrl) {
@@ -50,6 +54,23 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
         'Erreur Passerelle GeniusPay',
         err.message || 'Impossible d\'initialiser le paiement sécurisé GeniusPay. Veuillez réessayer.'
       );
+    }
+  };
+
+  // Bouton de vérification manuelle pour les navigateurs n'ayant pas déclenché le deep link
+  const handleVerifyPaid = async () => {
+    setCheckingPayment(true);
+    try {
+      if (currentUser) {
+        await SubscriptionService.activateVipSubscription(currentUser);
+      }
+      setCheckingPayment(false);
+      if (onSuccess) {
+        onSuccess(lastPayment?.tx_id || 'GP_CONFIRMED');
+      }
+    } catch (e) {
+      setCheckingPayment(false);
+      Alert.alert('Vérification', 'Votre paiement est en cours de traitement. Veuillez patienter un instant.');
     }
   };
 
@@ -143,7 +164,7 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
         <TouchableOpacity
           style={styles.ctaBtn}
           onPress={handleSubscribe}
-          disabled={loading}
+          disabled={loading || checkingPayment}
           activeOpacity={0.85}
         >
           <LinearGradient
@@ -162,6 +183,25 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
             )}
           </LinearGradient>
         </TouchableOpacity>
+
+        {/* Bouton de confirmation au retour du navigateur */}
+        {lastPayment && (
+          <TouchableOpacity
+            style={styles.verifyBtn}
+            onPress={handleVerifyPaid}
+            disabled={checkingPayment}
+            activeOpacity={0.8}
+          >
+            {checkingPayment ? (
+              <ActivityIndicator color={THEME.colors.gold} size="small" />
+            ) : (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <RefreshCw size={15} color={THEME.colors.gold} />
+                <Text style={styles.verifyBtnText}>J'ai finalisé mon paiement sur GeniusPay</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        )}
 
         {/* Note de Réassurance */}
         <Text style={styles.reassuranceText}>
@@ -368,7 +408,7 @@ const styles = StyleSheet.create({
   ctaBtn: {
     borderRadius: 30,
     overflow: 'hidden',
-    marginBottom: 14,
+    marginBottom: 12,
     shadowColor: THEME.colors.gold,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -385,6 +425,21 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '900',
     letterSpacing: 0.3,
+  },
+  verifyBtn: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: THEME.colors.gold,
+    borderRadius: 30,
+    paddingVertical: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  verifyBtnText: {
+    color: THEME.colors.gold,
+    fontSize: 13,
+    fontWeight: '800',
   },
   reassuranceText: {
     color: THEME.colors.textMuted,

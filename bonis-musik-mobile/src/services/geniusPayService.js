@@ -22,7 +22,12 @@ export const GeniusPayService = {
       customer: {
         email: user?.email || 'abonne@bonismusik.com',
         name: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Abonne Bonis',
+        phone: user?.user_metadata?.phone || '',
       },
+      success_url: 'bonismusik://payment-success',
+      error_url: 'bonismusik://payment-cancel',
+      return_url: 'bonismusik://payment-success',
+      cancel_url: 'bonismusik://payment-cancel',
     };
 
     const response = await fetch(`${GENIUSPAY_CONFIG.baseUrl}/payments`, {
@@ -72,5 +77,26 @@ export const GeniusPayService = {
       status: 'pending',
       raw: resData,
     };
+  },
+
+  /**
+   * Vérifie le statut d'une transaction auprès de GeniusPay
+   */
+  async checkPaymentStatus(txId) {
+    if (!txId) return null;
+    try {
+      const response = await fetch(`${GENIUSPAY_CONFIG.baseUrl}/payments/${txId}`, {
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${GENIUSPAY_CONFIG.apiKey}`,
+          'X-Secret-Key': GENIUSPAY_CONFIG.secretKey,
+        },
+      });
+      const data = await response.json().catch(() => null);
+      return data;
+    } catch (e) {
+      console.warn('Erreur vérification transaction GeniusPay:', e);
+      return null;
+    }
   }
 };
