@@ -258,6 +258,64 @@ const ManageMusic = () => {
                 }
             }
 
+            // ==================== 🔔 ÉMISSION AUTOMATIQUE DE NOTIFICATION MOBILE ====================
+            try {
+                let notifTitle = '';
+                let notifMessage = '';
+                let notifBadge = 'Nouveauté';
+                let notifBadgeBg = '#FEF3C7';
+                let notifBadgeTextColor = '#92400E';
+                let notifActionType = 'home';
+
+                if (modalType === 'album') {
+                    notifTitle = `💿 Nouvel Album : "${formData.title}"`;
+                    notifMessage = `Le nouvel opus du Chantre Boniface est disponible en streaming illimité avec ses titres et clips exclusifs !`;
+                    notifBadge = 'Nouvel Album';
+                    notifBadgeBg = '#FEF3C7';
+                    notifBadgeTextColor = '#B45309';
+                    notifActionType = 'music';
+                } else if (modalType === 'clip') {
+                    notifTitle = `🎬 Nouveau Clip Vidéo HD : "${formData.title}"`;
+                    notifMessage = `Regardez dès maintenant le clip officiel en haute définition sur Bonis Musik !`;
+                    notifBadge = 'Nouveau Clip';
+                    notifBadgeBg = '#DCFCE7';
+                    notifBadgeTextColor = '#166534';
+                    notifActionType = 'clip';
+                } else if (modalType === 'song') {
+                    const count = multiUploadedSongs.length > 1 ? `${multiUploadedSongs.length} nouveaux titres` : `"${formData.title}"`;
+                    notifTitle = `🎵 Nouveaux Chants Ajoutés`;
+                    notifMessage = `${count} du Chantre Boniface viennent d'être ajoutés à l'album. Bonne écoute !`;
+                    notifBadge = 'Nouveau Chant';
+                    notifBadgeBg = '#DBEAFE';
+                    notifBadgeTextColor = '#1E40AF';
+                    notifActionType = 'music';
+                } else if (modalType === 'teaching') {
+                    notifTitle = `📖 Nouvel Enseignement : "${formData.title}"`;
+                    notifMessage = `Une nouvelle parole d'édification et de prière est disponible à l'écoute.`;
+                    notifBadge = 'Enseignement';
+                    notifBadgeBg = '#F3E8FF';
+                    notifBadgeTextColor = '#6B21A8';
+                    notifActionType = 'teaching';
+                }
+
+                if (notifTitle) {
+                    await supabase.from('notifications').insert([{
+                        title: notifTitle,
+                        message: notifMessage,
+                        type: modalType === 'clip' ? 'clip' : modalType === 'teaching' ? 'teaching' : 'general',
+                        badge: notifBadge,
+                        badge_bg: notifBadgeBg,
+                        badge_text_color: notifBadgeTextColor,
+                        action_type: notifActionType,
+                        action_text: 'Découvrir',
+                        is_read: false,
+                        created_at: new Date().toISOString(),
+                    }]);
+                }
+            } catch (notifErr) {
+                console.warn('Erreur envoi notification temps réel:', notifErr);
+            }
+
             setShowModal(false);
             setEditingItem(null);
             setMultiUploadedSongs([]);
