@@ -11,6 +11,7 @@ import { DownloadService } from '../services/downloadService';
 import { useAudio } from '../context/AudioContext';
 import { NotificationsModal, INITIAL_MOBILE_NOTIFICATIONS } from '../components/NotificationsModal';
 import { MediaOptionsMenu } from '../components/MediaOptionsMenu';
+import { SearchModal } from '../components/SearchModal';
 
 export const HomeScreen = ({
   currentUser,
@@ -26,6 +27,7 @@ export const HomeScreen = ({
   const [teachings, setTeachings] = useState(SAMPLE_DATA.teachings);
   const [refreshing, setRefreshing] = useState(false);
   const [isNotifModalVisible, setIsNotifModalVisible] = useState(false);
+  const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [selectedMenuItem, setSelectedMenuItem] = useState(null);
   const [notifications, setNotifications] = useState(INITIAL_MOBILE_NOTIFICATIONS);
@@ -212,11 +214,15 @@ export const HomeScreen = ({
           </TouchableOpacity>
         </View>
 
-        {/* Barre de Recherche */}
-        <View style={styles.searchBar}>
-          <Search size={18} color={THEME.colors.textMuted} />
+        {/* Barre de Recherche Interactive */}
+        <TouchableOpacity
+          style={styles.searchBar}
+          onPress={() => setIsSearchModalVisible(true)}
+          activeOpacity={0.8}
+        >
+          <Search size={18} color={THEME.colors.gold} />
           <Text style={styles.searchText}>Rechercher un chant, album, enseignement...</Text>
-        </View>
+        </TouchableOpacity>
 
         {/* Bannière Hero Lumineuse & Dorée Synchronisée */}
         <View style={styles.heroCard}>
@@ -380,6 +386,23 @@ export const HomeScreen = ({
           onMarkAllAsRead={handleMarkAllAsRead}
           onDeleteNotification={handleDeleteNotification}
           onNavigateAction={handleNavigateAction}
+        />
+
+        {/* Modal de Recherche Avancée */}
+        <SearchModal
+          visible={isSearchModalVisible}
+          onClose={() => setIsSearchModalVisible(false)}
+          albums={albums}
+          clips={clips}
+          teachings={teachings}
+          onSelectAlbum={onSelectAlbum}
+          onSelectClip={onSelectClip}
+          onPlayTrack={playTrack}
+          onSelectTeaching={handleTeachingPress}
+          onOpenOptions={(item) => {
+            setSelectedMenuItem(item);
+            setIsMenuVisible(true);
+          }}
         />
 
       </ScrollView>

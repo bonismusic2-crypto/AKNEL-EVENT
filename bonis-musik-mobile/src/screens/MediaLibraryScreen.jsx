@@ -9,12 +9,14 @@ import { SubscriptionService } from '../services/subscriptionService';
 import { DownloadService } from '../services/downloadService';
 import { useAudio } from '../context/AudioContext';
 import { MediaOptionsMenu } from '../components/MediaOptionsMenu';
+import { SearchModal } from '../components/SearchModal';
 
 export const MediaLibraryScreen = ({ onSelectAlbum, onSelectClip, onSelectTeaching, currentUser, onOpenPaywall }) => {
   const { playTrack } = useAudio();
   const [activeSection, setActiveSection] = useState('music'); // 'music', 'clips', 'teachings'
   const [teachingFilter, setTeachingFilter] = useState('Tous');
   const [isMenuVisible, setIsMenuVisible] = useState(false);
+  const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
   const [selectedMenuItem, setSelectedMenuItem] = useState(null);
 
   const checkVipAccess = async () => {
@@ -72,10 +74,14 @@ export const MediaLibraryScreen = ({ onSelectAlbum, onSelectClip, onSelectTeachi
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Header */}
+      {/* HEADER MÉDIATHÈQUE */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Médiathèque</Text>
-        <TouchableOpacity style={styles.iconBtn}>
+        <TouchableOpacity
+          style={styles.iconBtn}
+          onPress={() => setIsSearchModalVisible(true)}
+          activeOpacity={0.75}
+        >
           <Search size={20} color={THEME.colors.textPrimary} />
         </TouchableOpacity>
       </View>
@@ -271,6 +277,23 @@ export const MediaLibraryScreen = ({ onSelectAlbum, onSelectClip, onSelectTeachi
         }}
         onToggleFavorite={(item) => {
           Alert.alert('Favoris', `"${item.title}" a été ajouté à vos favoris.`);
+        }}
+      />
+
+      {/* Modal Recherche Complète */}
+      <SearchModal
+        visible={isSearchModalVisible}
+        onClose={() => setIsSearchModalVisible(false)}
+        albums={albums}
+        clips={clips}
+        teachings={teachings}
+        onSelectAlbum={onSelectAlbum}
+        onSelectClip={onSelectClip}
+        onPlayTrack={playTrack}
+        onSelectTeaching={onSelectTeaching}
+        onOpenOptions={(item) => {
+          setSelectedMenuItem(item);
+          setIsMenuVisible(true);
         }}
       />
     </SafeAreaView>
