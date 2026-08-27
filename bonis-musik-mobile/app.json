@@ -2,11 +2,17 @@
   "expo": {
     "name": "Bonis Musik",
     "slug": "bonis-musik",
+    "owner": "bonismusic2-crypto",
     "scheme": "bonismusik",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
+    "extra": {
+      "eas": {
+        "projectId": "4bc28f8a-61d4-47a5-8dfd-6a67dddac0dd"
+      }
+    },
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "cover",
