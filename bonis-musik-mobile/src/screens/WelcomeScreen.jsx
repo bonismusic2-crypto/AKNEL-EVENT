@@ -9,7 +9,7 @@ export const WelcomeScreen = ({ onStart, onLogin }) => {
     <View style={styles.container}>
       {/* Visuel immersif plein écran officiel (screen 1.png) */}
       <ImageBackground
-        source={require('../../assets/screen 1.png')}
+        source={require('../../assets/chantre-boniface.png')}
         style={styles.backgroundImage}
         resizeMode="cover"
       >
