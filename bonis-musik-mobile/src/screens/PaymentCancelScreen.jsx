@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { XCircle, RefreshCw, MessageCircle, ArrowLeft, ShieldAlert } from 'lucide-react-native';
 import { THEME } from '../constants/theme';
 
-export const PaymentCancelScreen = ({ onRetry, onBack }) => {
+export const PaymentCancelScreen = ({ onRetry, onBack, onHome }) => {
   const handleOpenWhatsApp = () => {
     Linking.openURL('https://wa.me/2250556018787?text=Bonjour%20Bonis%20Musik,%20j%27ai%20besoin%20d%27aide%20pour%20finaliser%20mon%20abonnement%20VIP');
   };
@@ -58,7 +58,7 @@ export const PaymentCancelScreen = ({ onRetry, onBack }) => {
 
           <TouchableOpacity
             style={styles.backBtn}
-            onPress={onBack}
+            onPress={onBack || onHome}
             activeOpacity={0.7}
           >
             <ArrowLeft size={16} color={THEME.colors.textSecondary} />
