@@ -31,6 +31,9 @@
       "permissions": [
         "WAKE_LOCK",
         "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "WAKE_LOCK",
+        "FOREGROUND_SERVICE",
         "FOREGROUND_SERVICE_MEDIA_PLAYBACK"
       ]
     },
@@ -51,6 +54,12 @@
           "color": "#C59B27"
         }
       ]
-    ]
+    ],
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/4bc28f8a-61d4-47a5-8dfd-6a67dddac0dd"
+    }
   }
 }
