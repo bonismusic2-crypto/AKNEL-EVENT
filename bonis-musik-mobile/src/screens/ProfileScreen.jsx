@@ -42,7 +42,7 @@ import {
   Check
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { THEME } from '../constants/theme';
+import { THEME, useAppTheme } from '../constants/theme';
 import { SAMPLE_DATA } from '../data/sampleData';
 import { supabase } from '../lib/supabase';
 import { SubscriptionService } from '../services/subscriptionService';
@@ -50,6 +50,7 @@ import { DownloadService } from '../services/downloadService';
 import { useAudio } from '../context/AudioContext';
 
 export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser, onPlayVideo }) => {
+  const { theme, isDarkMode, toggleTheme } = useAppTheme();
   const { history, clearHistory, removeFromHistory, playTrack } = useAudio();
   const [activeModal, setActiveModal] = useState(null);
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -682,6 +683,20 @@ export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser, onPlayVide
               <Switch
                 value={wifiOnly}
                 onValueChange={setWifiOnly}
+                trackColor={{ false: '#D1D5DB', true: THEME.colors.gold }}
+              />
+            </View>
+
+            {/* 🌙 Mode Sombre / Mode Clair */}
+            <Text style={styles.sectionHeading}>Apparence & Thème</Text>
+            <View style={styles.settingRow}>
+              <View style={{ flex: 1, paddingRight: 10 }}>
+                <Text style={styles.settingLabel}>Mode Sombre (Dark Mode)</Text>
+                <Text style={styles.settingDesc}>Design noir élégant & reposant pour les yeux</Text>
+              </View>
+              <Switch
+                value={isDarkMode}
+                onValueChange={toggleTheme}
                 trackColor={{ false: '#D1D5DB', true: THEME.colors.gold }}
               />
             </View>

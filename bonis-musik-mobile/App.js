@@ -3,6 +3,7 @@ import { View, StyleSheet, Alert, Linking } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AudioProvider } from './src/context/AudioContext';
+import { ThemeProvider, useAppTheme } from './src/constants/theme';
 import { BottomNavigation } from './src/components/BottomNavigation';
 import { MiniPlayer } from './src/components/MiniPlayer';
 import { FullAudioPlayerModal } from './src/components/FullAudioPlayerModal';
@@ -157,175 +158,236 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <AudioProvider>
-        <View style={styles.container}>
-          <StatusBar style="dark" />
-
-          {/* 1. Écran de Bienvenue Onboarding */}
-          {appState === 'welcome' && (
-            <WelcomeScreen
-              onStart={() => setAppState('auth')}
-              onLogin={() => setAppState('auth')}
-            />
-          )}
-
-          {/* 2. Écran d'Authentification Supabase */}
-          {appState === 'auth' && (
-            <AuthScreen
-              onSuccess={async (user) => {
-                await routeUserAfterAuth(user);
-              }}
-              onBack={() => setAppState('welcome')}
-            />
-          )}
-
-          {/* 3. Écran d'Abonnement GeniusPay */}
-          {appState === 'paywall' && (
-            <PaywallScreen
-              currentUser={currentUser}
-              onBack={handlePaywallBack}
-              onSuccess={(txId, planType = 'monthly') => {
-                if (currentUser) {
-                  SubscriptionService.setSubscribedPermanently(
-                    currentUser.id,
-                    true,
-                    planType === 'annual'
-                      ? 'Abonnement Annuel (10 000 FCFA = 15,00 €)'
-                      : 'Abonnement Mensuel (1 000 FCFA = 1,50 €)',
-                    null,
-                    planType
-                  );
-                }
-                setLastTxId(txId);
-                setSelectedPlanType(planType);
-                setAppState('payment_success');
-              }}
-            />
-          )}
-
-          {/* 4. Écran de Confirmation Paiement Réussi */}
-          {appState === 'payment_success' && (
-            <PaymentSuccessScreen
-              txId={lastTxId}
-              planType={selectedPlanType}
-              currentUser={currentUser}
-              onContinue={() => {
-                setAppState('main');
-                setActiveTab('home');
-              }}
-            />
-          )}
-
-          {/* 5. Écran d'Annulation / Échec de Paiement */}
-          {appState === 'payment_cancel' && (
-            <PaymentCancelScreen
-              onRetry={() => setAppState('paywall')}
-              onHome={() => setAppState('main')}
-            />
-          )}
-
-          {/* 6. Application Principale (3 Onglets Navigation) */}
-          {appState === 'main' && (
-            <View style={styles.mainContainer}>
-              <View style={styles.contentArea}>
-                {selectedAlbum ? (
-                  <AlbumDetailScreen
-                    album={selectedAlbum}
-                    currentUser={currentUser}
-                    onOpenPaywall={() => setAppState('paywall')}
-                    onBack={handleBackFromAlbum}
-                    onPlayVideo={handlePlayVideo}
-                  />
-                ) : (
-                  <>
-                    {/* Onglet 1 : ACCUEIL */}
-                    {activeTab === 'home' && (
-                      <HomeScreen
-                        currentUser={currentUser}
-                        onSelectAlbum={handleSelectAlbum}
-                        onSelectClip={handlePlayVideo}
-                        onSelectTeaching={(teaching) => {
-                          if (teaching?.type === 'video' || teaching?.videoUrl) {
-                            handlePlayVideo(teaching);
-                          } else {
-                            setActiveTab('library');
-                          }
-                        }}
-                        onOpenProfile={() => setActiveTab('profile')}
-                        onOpenPaywall={() => setAppState('paywall')}
-                      />
-                    )}
-
-                    {/* Onglet 2 : MÉDIATHÈQUE UNIFIÉE (Musique, Clips & Enseignements) */}
-                    {activeTab === 'library' && (
-                      <MediaLibraryScreen
-                        currentUser={currentUser}
-                        onSelectAlbum={handleSelectAlbum}
-                        onSelectClip={handlePlayVideo}
-                        onSelectTeaching={(teaching) => {
-                          if (teaching?.type === 'video' || teaching?.videoUrl) {
-                            handlePlayVideo(teaching);
-                          }
-                        }}
-                        onOpenPaywall={() => setAppState('paywall')}
-                      />
-                    )}
-
-                    {/* Onglet 3 : PROFIL UTILISATEUR & ABONNEMENT */}
-                    {activeTab === 'profile' && (
-                      <ProfileScreen
-                        currentUser={currentUser}
-                        onOpenPaywall={() => setAppState('paywall')}
-                        onPlayVideo={handlePlayVideo}
-                        onLogout={() => {
-                          setAppState('welcome');
-                          setActiveTab('home');
-                        }}
-                      />
-                    )}
-                  </>
-                )}
-              </View>
-
-              {/* Lecteur Audio Mini Persistant */}
-              {!isVideoPlayerVisible && <MiniPlayer />}
-
-              {/* Barre de Navigation Épurée (3 Boutons) */}
-              <BottomNavigation
-                activeTab={activeTab}
-                onTabChange={(tab) => {
-                  setSelectedAlbum(null);
-                  setActiveTab(tab);
-                }}
-              />
-
-              {/* Lecteur Audio Plein Écran Modal */}
-              <FullAudioPlayerModal />
-
-              {/* Lecteur Vidéo YouTube & Mini-Player Flottant (Picture-in-Picture) */}
-              <YouTubeStyleVideoPlayer
-                video={activeVideo}
-                visible={isVideoPlayerVisible}
-                isFloating={isVideoFloating}
-                onClose={() => {
-                  setIsVideoPlayerVisible(false);
-                  setIsVideoFloating(false);
-                  setActiveVideo(null);
-                }}
-                onMinimize={() => setIsVideoFloating(true)}
-                onMaximize={() => setIsVideoFloating(false)}
-                isDownloaded={activeVideo ? downloadedVideoIds.has(String(activeVideo.id)) : false}
-                onToggleDownload={handleToggleDownloadVideo}
-                suggestedVideos={SAMPLE_DATA.videoClips}
-                onSelectVideo={handlePlayVideo}
-              />
-            </View>
-          )}
-        </View>
-      </AudioProvider>
+      <ThemeProvider>
+        <AudioProvider>
+          <MainContent
+            appState={appState}
+            setAppState={setAppState}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            selectedAlbum={selectedAlbum}
+            setSelectedAlbum={setSelectedAlbum}
+            currentUser={currentUser}
+            setCurrentUser={setCurrentUser}
+            lastTxId={lastTxId}
+            setLastTxId={setLastTxId}
+            selectedPlanType={selectedPlanType}
+            setSelectedPlanType={setSelectedPlanType}
+            activeVideo={activeVideo}
+            setActiveVideo={setActiveVideo}
+            isVideoPlayerVisible={isVideoPlayerVisible}
+            setIsVideoPlayerVisible={setIsVideoPlayerVisible}
+            isVideoFloating={isVideoFloating}
+            setIsVideoFloating={setIsVideoFloating}
+            downloadedVideoIds={downloadedVideoIds}
+            refreshDownloads={refreshDownloads}
+            handlePlayVideo={handlePlayVideo}
+            handleToggleDownloadVideo={handleToggleDownloadVideo}
+            handleSelectAlbum={handleSelectAlbum}
+            handleBackFromAlbum={handleBackFromAlbum}
+            handlePaywallBack={handlePaywallBack}
+            routeUserAfterAuth={routeUserAfterAuth}
+          />
+        </AudioProvider>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }
+
+const MainContent = ({
+  appState,
+  setAppState,
+  activeTab,
+  setActiveTab,
+  selectedAlbum,
+  setSelectedAlbum,
+  currentUser,
+  setCurrentUser,
+  lastTxId,
+  setLastTxId,
+  selectedPlanType,
+  setSelectedPlanType,
+  activeVideo,
+  setActiveVideo,
+  isVideoPlayerVisible,
+  setIsVideoPlayerVisible,
+  isVideoFloating,
+  setIsVideoFloating,
+  downloadedVideoIds,
+  refreshDownloads,
+  handlePlayVideo,
+  handleToggleDownloadVideo,
+  handleSelectAlbum,
+  handleBackFromAlbum,
+  handlePaywallBack,
+  routeUserAfterAuth,
+}) => {
+  const { theme, isDarkMode } = useAppTheme();
+
+  return (
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <StatusBar style={isDarkMode ? 'light' : 'dark'} />
+
+      {/* 1. Écran de Bienvenue Onboarding */}
+      {appState === 'welcome' && (
+        <WelcomeScreen
+          onStart={() => setAppState('auth')}
+          onLogin={() => setAppState('auth')}
+        />
+      )}
+
+      {/* 2. Écran d'Authentification Supabase */}
+      {appState === 'auth' && (
+        <AuthScreen
+          onSuccess={async (user) => {
+            await routeUserAfterAuth(user);
+          }}
+          onBack={() => setAppState('welcome')}
+        />
+      )}
+
+      {/* 3. Écran d'Abonnement GeniusPay */}
+      {appState === 'paywall' && (
+        <PaywallScreen
+          currentUser={currentUser}
+          onBack={handlePaywallBack}
+          onSuccess={(txId, planType = 'monthly') => {
+            if (currentUser) {
+              SubscriptionService.setSubscribedPermanently(
+                currentUser.id,
+                true,
+                planType === 'annual'
+                  ? 'Abonnement Annuel (10 000 FCFA = 15,00 €)'
+                  : 'Abonnement Mensuel (1 000 FCFA = 1,50 €)',
+                null,
+                planType
+              );
+            }
+            setLastTxId(txId);
+            setSelectedPlanType(planType);
+            setAppState('payment_success');
+          }}
+        />
+      )}
+
+      {/* 4. Écran de Confirmation Paiement Réussi */}
+      {appState === 'payment_success' && (
+        <PaymentSuccessScreen
+          txId={lastTxId}
+          planType={selectedPlanType}
+          onContinue={() => setAppState('main')}
+        />
+      )}
+
+      {/* 5. Écran d'Annulation Paiement */}
+      {appState === 'payment_cancel' && (
+        <PaymentCancelScreen
+          onRetry={() => setAppState('paywall')}
+          onHome={() => setAppState('main')}
+        />
+      )}
+
+      {/* 6. Application Principale (3 Onglets Navigation) */}
+      {appState === 'main' && (
+        <View style={styles.mainContainer}>
+          <View style={styles.contentArea}>
+            {selectedAlbum ? (
+              <AlbumDetailScreen
+                album={selectedAlbum}
+                currentUser={currentUser}
+                onOpenPaywall={() => setAppState('paywall')}
+                onBack={handleBackFromAlbum}
+                onPlayVideo={handlePlayVideo}
+              />
+            ) : (
+              <>
+                {/* Onglet 1 : ACCUEIL */}
+                {activeTab === 'home' && (
+                  <HomeScreen
+                    currentUser={currentUser}
+                    onSelectAlbum={handleSelectAlbum}
+                    onSelectClip={handlePlayVideo}
+                    onSelectTeaching={(teaching) => {
+                      if (teaching?.type === 'video' || teaching?.videoUrl) {
+                        handlePlayVideo(teaching);
+                      } else {
+                        setActiveTab('library');
+                      }
+                    }}
+                    onOpenProfile={() => setActiveTab('profile')}
+                    onOpenPaywall={() => setAppState('paywall')}
+                  />
+                )}
+
+                {/* Onglet 2 : MÉDIATHÈQUE UNIFIÉE (Musique, Clips & Enseignements) */}
+                {activeTab === 'library' && (
+                  <MediaLibraryScreen
+                    onSelectAlbum={handleSelectAlbum}
+                    onSelectClip={handlePlayVideo}
+                    onSelectTeaching={(teaching) => {
+                      if (teaching?.type === 'video' || teaching?.videoUrl) {
+                        handlePlayVideo(teaching);
+                      }
+                    }}
+                    currentUser={currentUser}
+                    onOpenPaywall={() => setAppState('paywall')}
+                  />
+                )}
+
+                {/* Onglet 3 : PROFIL & GESTION ABONNEMENT */}
+                {activeTab === 'profile' && (
+                  <ProfileScreen
+                    currentUser={currentUser}
+                    onOpenPaywall={() => setAppState('paywall')}
+                    onLogout={async () => {
+                      await supabase.auth.signOut();
+                      setCurrentUser(null);
+                      setAppState('welcome');
+                    }}
+                    onPlayVideo={handlePlayVideo}
+                  />
+                )}
+              </>
+            )}
+          </View>
+
+          {/* Lecteur Audio Mini Persistant */}
+          {!isVideoPlayerVisible && <MiniPlayer />}
+
+          {/* Barre de Navigation Épurée (3 Boutons) */}
+          <BottomNavigation
+            activeTab={activeTab}
+            onTabChange={(tab) => {
+              setSelectedAlbum(null);
+              setActiveTab(tab);
+            }}
+          />
+
+          {/* Lecteur Audio Plein Écran Modal */}
+          <FullAudioPlayerModal />
+
+          {/* Lecteur Vidéo YouTube & Mini-Player Flottant (Picture-in-Picture) */}
+          <YouTubeStyleVideoPlayer
+            video={activeVideo}
+            visible={isVideoPlayerVisible}
+            isFloating={isVideoFloating}
+            onClose={() => {
+              setIsVideoPlayerVisible(false);
+              setIsVideoFloating(false);
+              setActiveVideo(null);
+            }}
+            onMinimize={() => setIsVideoFloating(true)}
+            onMaximize={() => setIsVideoFloating(false)}
+            isDownloaded={activeVideo ? downloadedVideoIds.has(String(activeVideo.id)) : false}
+            onToggleDownload={handleToggleDownloadVideo}
+            suggestedVideos={SAMPLE_DATA.videoClips}
+            onSelectVideo={handlePlayVideo}
+          />
+        </View>
+      )}
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
