@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AudioProvider } from './src/context/AudioContext';
 import { ThemeProvider, useAppTheme } from './src/constants/theme';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { BottomNavigation } from './src/components/BottomNavigation';
 import { MiniPlayer } from './src/components/MiniPlayer';
 import { FullAudioPlayerModal } from './src/components/FullAudioPlayerModal';
@@ -158,38 +159,40 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <ThemeProvider>
-        <AudioProvider>
-          <MainContent
-            appState={appState}
-            setAppState={setAppState}
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
-            selectedAlbum={selectedAlbum}
-            setSelectedAlbum={setSelectedAlbum}
-            currentUser={currentUser}
-            setCurrentUser={setCurrentUser}
-            lastTxId={lastTxId}
-            setLastTxId={setLastTxId}
-            selectedPlanType={selectedPlanType}
-            setSelectedPlanType={setSelectedPlanType}
-            activeVideo={activeVideo}
-            setActiveVideo={setActiveVideo}
-            isVideoPlayerVisible={isVideoPlayerVisible}
-            setIsVideoPlayerVisible={setIsVideoPlayerVisible}
-            isVideoFloating={isVideoFloating}
-            setIsVideoFloating={setIsVideoFloating}
-            downloadedVideoIds={downloadedVideoIds}
-            refreshDownloads={refreshDownloads}
-            handlePlayVideo={handlePlayVideo}
-            handleToggleDownloadVideo={handleToggleDownloadVideo}
-            handleSelectAlbum={handleSelectAlbum}
-            handleBackFromAlbum={handleBackFromAlbum}
-            handlePaywallBack={handlePaywallBack}
-            routeUserAfterAuth={routeUserAfterAuth}
-          />
-        </AudioProvider>
-      </ThemeProvider>
+      <ErrorBoundary>
+        <ThemeProvider>
+          <AudioProvider>
+            <MainContent
+              appState={appState}
+              setAppState={setAppState}
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              selectedAlbum={selectedAlbum}
+              setSelectedAlbum={setSelectedAlbum}
+              currentUser={currentUser}
+              setCurrentUser={setCurrentUser}
+              lastTxId={lastTxId}
+              setLastTxId={setLastTxId}
+              selectedPlanType={selectedPlanType}
+              setSelectedPlanType={setSelectedPlanType}
+              activeVideo={activeVideo}
+              setActiveVideo={setActiveVideo}
+              isVideoPlayerVisible={isVideoPlayerVisible}
+              setIsVideoPlayerVisible={setIsVideoPlayerVisible}
+              isVideoFloating={isVideoFloating}
+              setIsVideoFloating={setIsVideoFloating}
+              downloadedVideoIds={downloadedVideoIds}
+              refreshDownloads={refreshDownloads}
+              handlePlayVideo={handlePlayVideo}
+              handleToggleDownloadVideo={handleToggleDownloadVideo}
+              handleSelectAlbum={handleSelectAlbum}
+              handleBackFromAlbum={handleBackFromAlbum}
+              handlePaywallBack={handlePaywallBack}
+              routeUserAfterAuth={routeUserAfterAuth}
+            />
+          </AudioProvider>
+        </ThemeProvider>
+      </ErrorBoundary>
     </SafeAreaProvider>
   );
 }
