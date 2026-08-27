@@ -1,52 +1,25 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Audio } from 'expo-av';
 
 const AudioContext = createContext(null);
 
-const INITIAL_HISTORY = [
-  {
-    id: 101,
-    title: 'Tu es fidèle',
-    artist: 'Chantre Boniface',
-    album: 'ÉLÉVATION',
-    cover: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500',
-    duration: '04:25',
-    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-    type: 'song',
-    playedAt: new Date(Date.now() - 15 * 60000).toISOString(),
-  },
-  {
-    id: 't-1',
-    title: 'La puissance de la louange prophétique',
-    artist: 'Chantre Boniface',
-    album: 'Enseignement',
-    cover: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=300',
-    duration: '45 min',
-    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3',
-    type: 'teaching',
-    playedAt: new Date(Date.now() - 2 * 3600000).toISOString(),
-  },
-  {
-    id: 102,
-    title: 'Ton amour est fidèle',
-    artist: 'Chantre Boniface',
-    album: 'ÉLÉVATION',
-    cover: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500',
-    duration: '05:12',
-    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
-    type: 'song',
-    playedAt: new Date(Date.now() - 24 * 3600000).toISOString(),
-  },
-];
-
 export const AudioProvider = ({ children }) => {
   const [sound, setSound] = useState(null);
   const [currentTrack, setCurrentTrack] = useState(null);
+  const [playlist, setPlaylist] = useState([]); // File d'attente / Album en cours d'écoute
   const [isPlaying, setIsPlaying] = useState(false);
   const [positionMillis, setPositionMillis] = useState(0);
   const [durationMillis, setDurationMillis] = useState(1);
   const [isFullPlayerVisible, setIsFullPlayerVisible] = useState(false);
   const [history, setHistory] = useState([]);
+
+  // Références mutables pour accès immédiat dans onPlaybackStatusUpdate
+  const playlistRef = useRef(playlist);
+  const currentTrackRef = useRef(currentTrack);
+  const isPlayingRef = useRef(isPlaying);
+  playlistRef.current = playlist;
+  currentTrackRef.current = currentTrack;
+  isPlayingRef.current = isPlaying;
 
   useEffect(() => {
     // Configurer le mode audio pour autoriser la lecture en tâche de fond
@@ -68,20 +41,32 @@ export const AudioProvider = ({ children }) => {
       setPositionMillis(status.positionMillis || 0);
       setDurationMillis(status.durationMillis || 1);
       setIsPlaying(status.isPlaying);
+
+      // ✅ ENCHAÎNEMENT AUTOMATIQUE : Si le morceau se termine, passer au suivant
       if (status.didJustFinish) {
-        setIsPlaying(false);
-        setPositionMillis(0);
+        handlePlayNext();
       }
     }
   };
 
-  const playTrack = async (track) => {
+  /**
+   * Joue une piste audio avec possibilité de passer la file d'attente (album ou playlist)
+   */
+  const playTrack = async (track, newPlaylist = null) => {
     try {
       if (sound) {
         await sound.unloadAsync();
       }
+
+      if (newPlaylist && Array.isArray(newPlaylist)) {
+        setPlaylist(newPlaylist);
+        playlistRef.current = newPlaylist;
+      }
+
       setCurrentTrack(track);
+      currentTrackRef.current = track;
       setIsPlaying(true);
+      setPositionMillis(0);
 
       // Ajouter à l'historique d'écoute
       const historyItem = {
@@ -101,7 +86,7 @@ export const AudioProvider = ({ children }) => {
         return [historyItem, ...filtered].slice(0, 50);
       });
 
-      const trackUrl = track.url || track.videoUrl || 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
+      const trackUrl = track.url || track.videoUrl;
       const { sound: newSound } = await Audio.Sound.createAsync(
         { uri: trackUrl },
         { shouldPlay: true },
@@ -110,7 +95,54 @@ export const AudioProvider = ({ children }) => {
       setSound(newSound);
     } catch (error) {
       console.warn('Erreur lecture audio expo-av:', error);
-      setIsPlaying(true);
+      setIsPlaying(false);
+    }
+  };
+
+  /**
+   * ⏭️ Passer au morceau SUIVANT
+   */
+  const handlePlayNext = async () => {
+    const list = playlistRef.current;
+    const current = currentTrackRef.current;
+
+    if (!list || list.length === 0 || !current) {
+      setIsPlaying(false);
+      return;
+    }
+
+    const currentIndex = list.findIndex((t) => String(t.id) === String(current.id));
+    if (currentIndex !== -1 && currentIndex + 1 < list.length) {
+      const nextTrack = list[currentIndex + 1];
+      await playTrack(nextTrack, list);
+    } else if (list.length > 0) {
+      // Reboucler au premier morceau si fin d'album
+      const firstTrack = list[0];
+      await playTrack(firstTrack, list);
+    } else {
+      setIsPlaying(false);
+    }
+  };
+
+  /**
+   * ⏮️ Revenir au morceau PRÉCÉDENT
+   */
+  const handlePlayPrevious = async () => {
+    const list = playlistRef.current;
+    const current = currentTrackRef.current;
+
+    if (!list || list.length === 0 || !current) {
+      if (sound) await sound.setPositionAsync(0);
+      return;
+    }
+
+    const currentIndex = list.findIndex((t) => String(t.id) === String(current.id));
+    if (currentIndex > 0) {
+      const prevTrack = list[currentIndex - 1];
+      await playTrack(prevTrack, list);
+    } else {
+      // Recommencer le morceau actuel depuis le début
+      if (sound) await sound.setPositionAsync(0);
     }
   };
 
@@ -153,12 +185,16 @@ export const AudioProvider = ({ children }) => {
     <AudioContext.Provider
       value={{
         currentTrack,
+        playlist,
+        setPlaylist,
         isPlaying,
         positionMillis,
         durationMillis,
         isFullPlayerVisible,
         setIsFullPlayerVisible,
         playTrack,
+        handlePlayNext,
+        handlePlayPrevious,
         togglePlayPause,
         seekTo,
         history,
@@ -167,7 +203,7 @@ export const AudioProvider = ({ children }) => {
         closeCurrentTrack: () => {
           if (sound) sound.stopAsync().catch(() => {});
           setCurrentTrack(null);
-        }
+        },
       }}
     >
       {children}

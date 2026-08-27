@@ -27,6 +27,8 @@ export const FullAudioPlayerModal = () => {
     positionMillis,
     durationMillis,
     togglePlayPause,
+    handlePlayNext,
+    handlePlayPrevious,
     isFullPlayerVisible,
     setIsFullPlayerVisible,
   } = useAudio();
@@ -143,7 +145,11 @@ export const FullAudioPlayerModal = () => {
 
         {/* Commandes Principales de Lecture */}
         <View style={styles.controlsRow}>
-          <TouchableOpacity style={styles.skipBtn} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.skipBtn}
+            onPress={handlePlayPrevious}
+            activeOpacity={0.7}
+          >
             <SkipBack size={26} color="#FFFFFF" fill="#FFFFFF" />
           </TouchableOpacity>
 
@@ -155,7 +161,11 @@ export const FullAudioPlayerModal = () => {
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.skipBtn} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.skipBtn}
+            onPress={handlePlayNext}
+            activeOpacity={0.7}
+          >
             <SkipForward size={26} color="#FFFFFF" fill="#FFFFFF" />
           </TouchableOpacity>
         </View>

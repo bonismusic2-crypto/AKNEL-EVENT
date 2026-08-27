@@ -26,7 +26,13 @@ export const AlbumDetailScreen = ({ album, onBack, currentUser, onOpenPaywall, o
       if (onOpenPaywall) onOpenPaywall();
       return;
     }
-    playTrack(track);
+    const fullAlbumPlaylist = tracks.map(t => ({
+      ...t,
+      cover: album.cover,
+      album: album.title,
+      artist: album.artist || 'Chantre Boniface',
+    }));
+    playTrack({ ...track, cover: album.cover, album: album.title }, fullAlbumPlaylist);
   };
 
   const handlePlayClip = async (clip) => {

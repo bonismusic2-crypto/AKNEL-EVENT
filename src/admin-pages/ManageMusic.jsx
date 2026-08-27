@@ -328,21 +328,38 @@ const ManageMusic = () => {
     };
 
     const handleDeleteAlbum = async (id) => {
-        if (!window.confirm('Supprimer cet album et tous ses titres ?')) return;
-        await supabase.from('albums').delete().eq('id', id);
-        fetchData();
+        if (!window.confirm('Supprimer définitivement cet album et tous ses titres ?')) return;
+        try {
+            // Supprimer d'abord les chansons associées
+            await supabase.from('songs').delete().eq('album_id', id);
+            const { error } = await supabase.from('albums').delete().eq('id', id);
+            if (error) throw error;
+            fetchData();
+        } catch (err) {
+            alert('Erreur lors de la suppression de l\'album : ' + err.message);
+        }
     };
 
     const handleDeleteSong = async (id) => {
-        if (!window.confirm('Supprimer cette chanson ?')) return;
-        await supabase.from('songs').delete().eq('id', id);
-        fetchData();
+        if (!window.confirm('Supprimer définitivement cette chanson ?')) return;
+        try {
+            const { error } = await supabase.from('songs').delete().eq('id', id);
+            if (error) throw error;
+            fetchData();
+        } catch (err) {
+            alert('Erreur lors de la suppression de la chanson : ' + err.message);
+        }
     };
 
     const handleDeleteMedia = async (id) => {
-        if (!window.confirm('Supprimer ce contenu ?')) return;
-        await supabase.from('media_contents').delete().eq('id', id);
-        fetchData();
+        if (!window.confirm('Supprimer définitivement ce contenu ?')) return;
+        try {
+            const { error } = await supabase.from('media_contents').delete().eq('id', id);
+            if (error) throw error;
+            fetchData();
+        } catch (err) {
+            alert('Erreur lors de la suppression du média : ' + err.message);
+        }
     };
 
     return (
