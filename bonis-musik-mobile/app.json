@@ -31,9 +31,6 @@
       "permissions": [
         "WAKE_LOCK",
         "FOREGROUND_SERVICE",
-        "FOREGROUND_SERVICE_MEDIA_PLAYBACK",
-        "WAKE_LOCK",
-        "FOREGROUND_SERVICE",
         "FOREGROUND_SERVICE_MEDIA_PLAYBACK"
       ]
     },
