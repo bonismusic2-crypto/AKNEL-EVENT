@@ -80,12 +80,12 @@ export const LIGHT_THEME = {
   },
 };
 
-// Instance par défaut (Dark Theme par défaut pour l'expérience streaming)
-export let THEME = DARK_THEME;
+// Instance par défaut (Light Theme par défaut)
+export let THEME = LIGHT_THEME;
 
 const ThemeContext = createContext({
-  theme: DARK_THEME,
-  isDarkMode: true,
+  theme: LIGHT_THEME,
+  isDarkMode: false,
   toggleTheme: () => {},
   setDarkMode: () => {},
 });
@@ -93,10 +93,10 @@ const ThemeContext = createContext({
 const THEME_STORAGE_KEY = '@bonis_theme_mode';
 
 export const ThemeProvider = ({ children }) => {
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
-    // Charger la préférence de thème sauvegardée
+    // Charger la préférence de thème sauvegardée (si l'utilisateur l'a activé dans les réglages)
     const loadStoredTheme = async () => {
       try {
         const stored = await AsyncStorage.getItem(THEME_STORAGE_KEY);
@@ -105,8 +105,8 @@ export const ThemeProvider = ({ children }) => {
           setIsDarkMode(dark);
           THEME = dark ? DARK_THEME : LIGHT_THEME;
         } else {
-          setIsDarkMode(true);
-          THEME = DARK_THEME;
+          setIsDarkMode(false);
+          THEME = LIGHT_THEME;
         }
       } catch (e) {
         console.warn('Error loading theme:', e);
