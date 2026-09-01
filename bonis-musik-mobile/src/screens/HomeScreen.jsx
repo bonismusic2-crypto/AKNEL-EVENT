@@ -14,30 +14,8 @@ import { supabase } from '../lib/supabase';
 import { NotificationsModal, INITIAL_MOBILE_NOTIFICATIONS } from '../components/NotificationsModal';
 import { MediaOptionsMenu } from '../components/MediaOptionsMenu';
 import { SearchModal } from '../components/SearchModal';
-
-// Versets quotidiens inspirants pour la carte "Verset & Cantique du Jour"
-const DAILY_VERSES = [
-  {
-    verse: "« L'Éternel est ma force et le sujet de mes louanges ; C'est lui qui m'a sauvé. »",
-    ref: "Psaume 118:14",
-    theme: "Force & Louange",
-  },
-  {
-    verse: "« Poussez vers l'Éternel des cris de joie, vous tous, habitants de la terre ! Servez l'Éternel avec joie. »",
-    ref: "Psaume 100:1-2",
-    theme: "Adoration & Allégresse",
-  },
-  {
-    verse: "« Mais ceux qui se confient en l'Éternel renouvellent leur force. Ils prennent le vol comme les aigles. »",
-    ref: "Ésaïe 40:31",
-    theme: "Renouvellement & Foi",
-  },
-  {
-    verse: "« Je puis tout par celui qui me fortifie. »",
-    ref: "Philippiens 4:13",
-    theme: "Victoire & Puissance",
-  },
-];
+import { DailyMeditationModal } from '../components/DailyMeditationModal';
+import { getTodayMeditation } from '../data/dailyMeditations';
 
 export const HomeScreen = ({
   currentUser,
@@ -56,6 +34,7 @@ export const HomeScreen = ({
   const [refreshing, setRefreshing] = useState(false);
   const [isNotifModalVisible, setIsNotifModalVisible] = useState(false);
   const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
+  const [isMeditationModalVisible, setIsMeditationModalVisible] = useState(false);
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [selectedMenuItem, setSelectedMenuItem] = useState(null);
   const [notifications, setNotifications] = useState(INITIAL_MOBILE_NOTIFICATIONS);
@@ -63,9 +42,8 @@ export const HomeScreen = ({
     SubscriptionService.getFastSubscriptionState(currentUser?.id).isSubscribed || false
   );
 
-  // Verset du jour (sélectionné selon le jour)
-  const todayIndex = new Date().getDate() % DAILY_VERSES.length;
-  const currentDailyVerse = DAILY_VERSES[todayIndex];
+  // Méditation complète du jour (calculée selon la date du mois)
+  const currentMeditation = getTodayMeditation();
 
   // Vérifier le statut VIP réel depuis Supabase / Persistance
   const checkVipStatus = async () => {
@@ -338,7 +316,11 @@ export const HomeScreen = ({
         {/* ========================================================= */}
         {/* 2. CARTE "VERSET & CANTIQUE DU JOUR" (MAQUETTE 2) */}
         {/* ========================================================= */}
-        <View style={[styles.dailyCard, { borderColor: theme.colors.cardBorder }]}>
+        <TouchableOpacity
+          style={[styles.dailyCard, { borderColor: theme.colors.cardBorder }]}
+          onPress={() => setIsMeditationModalVisible(true)}
+          activeOpacity={0.92}
+        >
           <LinearGradient
             colors={isDarkMode ? ['#1E1B18', '#141312', '#0D0D0D'] : ['#FFFBEB', '#FEF3C7', '#FFFFFF']}
             start={{ x: 0, y: 0 }}
@@ -347,7 +329,7 @@ export const HomeScreen = ({
           >
             <View style={styles.dailyHeaderRow}>
               <Text style={[styles.dailyCardTag, { color: theme.colors.gold }]}>🕊️ VERSET & CANTIQUE DU JOUR</Text>
-              <Text style={styles.dailyThemeBadge}>{currentDailyVerse.theme}</Text>
+              <Text style={styles.dailyThemeBadge}>{currentMeditation.theme}</Text>
             </View>
 
             <View style={styles.dailyBodyRow}>
@@ -359,8 +341,8 @@ export const HomeScreen = ({
 
               {/* Texte du Verset & Référence */}
               <View style={styles.verseTextContainer}>
-                <Text style={[styles.verseQuote, { color: theme.colors.textPrimary }]}>{currentDailyVerse.verse}</Text>
-                <Text style={[styles.verseRef, { color: theme.colors.textMuted }]}>{currentDailyVerse.ref}</Text>
+                <Text style={[styles.verseQuote, { color: theme.colors.textPrimary }]}>{currentMeditation.verse}</Text>
+                <Text style={[styles.verseRef, { color: theme.colors.textMuted }]}>{currentMeditation.ref} • Toucher pour lire l'explication ➔</Text>
               </View>
             </View>
 
@@ -369,21 +351,21 @@ export const HomeScreen = ({
               <View style={{ flex: 1 }}>
                 <Text style={[styles.recommendedLabel, { color: theme.colors.textSecondary }]}>Chant recommandé pour prier :</Text>
                 <Text style={[styles.recommendedTitle, { color: theme.colors.textPrimary }]} numberOfLines={1}>
-                  🎵 {featuredSong.title} • {featuredSong.duration}
+                  🎵 {currentMeditation.songTitle} • {currentMeditation.songDuration}
                 </Text>
               </View>
 
               <TouchableOpacity
                 style={[styles.meditateBtn, { backgroundColor: theme.colors.gold }]}
-                onPress={handlePlayFeaturedMeditate}
+                onPress={() => setIsMeditationModalVisible(true)}
                 activeOpacity={0.85}
               >
-                <Play size={14} color="#0D0D0D" fill="#0D0D0D" style={{ marginLeft: 2 }} />
+                <BookOpen size={14} color="#0D0D0D" style={{ marginRight: 2 }} />
                 <Text style={styles.meditateBtnText}>Méditer</Text>
               </TouchableOpacity>
             </View>
           </LinearGradient>
-        </View>
+        </TouchableOpacity>
 
         {/* ========================================================= */}
         {/* 3. FILTRES D'ATMOSPHÈRE SPIRITUELLE (PILLS DORÉES) */}
@@ -603,6 +585,17 @@ export const HomeScreen = ({
         onSelectTeaching={(teaching) => {
           setIsSearchModalVisible(false);
           handleTeachingPress(teaching);
+        }}
+      />
+
+      {/* MODAL DE MÉDITATION QUOTIDIENNE AVEC EXPLICATION & PRIÈRE DU JOUR */}
+      <DailyMeditationModal
+        visible={isMeditationModalVisible}
+        onClose={() => setIsMeditationModalVisible(false)}
+        meditation={currentMeditation}
+        onPlaySong={(med) => {
+          setIsMeditationModalVisible(false);
+          handlePlayFeaturedMeditate();
         }}
       />
     </SafeAreaView>
