@@ -24,11 +24,13 @@ import { ProfileScreen } from './src/screens/ProfileScreen';
 import { PaywallScreen } from './src/screens/PaywallScreen';
 import { PaymentSuccessScreen } from './src/screens/PaymentSuccessScreen';
 import { PaymentCancelScreen } from './src/screens/PaymentCancelScreen';
+import { MeditationScreen } from './src/screens/MeditationScreen';
 
 export default function App() {
   const [appState, setAppState] = useState('welcome'); // 'welcome', 'auth', 'paywall', 'payment_success', 'payment_cancel', 'main'
   const [activeTab, setActiveTab] = useState('home'); // 'home', 'library', 'profile'
   const [selectedAlbum, setSelectedAlbum] = useState(null);
+  const [selectedMeditation, setSelectedMeditation] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [lastTxId, setLastTxId] = useState(null);
   const [selectedPlanType, setSelectedPlanType] = useState('monthly');
@@ -169,6 +171,8 @@ export default function App() {
               setActiveTab={setActiveTab}
               selectedAlbum={selectedAlbum}
               setSelectedAlbum={setSelectedAlbum}
+              selectedMeditation={selectedMeditation}
+              setSelectedMeditation={setSelectedMeditation}
               currentUser={currentUser}
               setCurrentUser={setCurrentUser}
               lastTxId={lastTxId}
@@ -204,6 +208,8 @@ const MainContent = ({
   setActiveTab,
   selectedAlbum,
   setSelectedAlbum,
+  selectedMeditation,
+  setSelectedMeditation,
   currentUser,
   setCurrentUser,
   lastTxId,
@@ -290,7 +296,7 @@ const MainContent = ({
         />
       )}
 
-      {/* 6. Application Principale (3 Onglets Navigation) */}
+      {/* 6. Application Principale (3 Onglets Navigation & Écrans Dédiés) */}
       {appState === 'main' && (
         <View style={styles.mainContainer}>
           <View style={styles.contentArea}>
@@ -301,6 +307,11 @@ const MainContent = ({
                 onOpenPaywall={() => setAppState('paywall')}
                 onBack={handleBackFromAlbum}
                 onPlayVideo={handlePlayVideo}
+              />
+            ) : selectedMeditation ? (
+              <MeditationScreen
+                meditation={selectedMeditation}
+                onBack={() => setSelectedMeditation(null)}
               />
             ) : (
               <>
@@ -319,6 +330,7 @@ const MainContent = ({
                     }}
                     onOpenProfile={() => setActiveTab('profile')}
                     onOpenPaywall={() => setAppState('paywall')}
+                    onOpenMeditation={(med) => setSelectedMeditation(med)}
                   />
                 )}
 

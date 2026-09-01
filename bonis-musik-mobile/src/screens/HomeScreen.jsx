@@ -23,7 +23,8 @@ export const HomeScreen = ({
   onSelectClip,
   onSelectTeaching,
   onOpenProfile,
-  onOpenPaywall
+  onOpenPaywall,
+  onOpenMeditation,
 }) => {
   const { theme, isDarkMode } = useAppTheme();
   const { playTrack } = useAudio();
@@ -34,7 +35,6 @@ export const HomeScreen = ({
   const [refreshing, setRefreshing] = useState(false);
   const [isNotifModalVisible, setIsNotifModalVisible] = useState(false);
   const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
-  const [isMeditationModalVisible, setIsMeditationModalVisible] = useState(false);
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [selectedMenuItem, setSelectedMenuItem] = useState(null);
   const [notifications, setNotifications] = useState(INITIAL_MOBILE_NOTIFICATIONS);
@@ -318,7 +318,7 @@ export const HomeScreen = ({
         {/* ========================================================= */}
         <TouchableOpacity
           style={[styles.dailyCard, { borderColor: theme.colors.cardBorder }]}
-          onPress={() => setIsMeditationModalVisible(true)}
+          onPress={() => onOpenMeditation && onOpenMeditation(currentMeditation)}
           activeOpacity={0.92}
         >
           <LinearGradient
@@ -578,17 +578,6 @@ export const HomeScreen = ({
         onSelectTeaching={(teaching) => {
           setIsSearchModalVisible(false);
           handleTeachingPress(teaching);
-        }}
-      />
-
-      {/* MODAL DE MÉDITATION QUOTIDIENNE AVEC EXPLICATION & PRIÈRE DU JOUR */}
-      <DailyMeditationModal
-        visible={isMeditationModalVisible}
-        onClose={() => setIsMeditationModalVisible(false)}
-        meditation={currentMeditation}
-        onPlaySong={(med) => {
-          setIsMeditationModalVisible(false);
-          handlePlayFeaturedMeditate();
         }}
       />
     </SafeAreaView>
