@@ -1,5 +1,4 @@
 import { supabase, resolveMediaUrl, CLOUDINARY_CONFIG } from '../lib/mediaManager';
-import { SAMPLE_DATA } from '../data/sampleData';
 
 export const MediaService = {
   /**
@@ -58,6 +57,20 @@ export const MediaService = {
       console.warn('Erreur chargement albums Supabase:', err);
       return [];
     }
+  },
+
+  /**
+   * Récupère les clips vidéo (compatibilité & raccourci)
+   */
+  async getVideoClips() {
+    return this.getMediaContents('video_clip');
+  },
+
+  /**
+   * Récupère les enseignements (compatibilité & raccourci)
+   */
+  async getTeachings() {
+    return this.getMediaContents(null);
   },
 
   /**

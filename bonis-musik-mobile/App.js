@@ -214,6 +214,8 @@ const MainContent = ({
   setSelectedAlbum,
   selectedMeditation,
   setSelectedMeditation,
+  isSettingsVisible,
+  setIsSettingsVisible,
   currentUser,
   setCurrentUser,
   lastTxId,
