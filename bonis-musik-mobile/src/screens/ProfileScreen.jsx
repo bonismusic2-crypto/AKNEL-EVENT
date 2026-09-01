@@ -50,7 +50,7 @@ import { SubscriptionService } from '../services/subscriptionService';
 import { DownloadService } from '../services/downloadService';
 import { useAudio } from '../context/AudioContext';
 
-export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser, onPlayVideo }) => {
+export const ProfileScreen = ({ onOpenPaywall, onLogout, currentUser, onPlayVideo, onOpenSettings }) => {
   const { theme, isDarkMode, toggleTheme } = useAppTheme();
   const { history, clearHistory, removeFromHistory, playTrack } = useAudio();
   const [activeModal, setActiveModal] = useState(null);
@@ -434,7 +434,13 @@ _Envoyé depuis l'application officielle Bonis Musik_`
           {/* 3. Paramètres de l'application */}
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => setActiveModal('settings')}
+            onPress={() => {
+              if (onOpenSettings) {
+                onOpenSettings();
+              } else {
+                setActiveModal('settings');
+              }
+            }}
             activeOpacity={0.7}
           >
             <View style={styles.menuItemLeft}>
@@ -443,7 +449,7 @@ _Envoyé depuis l'application officielle Bonis Musik_`
               </View>
               <View>
                 <Text style={styles.menuItemText}>Paramètres & Audio</Text>
-                <Text style={styles.menuItemSubtext}>Qualité streaming, Wi-Fi, Cache ({cacheSize})</Text>
+                <Text style={styles.menuItemSubtext}>Qualité streaming, Wi-Fi, Cache</Text>
               </View>
             </View>
             <ChevronRight size={18} color={THEME.colors.textMuted} />

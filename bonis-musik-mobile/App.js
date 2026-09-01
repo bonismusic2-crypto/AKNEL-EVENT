@@ -25,12 +25,14 @@ import { PaywallScreen } from './src/screens/PaywallScreen';
 import { PaymentSuccessScreen } from './src/screens/PaymentSuccessScreen';
 import { PaymentCancelScreen } from './src/screens/PaymentCancelScreen';
 import { MeditationScreen } from './src/screens/MeditationScreen';
+import { SettingsScreen } from './src/screens/SettingsScreen';
 
 export default function App() {
   const [appState, setAppState] = useState('welcome'); // 'welcome', 'auth', 'paywall', 'payment_success', 'payment_cancel', 'main'
   const [activeTab, setActiveTab] = useState('home'); // 'home', 'library', 'profile'
   const [selectedAlbum, setSelectedAlbum] = useState(null);
   const [selectedMeditation, setSelectedMeditation] = useState(null);
+  const [isSettingsVisible, setIsSettingsVisible] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [lastTxId, setLastTxId] = useState(null);
   const [selectedPlanType, setSelectedPlanType] = useState('monthly');
@@ -173,6 +175,8 @@ export default function App() {
               setSelectedAlbum={setSelectedAlbum}
               selectedMeditation={selectedMeditation}
               setSelectedMeditation={setSelectedMeditation}
+              isSettingsVisible={isSettingsVisible}
+              setIsSettingsVisible={setIsSettingsVisible}
               currentUser={currentUser}
               setCurrentUser={setCurrentUser}
               lastTxId={lastTxId}
@@ -313,6 +317,10 @@ const MainContent = ({
                 meditation={selectedMeditation}
                 onBack={() => setSelectedMeditation(null)}
               />
+            ) : isSettingsVisible ? (
+              <SettingsScreen
+                onBack={() => setIsSettingsVisible(false)}
+              />
             ) : (
               <>
                 {/* Onglet 1 : ACCUEIL */}
@@ -354,12 +362,13 @@ const MainContent = ({
                   <ProfileScreen
                     currentUser={currentUser}
                     onOpenPaywall={() => setAppState('paywall')}
+                    onOpenSettings={() => setIsSettingsVisible(true)}
+                    onPlayVideo={handlePlayVideo}
                     onLogout={async () => {
                       await supabase.auth.signOut();
                       setCurrentUser(null);
                       setAppState('welcome');
                     }}
-                    onPlayVideo={handlePlayVideo}
                   />
                 )}
               </>
