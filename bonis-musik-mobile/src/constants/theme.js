@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export const LIGHT_THEME = {
   isDark: false,
   colors: {
-    background: '#F8F9FA',      // Fond blanc / ivoire clair
+    background: '#F9FAFB',      // Fond blanc / ivoire clair
     surface: '#FFFFFF',         // Cartes blanches
     card: '#FFFFFF',
     cardBorder: 'rgba(212, 175, 55, 0.25)',
@@ -14,13 +14,15 @@ export const LIGHT_THEME = {
     goldGradient: ['#E5B93B', '#C59B27', '#A67C1E'],
     textPrimary: '#111827',      // Texte noir / foncé
     textSecondary: '#4B5563',    // Gris anthracite doux
-    textMuted: '#9CA3AF',
+    textMuted: '#6B7280',
     border: '#E5E7EB',
     headerBg: '#FFFFFF',
     modalBg: '#FFFFFF',
     inputBg: '#F3F4F6',
     activeTab: '#C59B27',
     inactiveTab: '#9CA3AF',
+    navBg: '#FFFFFF',
+    navBorder: '#E5E7EB',
     success: '#059669',
     danger: '#DC2626',
   },
@@ -53,33 +55,6 @@ export const DARK_THEME = {
   },
 };
 
-export const LIGHT_THEME = {
-  isDark: false,
-  colors: {
-    background: '#F9FAFB',      // Fond blanc / ivoire clair
-    surface: '#FFFFFF',         // Cartes blanches
-    card: '#FFFFFF',
-    cardBorder: 'rgba(212, 175, 55, 0.25)',
-    gold: '#C59B27',            // Or riche et visible
-    goldLight: '#E5B93B',
-    goldDark: '#997312',
-    goldGradient: ['#E5B93B', '#C59B27', '#A67C1E'],
-    textPrimary: '#111827',      // Texte noir / foncé
-    textSecondary: '#4B5563',    // Gris anthracite doux
-    textMuted: '#6B7280',
-    border: '#E5E7EB',
-    headerBg: '#FFFFFF',
-    modalBg: '#FFFFFF',
-    inputBg: '#F3F4F6',
-    activeTab: '#C59B27',
-    inactiveTab: '#9CA3AF',
-    navBg: '#FFFFFF',
-    navBorder: '#E5E7EB',
-    success: '#059669',
-    danger: '#DC2626',
-  },
-};
-
 // Instance par défaut (Light Theme par défaut)
 export let THEME = LIGHT_THEME;
 
@@ -96,7 +71,7 @@ export const ThemeProvider = ({ children }) => {
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
-    // Charger la préférence de thème sauvegardée (si l'utilisateur l'a activé dans les réglages)
+    // Charger la préférence de thème sauvegardée
     const loadStoredTheme = async () => {
       try {
         const stored = await AsyncStorage.getItem(THEME_STORAGE_KEY);
