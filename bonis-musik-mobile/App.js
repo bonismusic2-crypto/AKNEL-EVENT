@@ -395,13 +395,15 @@ const MainContent = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#0D0D0D',
   },
   mainContainer: {
     flex: 1,
     position: 'relative',
+    backgroundColor: '#0D0D0D',
   },
   contentArea: {
     flex: 1,
+    backgroundColor: '#0D0D0D',
   },
 });
