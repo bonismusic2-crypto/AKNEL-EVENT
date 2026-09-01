@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, RefreshControl, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Bell, Search, Play, Sparkles, MoreVertical } from 'lucide-react-native';
+import { Bell, Search, Play, Sparkles, MoreVertical, Calendar, Heart, BookOpen, Film, Music, ShieldCheck } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { THEME } from '../constants/theme';
 import { SAMPLE_DATA } from '../data/sampleData';
@@ -15,6 +15,30 @@ import { NotificationsModal, INITIAL_MOBILE_NOTIFICATIONS } from '../components/
 import { MediaOptionsMenu } from '../components/MediaOptionsMenu';
 import { SearchModal } from '../components/SearchModal';
 
+// Versets quotidiens inspirants pour la carte "Verset & Cantique du Jour"
+const DAILY_VERSES = [
+  {
+    verse: "« L'Éternel est ma force et le sujet de mes louanges ; C'est lui qui m'a sauvé. »",
+    ref: "Psaume 118:14",
+    theme: "Force & Louange",
+  },
+  {
+    verse: "« Poussez vers l'Éternel des cris de joie, vous tous, habitants de la terre ! Servez l'Éternel avec joie. »",
+    ref: "Psaume 100:1-2",
+    theme: "Adoration & Allégresse",
+  },
+  {
+    verse: "« Mais ceux qui se confient en l'Éternel renouvellent leur force. Ils prennent le vol comme les aigles. »",
+    ref: "Ésaïe 40:31",
+    theme: "Renouvellement & Foi",
+  },
+  {
+    verse: "« Je puis tout par celui qui me fortifie. »",
+    ref: "Philippiens 4:13",
+    theme: "Victoire & Puissance",
+  },
+];
+
 export const HomeScreen = ({
   currentUser,
   onSelectAlbum,
@@ -27,6 +51,7 @@ export const HomeScreen = ({
   const [albums, setAlbums] = useState(SAMPLE_DATA.audioReleases);
   const [clips, setClips] = useState(SAMPLE_DATA.videoClips);
   const [teachings, setTeachings] = useState(SAMPLE_DATA.teachings);
+  const [activeCategory, setActiveCategory] = useState('all'); // 'all', 'adoration', 'victory', 'teachings', 'clips'
   const [refreshing, setRefreshing] = useState(false);
   const [isNotifModalVisible, setIsNotifModalVisible] = useState(false);
   const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
@@ -36,6 +61,10 @@ export const HomeScreen = ({
   const [isSubscribed, setIsSubscribed] = useState(
     SubscriptionService.getFastSubscriptionState(currentUser?.id).isSubscribed || false
   );
+
+  // Verset du jour (sélectionné selon le jour)
+  const todayIndex = new Date().getDate() % DAILY_VERSES.length;
+  const currentDailyVerse = DAILY_VERSES[todayIndex];
 
   // Vérifier le statut VIP réel depuis Supabase / Persistance
   const checkVipStatus = async () => {
@@ -69,7 +98,6 @@ export const HomeScreen = ({
   };
 
   const firstName = getFirstName();
-
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   const handleMarkAsRead = (id) => {
@@ -138,15 +166,14 @@ export const HomeScreen = ({
     try {
       const [liveAlbums, liveClips, liveTeachings] = await Promise.all([
         MediaService.getAlbums(),
-        MediaService.getMediaContents('video_clip'),
-        MediaService.getMediaContents(null), // Enseignements
-        fetchNotifications(),
+        MediaService.getVideoClips(),
+        MediaService.getTeachings(),
       ]);
 
       if (liveAlbums && liveAlbums.length > 0) setAlbums(liveAlbums);
       if (liveClips && liveClips.length > 0) setClips(liveClips);
       if (liveTeachings && liveTeachings.length > 0) {
-        const onlyTeachings = liveTeachings.filter(t => t.type === 'audio' || t.type === 'video');
+        const onlyTeachings = liveTeachings.filter(t => !t.category || t.category.includes('teaching'));
         if (onlyTeachings.length > 0) setTeachings(onlyTeachings);
       }
     } catch (e) {
@@ -207,8 +234,6 @@ export const HomeScreen = ({
     setRefreshing(false);
   };
 
-  const heroClip = clips[0] || SAMPLE_DATA.videoClips[0];
-
   const checkVipAccess = async () => {
     if (!currentUser) {
       if (onOpenPaywall) onOpenPaywall();
@@ -242,6 +267,28 @@ export const HomeScreen = ({
     }
   };
 
+  // Chant recommandé du jour pour méditation
+  const featuredSong = albums[0]?.tracks?.[0] || {
+    id: 'featured-1',
+    title: 'Tu es fidèle',
+    artist: 'Chantre Boniface',
+    album: 'ÉLÉVATION',
+    duration: '04:25',
+    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+    cover: albums[0]?.cover || 'https://images.unsplash.com/photo-1514525253361-bee8a19740c1?w=800',
+  };
+
+  const handlePlayFeaturedMeditate = async () => {
+    const allowed = await checkVipAccess();
+    if (allowed) {
+      playTrack({
+        ...featuredSong,
+        cover: albums[0]?.cover || featuredSong.cover,
+        album: albums[0]?.title || 'ÉLÉVATION',
+      });
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
@@ -251,238 +298,310 @@ export const HomeScreen = ({
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={THEME.colors.gold} />
         }
       >
-        {/* Header avec Profil cliquable & Notification */}
+        {/* ========================================================= */}
+        {/* 1. HEADER ROYAL AVEC BOUTON "INVITER" & NOTIFICATIONS */}
+        {/* ========================================================= */}
         <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.profileSection}
-            onPress={onOpenProfile}
-            activeOpacity={0.8}
-          >
-            <Image
-              source={{ uri: currentUser?.user_metadata?.avatar_url || SAMPLE_DATA.user.avatar }}
-              style={styles.avatar}
-            />
-            <View>
-              <Text style={styles.greeting}>Bonjour, {firstName} 👋</Text>
-              {isSubscribed ? (
-                <View style={styles.vipBadge}>
-                  <Text style={styles.vipText}>✓ Abonné</Text>
-                </View>
-              ) : (
-                <TouchableOpacity onPress={onOpenPaywall} activeOpacity={0.7} style={styles.subscribeBadge}>
-                  <Sparkles size={11} color="#FFFFFF" />
-                  <Text style={styles.subscribeBadgeText}>S'abonner (1 000 F / mois)</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </TouchableOpacity>
+          <View>
+            <Text style={styles.brandTitle}>Bonis Musik</Text>
+            <Text style={styles.greetingSubtitle}>Bonjour, {firstName} 👋</Text>
+          </View>
 
-          <TouchableOpacity
-            style={styles.iconBtn}
-            onPress={() => setIsNotifModalVisible(true)}
-            activeOpacity={0.75}
-          >
-            <Bell size={20} color={THEME.colors.textPrimary} />
-            {unreadCount > 0 && (
-              <View style={styles.bellBadge}>
-                <Text style={styles.bellBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
-
-        {/* Barre de Recherche Interactive */}
-        <TouchableOpacity
-          style={styles.searchBar}
-          onPress={() => setIsSearchModalVisible(true)}
-          activeOpacity={0.8}
-        >
-          <Search size={18} color={THEME.colors.gold} />
-          <Text style={styles.searchText}>Rechercher un chant, album, enseignement...</Text>
-        </TouchableOpacity>
-
-        {/* Bannière Hero Lumineuse & Dorée Synchronisée */}
-        <View style={styles.heroCard}>
-          <Image source={{ uri: heroClip.thumbnail }} style={styles.heroImage} />
-          <LinearGradient
-            colors={['transparent', 'rgba(255, 255, 255, 0.4)', '#FFFFFF']}
-            style={styles.heroGradient}
-          />
-          <View style={styles.heroContent}>
-            <View style={styles.badgeRow}>
-              <View style={styles.badgeContainer}>
-                <Text style={styles.newClipBadge}>NOUVEAU CLIP</Text>
-              </View>
-            </View>
-            <Text style={styles.heroTitle} numberOfLines={1}>{heroClip.title}</Text>
+          <View style={styles.headerActions}>
+            {/* Bouton Doré Inviter Prestation */}
             <TouchableOpacity
-              style={styles.watchBtn}
-              onPress={async () => {
-                const allowed = await checkVipAccess();
-                if (allowed) onSelectClip(heroClip);
-              }}
+              style={styles.inviteHeaderBtn}
+              onPress={onOpenProfile}
               activeOpacity={0.85}
             >
-              <Play size={15} color="#FFFFFF" fill="#FFFFFF" />
-              <Text style={styles.watchBtnText}>Regarder</Text>
+              <Calendar size={13} color="#0D0D0D" strokeWidth={2.5} />
+              <Text style={styles.inviteHeaderBtnText}>Inviter</Text>
+            </TouchableOpacity>
+
+            {/* Bouton Cloche de Notification */}
+            <TouchableOpacity
+              style={styles.iconBtn}
+              onPress={() => setIsNotifModalVisible(true)}
+              activeOpacity={0.75}
+            >
+              <Bell size={20} color="#FFFFFF" />
+              {unreadCount > 0 && (
+                <View style={styles.bellBadge}>
+                  <Text style={styles.bellBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                </View>
+              )}
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Section Dernières Sorties Audio Synchronisées */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Dernières sorties audio</Text>
-          <TouchableOpacity onPress={async () => {
-            const allowed = await checkVipAccess();
-            if (allowed) onSelectClip(heroClip);
-          }}>
-            <Text style={styles.seeAll}>Voir tout ({albums.length})</Text>
-          </TouchableOpacity>
+        {/* ========================================================= */}
+        {/* 2. CARTE "VERSET & CANTIQUE DU JOUR" (MAQUETTE 2) */}
+        {/* ========================================================= */}
+        <View style={styles.dailyCard}>
+          <LinearGradient
+            colors={['#1E1B18', '#141312', '#0D0D0D']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.dailyCardGradient}
+          >
+            <View style={styles.dailyHeaderRow}>
+              <Text style={styles.dailyCardTag}>🕊️ VERSET & CANTIQUE DU JOUR</Text>
+              <Text style={styles.dailyThemeBadge}>{currentDailyVerse.theme}</Text>
+            </View>
+
+            <View style={styles.dailyBodyRow}>
+              {/* Croix Dorée Lumineuse */}
+              <View style={styles.crossGlowContainer}>
+                <View style={styles.crossVertical} />
+                <View style={styles.crossHorizontal} />
+              </View>
+
+              {/* Texte du Verset & Référence */}
+              <View style={styles.verseTextContainer}>
+                <Text style={styles.verseQuote}>{currentDailyVerse.verse}</Text>
+                <Text style={styles.verseRef}>{currentDailyVerse.ref}</Text>
+              </View>
+            </View>
+
+            {/* Raccordement au Chant Recommandé */}
+            <View style={styles.dailyFooterRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.recommendedLabel}>Chant recommandé pour prier :</Text>
+                <Text style={styles.recommendedTitle} numberOfLines={1}>
+                  🎵 {featuredSong.title} • {featuredSong.duration}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={styles.meditateBtn}
+                onPress={handlePlayFeaturedMeditate}
+                activeOpacity={0.85}
+              >
+                <Play size={14} color="#0D0D0D" fill="#0D0D0D" style={{ marginLeft: 2 }} />
+                <Text style={styles.meditateBtnText}>Méditer</Text>
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
-          {albums.map((album) => (
+
+        {/* ========================================================= */}
+        {/* 3. FILTRES D'ATMOSPHÈRE SPIRITUELLE (PILLS DORÉES) */}
+        {/* ========================================================= */}
+        <Text style={styles.filterSectionTitle}>Filtrer par atmosphère</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterPillsScroll}
+        >
+          {[
+            { id: 'all', label: '✨ Tout voir' },
+            { id: 'adoration', label: '🕊️ Adoration Profonde' },
+            { id: 'victory', label: '🔥 Combat & Victoire' },
+            { id: 'teachings', label: '📖 Enseignements' },
+            { id: 'clips', label: '🎬 Clips Vidéo HD' },
+          ].map((tab) => (
             <TouchableOpacity
-              key={album.id}
-              style={styles.albumCard}
-              onPress={async () => {
-                const allowed = await checkVipAccess();
-                if (allowed) onSelectAlbum(album);
-              }}
+              key={tab.id}
+              style={[
+                styles.filterPill,
+                activeCategory === tab.id && styles.filterPillActive,
+              ]}
+              onPress={() => setActiveCategory(tab.id)}
               activeOpacity={0.8}
             >
-              <Image source={{ uri: album.cover }} style={styles.albumCover} />
-              <Text style={styles.albumTitle} numberOfLines={1}>{album.title}</Text>
-              <Text style={styles.albumYear}>{album.year}</Text>
+              <Text
+                style={[
+                  styles.filterPillText,
+                  activeCategory === tab.id && styles.filterPillTextActive,
+                ]}
+              >
+                {tab.label}
+              </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
 
-        {/* Section Clips Récents Synchronisés */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Clips récents</Text>
-          <TouchableOpacity onPress={async () => {
-            const allowed = await checkVipAccess();
-            if (allowed) onSelectClip(heroClip);
-          }}>
-            <Text style={styles.seeAll}>Voir tout ({clips.length})</Text>
-          </TouchableOpacity>
-        </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
-          {clips.map((clip) => (
-            <TouchableOpacity
-              key={clip.id}
-              style={styles.clipCard}
-              onPress={async () => {
-                const allowed = await checkVipAccess();
-                if (allowed) onSelectClip(clip);
-              }}
-              activeOpacity={0.8}
-            >
-              <View style={styles.clipThumbnailContainer}>
-                <Image source={{ uri: clip.thumbnail }} style={styles.clipThumbnail} />
-                <View style={styles.durationTag}>
-                  <Text style={styles.durationText}>{clip.duration}</Text>
-                </View>
+        {/* ========================================================= */}
+        {/* 4. DISCOGRAPHIE & ALBUMS (GRANDS VISUELS AVEC BOUTON PLAY) */}
+        {/* ========================================================= */}
+        {(activeCategory === 'all' || activeCategory === 'adoration' || activeCategory === 'victory') && (
+          <View style={styles.sectionBlock}>
+            <View style={styles.sectionHeader}>
+              <View>
+                <Text style={styles.sectionTitle}>Discographie du Chantre</Text>
+                <Text style={styles.sectionSubtitle}>Albums & Opus prophétiques en streaming VIP</Text>
               </View>
-              <Text style={styles.clipTitle} numberOfLines={1}>{clip.title}</Text>
-              <Text style={styles.clipDate}>{clip.date || 'Récemment'}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+              <Text style={styles.countBadge}>{albums.length} albums</Text>
+            </View>
 
-        {/* Section Enseignements & Prédications Synchronisés */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Enseignements & Prédications</Text>
-          <TouchableOpacity onPress={() => onSelectClip(heroClip)}>
-            <Text style={styles.seeAll}>Voir tout ({teachings.length})</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.teachingsList}>
-          {teachings.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              style={styles.teachingCard}
-              onPress={() => handleTeachingPress(item)}
-              activeOpacity={0.7}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.albumsHorizontalScroll}
             >
-              <View style={styles.teachingLeft}>
-                <Image source={{ uri: item.thumbnail }} style={styles.teachingThumbnail} />
-                <View style={styles.teachingInfo}>
-                  <Text style={styles.teachingTitle} numberOfLines={1}>{item.title}</Text>
-                  <Text style={styles.teachingMeta}>Chantre Boniface • {item.duration}</Text>
-                </View>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <View style={styles.playIconCircle}>
-                  <Play size={14} color={THEME.colors.gold} fill={THEME.colors.gold} />
-                </View>
+              {albums.map((album) => (
                 <TouchableOpacity
-                  onPress={() => {
-                    setSelectedMenuItem(item);
-                    setIsMenuVisible(true);
+                  key={album.id}
+                  style={styles.albumCard}
+                  onPress={async () => {
+                    const allowed = await checkVipAccess();
+                    if (allowed) onSelectAlbum(album);
                   }}
-                  style={{ padding: 6 }}
-                  activeOpacity={0.7}
+                  activeOpacity={0.88}
                 >
-                  <MoreVertical size={18} color={THEME.colors.textMuted} />
+                  <View style={styles.albumCoverWrapper}>
+                    <Image source={{ uri: album.cover }} style={styles.albumCover} />
+                    <LinearGradient
+                      colors={['transparent', 'rgba(0,0,0,0.6)']}
+                      style={styles.albumCoverGradient}
+                    />
+                    <View style={styles.playButtonCircle}>
+                      <Play size={20} color="#0D0D0D" fill="#0D0D0D" style={{ marginLeft: 3 }} />
+                    </View>
+                  </View>
+                  <Text style={styles.albumTitle} numberOfLines={1}>{album.title}</Text>
+                  <Text style={styles.albumMeta}>{album.year} • {album.tracks?.length || 10} titres</Text>
                 </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* ========================================================= */}
+        {/* 5. ENSEIGNEMENTS & PODCASTS AUDIO / VIDÉO */}
+        {/* ========================================================= */}
+        {(activeCategory === 'all' || activeCategory === 'teachings') && (
+          <View style={styles.sectionBlock}>
+            <View style={styles.sectionHeader}>
+              <View>
+                <Text style={styles.sectionTitle}>Enseignements & Méditations</Text>
+                <Text style={styles.sectionSubtitle}>Paroles d'édification & prières guidées</Text>
               </View>
-            </TouchableOpacity>
-          ))}
-        </View>
+            </View>
 
-        {/* Modal d'options 3 points */}
-        <MediaOptionsMenu
-          visible={isMenuVisible}
-          onClose={() => setIsMenuVisible(false)}
-          item={selectedMenuItem}
-          onPlayDirect={(item) => {
-            if (item.type === 'video') {
-              onSelectClip(item);
-            } else {
-              handleTeachingPress(item);
-            }
-          }}
-          onToggleDownload={async (item) => {
-            await DownloadService.toggleDownload(item);
-          }}
-          onToggleFavorite={(item) => {
-            Alert.alert('Favoris', `"${item.title}" ajouté à vos favoris.`);
-          }}
-        />
+            <View style={styles.teachingsList}>
+              {teachings.map((teaching) => (
+                <TouchableOpacity
+                  key={teaching.id}
+                  style={styles.teachingCard}
+                  onPress={() => handleTeachingPress(teaching)}
+                  activeOpacity={0.85}
+                >
+                  <View style={styles.teachingThumbWrapper}>
+                    <Image
+                      source={{ uri: teaching.thumbnail || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500' }}
+                      style={styles.teachingThumb}
+                    />
+                    <View style={styles.mediaTypeBadge}>
+                      {teaching.type === 'video' || teaching.category === 'teaching_video' ? (
+                        <Film size={11} color="#FFFFFF" />
+                      ) : (
+                        <BookOpen size={11} color="#FFFFFF" />
+                      )}
+                      <Text style={styles.mediaTypeBadgeText}>
+                        {teaching.type === 'video' || teaching.category === 'teaching_video' ? 'Vidéo' : 'Audio'}
+                      </Text>
+                    </View>
+                  </View>
 
-        {/* Espace pour MiniPlayer en bas */}
-        <View style={{ height: 90 }} />
+                  <View style={styles.teachingInfo}>
+                    <Text style={styles.teachingTitle} numberOfLines={2}>{teaching.title}</Text>
+                    <Text style={styles.teachingMeta}>
+                      ⏱️ {teaching.duration || '20 min'} • {teaching.speaker_or_artist || 'Chantre Boniface'}
+                    </Text>
+                  </View>
 
-        {/* Modal de Notifications Interactif */}
-        <NotificationsModal
-          visible={isNotifModalVisible}
-          onClose={() => setIsNotifModalVisible(false)}
-          notifications={notifications}
-          onMarkAsRead={handleMarkAsRead}
-          onMarkAllAsRead={handleMarkAllAsRead}
-          onDeleteNotification={handleDeleteNotification}
-          onNavigateAction={handleNavigateAction}
-        />
+                  <View style={styles.playMiniBtn}>
+                    <Play size={14} color={THEME.colors.gold} fill={THEME.colors.gold} style={{ marginLeft: 2 }} />
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
 
-        {/* Modal de Recherche Avancée */}
-        <SearchModal
-          visible={isSearchModalVisible}
-          onClose={() => setIsSearchModalVisible(false)}
-          albums={albums}
-          clips={clips}
-          teachings={teachings}
-          onSelectAlbum={onSelectAlbum}
-          onSelectClip={onSelectClip}
-          onPlayTrack={playTrack}
-          onSelectTeaching={handleTeachingPress}
-          onOpenOptions={(item) => {
-            setSelectedMenuItem(item);
-            setIsMenuVisible(true);
-          }}
-        />
+        {/* ========================================================= */}
+        {/* 6. DERNIERS CLIPS VIDÉOS HD */}
+        {/* ========================================================= */}
+        {(activeCategory === 'all' || activeCategory === 'clips') && (
+          <View style={styles.sectionBlock}>
+            <View style={styles.sectionHeader}>
+              <View>
+                <Text style={styles.sectionTitle}>Clips Vidéos HD & 4K</Text>
+                <Text style={styles.sectionSubtitle}>Mises en scène et concerts officiels</Text>
+              </View>
+            </View>
 
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.clipsHorizontalScroll}
+            >
+              {clips.map((clip) => (
+                <TouchableOpacity
+                  key={clip.id}
+                  style={styles.clipCard}
+                  onPress={async () => {
+                    const allowed = await checkVipAccess();
+                    if (allowed) onSelectClip(clip);
+                  }}
+                  activeOpacity={0.88}
+                >
+                  <View style={styles.clipThumbWrapper}>
+                    <Image source={{ uri: clip.thumbnail }} style={styles.clipThumb} />
+                    <LinearGradient
+                      colors={['transparent', 'rgba(0,0,0,0.7)']}
+                      style={styles.clipGradient}
+                    />
+                    <View style={styles.clipBadge}>
+                      <Text style={styles.clipBadgeText}>HD 4K</Text>
+                    </View>
+                    <View style={styles.clipPlayBtn}>
+                      <Play size={18} color="#0D0D0D" fill="#0D0D0D" style={{ marginLeft: 2 }} />
+                    </View>
+                  </View>
+                  <Text style={styles.clipTitle} numberOfLines={1}>{clip.title}</Text>
+                  <Text style={styles.clipDuration}>⏱️ {clip.duration || '04:30'} • Chantre Boniface</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* MODAL DES NOTIFICATIONS */}
+      <NotificationsModal
+        visible={isNotifModalVisible}
+        onClose={() => setIsNotifModalVisible(false)}
+        notifications={notifications}
+        onMarkAsRead={handleMarkAsRead}
+        onMarkAllAsRead={handleMarkAllAsRead}
+        onDelete={handleDeleteNotification}
+        onAction={handleNavigateAction}
+      />
+
+      {/* MODAL DE RECHERCHE */}
+      <SearchModal
+        visible={isSearchModalVisible}
+        onClose={() => setIsSearchModalVisible(false)}
+        albums={albums}
+        clips={clips}
+        teachings={teachings}
+        onSelectAlbum={(album) => {
+          setIsSearchModalVisible(false);
+          onSelectAlbum(album);
+        }}
+        onSelectClip={(clip) => {
+          setIsSearchModalVisible(false);
+          onSelectClip(clip);
+        }}
+        onSelectTeaching={(teaching) => {
+          setIsSearchModalVisible(false);
+          handleTeachingPress(teaching);
+        }}
+      />
     </SafeAreaView>
   );
 };
@@ -490,319 +609,457 @@ export const HomeScreen = ({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: THEME.colors.background,
+    backgroundColor: '#0D0D0D',
   },
   container: {
-    paddingHorizontal: 20,
-    paddingBottom: 24,
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    paddingBottom: 30,
   },
+
+  /* HEADER ROYAL */
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 16,
+    marginBottom: 18,
   },
-  profileSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 2,
-    borderColor: THEME.colors.gold,
-  },
-  greeting: {
-    color: THEME.colors.textPrimary,
-    fontSize: 16,
+  brandTitle: {
+    fontSize: 26,
+    fontFamily: 'serif',
     fontWeight: '800',
-  },
-  vipBadge: {
-    marginTop: 2,
-    alignSelf: 'flex-start',
-  },
-  vipText: {
-    color: THEME.colors.gold,
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  subscribeBadge: {
-    marginTop: 3,
-    alignSelf: 'flex-start',
-    backgroundColor: THEME.colors.gold,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 2.5,
-    borderRadius: 10,
-  },
-  subscribeBadgeText: {
     color: '#FFFFFF',
-    fontSize: 10,
+    letterSpacing: 0.5,
+  },
+  greetingSubtitle: {
+    fontSize: 13,
+    color: THEME.colors.gold,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  inviteHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: THEME.colors.gold,
+    paddingHorizontal: 13,
+    paddingVertical: 7,
+    borderRadius: 18,
+    shadowColor: THEME.colors.gold,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  inviteHeaderBtnText: {
+    color: '#0D0D0D',
+    fontSize: 12,
     fontWeight: '800',
+    letterSpacing: 0.3,
   },
   iconBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1C1C1C',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    position: 'relative',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   bellBadge: {
     position: 'absolute',
-    top: -2,
-    right: -2,
-    backgroundColor: '#EF4444',
-    borderRadius: 10,
-    minWidth: 17,
-    height: 17,
+    top: 6,
+    right: 6,
+    backgroundColor: '#DC2626',
+    borderRadius: 8,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    minWidth: 16,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 3,
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
   },
   bellBadgeText: {
     color: '#FFFFFF',
     fontSize: 9,
-    fontWeight: '900',
+    fontWeight: '800',
   },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginBottom: 20,
-    gap: 10,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  searchText: {
-    color: THEME.colors.textMuted,
-    fontSize: 13,
-    flex: 1,
-  },
-  heroCard: {
-    height: 195,
+
+  /* CARTE "VERSET & CANTIQUE DU JOUR" */
+  dailyCard: {
     borderRadius: 22,
     overflow: 'hidden',
-    position: 'relative',
+    borderWidth: 1,
+    borderColor: 'rgba(197, 155, 39, 0.35)',
     marginBottom: 24,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 8,
   },
-  heroImage: {
-    width: '100%',
-    height: '100%',
-    position: 'absolute',
+  dailyCardGradient: {
+    padding: 18,
   },
-  heroGradient: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: '75%',
+  dailyHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
   },
-  heroContent: {
-    position: 'absolute',
-    bottom: 14,
-    left: 16,
-    right: 16,
-  },
-  badgeRow: {
-    marginBottom: 4,
-  },
-  badgeContainer: {
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(197, 155, 39, 0.15)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(197, 155, 39, 0.3)',
-  },
-  newClipBadge: {
+  dailyCardTag: {
     color: THEME.colors.gold,
-    fontSize: 9.5,
+    fontSize: 11,
     fontWeight: '800',
     letterSpacing: 0.8,
   },
-  heroTitle: {
-    color: THEME.colors.textPrimary,
-    fontSize: 19,
-    fontWeight: '800',
-    marginBottom: 10,
+  dailyThemeBadge: {
+    backgroundColor: 'rgba(197, 155, 39, 0.15)',
+    color: '#F3D068',
+    fontSize: 10.5,
+    fontWeight: '700',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 0.5,
+    borderColor: 'rgba(197, 155, 39, 0.3)',
   },
-  watchBtn: {
+  dailyBodyRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 16,
+    marginBottom: 16,
+  },
+  crossGlowContainer: {
+    width: 36,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  crossVertical: {
+    position: 'absolute',
+    width: 6,
+    height: 44,
     backgroundColor: THEME.colors.gold,
-    paddingHorizontal: 16,
+    borderRadius: 3,
+    shadowColor: THEME.colors.gold,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  crossHorizontal: {
+    position: 'absolute',
+    width: 30,
+    height: 6,
+    top: 14,
+    backgroundColor: THEME.colors.gold,
+    borderRadius: 3,
+    shadowColor: THEME.colors.gold,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 8,
+  },
+  verseTextContainer: {
+    flex: 1,
+  },
+  verseQuote: {
+    color: '#FFFFFF',
+    fontSize: 13.5,
+    fontFamily: 'serif',
+    fontStyle: 'italic',
+    lineHeight: 20,
+    fontWeight: '500',
+  },
+  verseRef: {
+    color: '#9CA3AF',
+    fontSize: 11.5,
+    fontWeight: '700',
+    marginTop: 4,
+  },
+  dailyFooterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    gap: 10,
+  },
+  recommendedLabel: {
+    color: '#9CA3AF',
+    fontSize: 10.5,
+    fontWeight: '500',
+  },
+  recommendedTitle: {
+    color: '#FFFFFF',
+    fontSize: 12.5,
+    fontWeight: '700',
+    marginTop: 1,
+  },
+  meditateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: THEME.colors.gold,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 16,
+  },
+  meditateBtnText: {
+    color: '#0D0D0D',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+
+  /* FILTRES D'ATMOSPHÈRE */
+  filterSectionTitle: {
+    color: '#9CA3AF',
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 10,
+  },
+  filterPillsScroll: {
+    gap: 8,
+    marginBottom: 24,
+  },
+  filterPill: {
+    paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
-    alignSelf: 'flex-start',
-    gap: 6,
-    shadowColor: THEME.colors.gold,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: '#171717',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
-  watchBtnText: {
-    color: '#FFFFFF',
+  filterPillActive: {
+    backgroundColor: 'rgba(197, 155, 39, 0.2)',
+    borderColor: THEME.colors.gold,
+  },
+  filterPillText: {
+    color: '#9CA3AF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  filterPillTextActive: {
+    color: THEME.colors.gold,
     fontWeight: '800',
-    fontSize: 13,
+  },
+
+  /* SECTIONS GÉNÉRALES */
+  sectionBlock: {
+    marginBottom: 26,
   },
   sectionHeader: {
     flexDirection: 'row',
+    alignItems: 'flex-end',
     justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: 14,
-    marginTop: 8,
   },
   sectionTitle: {
-    color: THEME.colors.textPrimary,
-    fontSize: 17,
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontFamily: 'serif',
     fontWeight: '800',
   },
-  seeAll: {
+  sectionSubtitle: {
+    color: '#6B7280',
+    fontSize: 11.5,
+    marginTop: 2,
+  },
+  countBadge: {
     color: THEME.colors.gold,
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
   },
-  horizontalList: {
+
+  /* DISCOGRAPHIE / ALBUMS */
+  albumsHorizontalScroll: {
     gap: 14,
-    paddingRight: 20,
-    marginBottom: 24,
   },
   albumCard: {
-    width: 140,
+    width: 155,
+  },
+  albumCoverWrapper: {
+    width: 155,
+    height: 155,
+    borderRadius: 18,
+    overflow: 'hidden',
+    position: 'relative',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   albumCover: {
-    width: 140,
-    height: 140,
-    borderRadius: 16,
-    marginBottom: 8,
-    backgroundColor: '#F3F4F6',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    width: '100%',
+    height: '100%',
+  },
+  albumCoverGradient: {
+    position: 'absolute',
+    inset: 0,
+  },
+  playButtonCircle: {
+    position: 'absolute',
+    right: 10,
+    bottom: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: THEME.colors.gold,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: THEME.colors.gold,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 4,
   },
   albumTitle: {
-    color: THEME.colors.textPrimary,
-    fontSize: 13,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-  },
-  albumYear: {
-    color: THEME.colors.textMuted,
-    fontSize: 11,
-    marginTop: 2,
-    fontWeight: '500',
-  },
-  clipCard: {
-    width: 180,
-  },
-  clipThumbnailContainer: {
-    position: 'relative',
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  clipThumbnail: {
-    width: 180,
-    height: 105,
-    backgroundColor: '#F3F4F6',
-  },
-  durationTag: {
-    position: 'absolute',
-    bottom: 6,
-    right: 6,
-    backgroundColor: 'rgba(0,0,0,0.75)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  durationText: {
     color: '#FFFFFF',
-    fontSize: 10,
+    fontSize: 13.5,
     fontWeight: '700',
+    marginTop: 8,
   },
-  clipTitle: {
-    color: THEME.colors.textPrimary,
-    fontSize: 13,
-    fontWeight: '700',
+  albumMeta: {
+    color: '#6B7280',
+    fontSize: 11.5,
+    marginTop: 1,
   },
-  clipDate: {
-    color: THEME.colors.textMuted,
-    fontSize: 11,
-    marginTop: 2,
-  },
+
+  /* ENSEIGNEMENTS / PODCASTS */
   teachingsList: {
-    gap: 12,
-    marginBottom: 20,
+    gap: 10,
   },
   teachingCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#171717',
     borderRadius: 16,
-    padding: 12,
+    padding: 10,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    gap: 12,
   },
-  teachingLeft: {
+  teachingThumbWrapper: {
+    width: 58,
+    height: 58,
+    borderRadius: 12,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  teachingThumb: {
+    width: '100%',
+    height: '100%',
+  },
+  mediaTypeBadge: {
+    position: 'absolute',
+    bottom: 3,
+    left: 3,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 4,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    flex: 1,
+    gap: 2,
   },
-  teachingThumbnail: {
-    width: 50,
-    height: 50,
-    borderRadius: 10,
-    backgroundColor: '#F3F4F6',
+  mediaTypeBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 8.5,
+    fontWeight: '700',
   },
   teachingInfo: {
     flex: 1,
   },
   teachingTitle: {
-    color: THEME.colors.textPrimary,
+    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
-    marginBottom: 4,
+    lineHeight: 18,
   },
   teachingMeta: {
-    color: THEME.colors.textMuted,
+    color: '#9CA3AF',
     fontSize: 11,
+    marginTop: 3,
   },
-  playIconCircle: {
+  playMiniBtn: {
     width: 32,
     height: 32,
     borderRadius: 16,
     backgroundColor: 'rgba(197, 155, 39, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 8,
+  },
+
+  /* CLIPS VIDÉOS */
+  clipsHorizontalScroll: {
+    gap: 14,
+  },
+  clipCard: {
+    width: 220,
+  },
+  clipThumbWrapper: {
+    width: 220,
+    height: 125,
+    borderRadius: 16,
+    overflow: 'hidden',
+    position: 'relative',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  clipThumb: {
+    width: '100%',
+    height: '100%',
+  },
+  clipGradient: {
+    position: 'absolute',
+    inset: 0,
+  },
+  clipBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  clipBadgeText: {
+    color: '#F3D068',
+    fontSize: 9.5,
+    fontWeight: '800',
+  },
+  clipPlayBtn: {
+    position: 'absolute',
+    right: 10,
+    bottom: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: THEME.colors.gold,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+  },
+  clipTitle: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 6,
+  },
+  clipDuration: {
+    color: '#6B7280',
+    fontSize: 11,
+    marginTop: 1,
   },
 });
