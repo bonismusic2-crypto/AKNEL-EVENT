@@ -145,15 +145,15 @@ export const HomeScreen = ({
     try {
       const [liveAlbums, liveClips, liveTeachings] = await Promise.all([
         MediaService.getAlbums(),
-        MediaService.getVideoClips(),
-        MediaService.getTeachings(),
+        MediaService.getMediaContents('video_clip'),
+        MediaService.getMediaContents(null),
       ]);
 
-      if (liveAlbums && liveAlbums.length > 0) setAlbums(liveAlbums);
-      if (liveClips && liveClips.length > 0) setClips(liveClips);
-      if (liveTeachings && liveTeachings.length > 0) {
-        const onlyTeachings = liveTeachings.filter(t => !t.category || t.category.includes('teaching'));
-        if (onlyTeachings.length > 0) setTeachings(onlyTeachings);
+      if (liveAlbums) setAlbums(liveAlbums);
+      if (liveClips) setClips(liveClips);
+      if (liveTeachings) {
+        const onlyTeachings = liveTeachings.filter(t => t.type === 'audio' || t.type === 'video');
+        setTeachings(onlyTeachings);
       }
     } catch (e) {
       console.warn('Sync load warning:', e);
