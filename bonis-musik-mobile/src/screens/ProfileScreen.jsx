@@ -309,7 +309,7 @@ _Envoyé depuis l'application officielle Bonis Musik_`
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
         
         {/* Header Profil avec Logo */}
@@ -319,38 +319,38 @@ _Envoyé depuis l'application officielle Bonis Musik_`
             style={styles.profileHeaderLogo}
             resizeMode="contain"
           />
-          <Text style={styles.headerTitle}>Mon Compte</Text>
+          <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>Mon Compte</Text>
         </View>
 
         {/* Carte Profil Utilisateur */}
-        <View style={styles.userCard}>
+        <View style={[styles.userCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
           <Image
             source={{ uri: currentUser?.user_metadata?.avatar_url || SAMPLE_DATA.user.avatar }}
             style={styles.avatar}
           />
           <View style={styles.userInfo}>
-            <Text style={styles.userName}>{displayName}</Text>
-            <Text style={styles.userEmail}>{displayEmail}</Text>
-            {displayPhone ? <Text style={styles.userPhone}>{displayPhone}</Text> : null}
+            <Text style={[styles.userName, { color: theme.colors.textPrimary }]}>{displayName}</Text>
+            <Text style={[styles.userEmail, { color: theme.colors.textSecondary }]}>{displayEmail}</Text>
+            {displayPhone ? <Text style={[styles.userPhone, { color: theme.colors.textMuted }]}>{displayPhone}</Text> : null}
           </View>
         </View>
 
         {/* Encadré Abonnement Dynamique avec Date d'Échéance */}
-        <View style={styles.subscriptionBox}>
+        <View style={[styles.subscriptionBox, { backgroundColor: theme.colors.surface, borderColor: theme.colors.gold }]}>
           {isSubscribed ? (
             <>
               <View style={styles.statusBadge}>
                 <Sparkles size={13} color={THEME.colors.success} />
                 <Text style={styles.statusBadgeText}>ABONNEMENT ACTIF</Text>
               </View>
-              <Text style={styles.planTitle}>{subscriptionDetails.plan}</Text>
-              <View style={styles.dueDateBadge}>
-                <Calendar size={13} color={THEME.colors.gold} />
-                <Text style={styles.dueDateText}>
-                  Échéance : <Text style={{ fontWeight: '800', color: THEME.colors.textPrimary }}>{formattedExpiryDate}</Text>
+              <Text style={[styles.planTitle, { color: theme.colors.textPrimary }]}>{subscriptionDetails.plan}</Text>
+              <View style={[styles.dueDateBadge, { backgroundColor: isDarkMode ? 'rgba(197, 155, 39, 0.12)' : '#FFFDF5', borderColor: theme.colors.border }]}>
+                <Calendar size={13} color={theme.colors.gold} />
+                <Text style={[styles.dueDateText, { color: theme.colors.textSecondary }]}>
+                  Échéance : <Text style={{ fontWeight: '800', color: theme.colors.textPrimary }}>{formattedExpiryDate}</Text>
                 </Text>
               </View>
-              <Text style={styles.renewalText}>Accès illimité à tous les albums, clips & enseignements</Text>
+              <Text style={[styles.renewalText, { color: theme.colors.textMuted }]}>Accès illimité à tous les albums, clips & enseignements</Text>
 
               <TouchableOpacity
                 style={styles.manageBtn}
@@ -372,8 +372,8 @@ _Envoyé depuis l'application officielle Bonis Musik_`
               <View style={[styles.statusBadge, { backgroundColor: 'rgba(239, 68, 68, 0.12)' }]}>
                 <Text style={[styles.statusBadgeText, { color: '#DC2626' }]}>AUCUN ABONNEMENT ACTIF</Text>
               </View>
-              <Text style={styles.planTitle}>Abonnement Bonis Musik</Text>
-              <Text style={styles.renewalText}>1 000 FCFA = 1,50 € / mois ou 10 000 FCFA = 15,00 € / an</Text>
+              <Text style={[styles.planTitle, { color: theme.colors.textPrimary }]}>Abonnement Bonis Musik</Text>
+              <Text style={[styles.renewalText, { color: theme.colors.textMuted }]}>1 000 FCFA = 1,50 € / mois ou 10 000 FCFA = 15,00 € / an</Text>
 
               <TouchableOpacity
                 style={styles.manageBtn}
@@ -394,28 +394,28 @@ _Envoyé depuis l'application officielle Bonis Musik_`
         </View>
 
         {/* Menu d'options interactif */}
-        <View style={styles.menuContainer}>
+        <View style={[styles.menuContainer, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
           {/* 1. Téléchargements hors-ligne */}
           <TouchableOpacity
-            style={styles.menuItem}
+            style={[styles.menuItem, { borderBottomColor: theme.colors.border }]}
             onPress={() => setActiveModal('downloads')}
             activeOpacity={0.7}
           >
             <View style={styles.menuItemLeft}>
               <View style={[styles.menuIconCircle, { backgroundColor: 'rgba(197, 155, 39, 0.12)' }]}>
-                <Download size={18} color={THEME.colors.gold} />
+                <Download size={18} color={theme.colors.gold} />
               </View>
               <View>
-                <Text style={styles.menuItemText}>Téléchargements hors-ligne</Text>
-                <Text style={styles.menuItemSubtext}>{downloads.length} titres (Audio & Vidéo) lisibles sans connexion</Text>
+                <Text style={[styles.menuItemText, { color: theme.colors.textPrimary }]}>Téléchargements hors-ligne</Text>
+                <Text style={[styles.menuItemSubtext, { color: theme.colors.textMuted }]}>{downloads.length} titres (Audio & Vidéo) lisibles sans connexion</Text>
               </View>
             </View>
-            <ChevronRight size={18} color={THEME.colors.textMuted} />
+            <ChevronRight size={18} color={theme.colors.textMuted} />
           </TouchableOpacity>
 
           {/* 2. Historique d'écoute */}
           <TouchableOpacity
-            style={styles.menuItem}
+            style={[styles.menuItem, { borderBottomColor: theme.colors.border }]}
             onPress={() => setActiveModal('history')}
             activeOpacity={0.7}
           >
@@ -424,16 +424,16 @@ _Envoyé depuis l'application officielle Bonis Musik_`
                 <History size={18} color="#3B82F6" />
               </View>
               <View>
-                <Text style={styles.menuItemText}>Historique d'écoute</Text>
-                <Text style={styles.menuItemSubtext}>{history.length} titres écoutés récemment</Text>
+                <Text style={[styles.menuItemText, { color: theme.colors.textPrimary }]}>Historique d'écoute</Text>
+                <Text style={[styles.menuItemSubtext, { color: theme.colors.textMuted }]}>{history.length} titres écoutés récemment</Text>
               </View>
             </View>
-            <ChevronRight size={18} color={THEME.colors.textMuted} />
+            <ChevronRight size={18} color={theme.colors.textMuted} />
           </TouchableOpacity>
 
           {/* 3. Paramètres de l'application */}
           <TouchableOpacity
-            style={styles.menuItem}
+            style={[styles.menuItem, { borderBottomColor: theme.colors.border }]}
             onPress={() => {
               if (onOpenSettings) {
                 onOpenSettings();
@@ -445,38 +445,38 @@ _Envoyé depuis l'application officielle Bonis Musik_`
           >
             <View style={styles.menuItemLeft}>
               <View style={[styles.menuIconCircle, { backgroundColor: 'rgba(107, 114, 128, 0.12)' }]}>
-                <Sliders size={18} color="#4B5563" />
+                <Sliders size={18} color="#9CA3AF" />
               </View>
               <View>
-                <Text style={styles.menuItemText}>Paramètres & Audio</Text>
-                <Text style={styles.menuItemSubtext}>Qualité streaming, Wi-Fi, Cache</Text>
+                <Text style={[styles.menuItemText, { color: theme.colors.textPrimary }]}>Paramètres & Audio</Text>
+                <Text style={[styles.menuItemSubtext, { color: theme.colors.textMuted }]}>Qualité streaming, Wi-Fi, Cache</Text>
               </View>
             </View>
-            <ChevronRight size={18} color={THEME.colors.textMuted} />
+            <ChevronRight size={18} color={theme.colors.textMuted} />
           </TouchableOpacity>
 
           {/* 4. Inviter le Chantre à une Prestation (Concerts, Cultes, Mariages...) */}
           <TouchableOpacity
-            style={styles.menuItem}
+            style={[styles.menuItem, { borderBottomColor: 'transparent' }]}
             onPress={() => setActiveModal('invitation')}
             activeOpacity={0.7}
           >
             <View style={styles.menuItemLeft}>
               <View style={[styles.menuIconCircle, { backgroundColor: 'rgba(197, 155, 39, 0.15)' }]}>
-                <Calendar size={18} color={THEME.colors.gold} />
+                <Calendar size={18} color={theme.colors.gold} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.menuItemText}>Inviter à une Prestation</Text>
-                <Text style={styles.menuItemSubtext}>Concerts, cultes, mariages, séminaires & veillées</Text>
+                <Text style={[styles.menuItemText, { color: theme.colors.textPrimary }]}>Inviter à une Prestation</Text>
+                <Text style={[styles.menuItemSubtext, { color: theme.colors.textMuted }]}>Concerts, cultes, mariages, séminaires & veillées</Text>
               </View>
             </View>
-            <ChevronRight size={18} color={THEME.colors.textMuted} />
+            <ChevronRight size={18} color={theme.colors.textMuted} />
           </TouchableOpacity>
         </View>
 
         {/* Bouton de Déconnexion */}
         <TouchableOpacity
-          style={styles.logoutBtn}
+          style={[styles.logoutBtn, { backgroundColor: theme.colors.surface, borderColor: isDarkMode ? '#451A1A' : '#FEE2E2' }]}
           onPress={handleSignOut}
           activeOpacity={0.8}
         >
@@ -484,7 +484,8 @@ _Envoyé depuis l'application officielle Bonis Musik_`
           <Text style={styles.logoutText}>Se déconnecter</Text>
         </TouchableOpacity>
 
-        <Text style={styles.versionText}>Bonis Musik App • Version 1.0.0 (Édition Officielle)</Text>
+        <Text style={[styles.versionText, { color: theme.colors.textMuted }]}>Bonis Musik v1.2.0 • Ministère du Chantre Boniface</Text>
+        <View style={{ height: 40 }} />
 
       </ScrollView>
 
