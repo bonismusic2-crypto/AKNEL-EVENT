@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, Play, Shuffle, Heart, MoreVertical, Film, Music, Download } from 'lucide-react-native';
-import { THEME } from '../constants/theme';
+import { THEME, useAppTheme } from '../constants/theme';
 import { useAudio } from '../context/AudioContext';
 import { SubscriptionService } from '../services/subscriptionService';
 import { DownloadService } from '../services/downloadService';
@@ -10,7 +10,8 @@ import { MediaOptionsMenu } from '../components/MediaOptionsMenu';
 import { SAMPLE_DATA } from '../data/sampleData';
 
 export const AlbumDetailScreen = ({ album, onBack, currentUser, onOpenPaywall, onPlayVideo }) => {
-  const { playTrack } = useAudio();
+  const { theme, isDarkMode } = useAppTheme();
+  const { playTrack, toggleFavorite, isTrackFavorite } = useAudio();
   const [activeTab, setActiveTab] = useState('tracks'); // 'tracks' (Audios), 'clips' (Vidéos de l'album)
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [selectedMenuItem, setSelectedMenuItem] = useState(null);
@@ -61,24 +62,28 @@ export const AlbumDetailScreen = ({ album, onBack, currentUser, onOpenPaywall, o
   ];
 
   // Clips vidéos attachés à cet album
-  const albumClips = album.clips && album.clips.length > 0 ? album.clips : SAMPLE_DATA.videoClips;
+  const albumClips = album.clips && album.clips.length > 0 ? album.clips : [];
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
         
         {/* Navigation Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={onBack} style={styles.backBtn} activeOpacity={0.7}>
-            <ChevronLeft size={24} color={THEME.colors.textPrimary} />
+          <TouchableOpacity
+            onPress={onBack}
+            style={[styles.backBtn, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
+            activeOpacity={0.7}
+          >
+            <ChevronLeft size={24} color={theme.colors.textPrimary} />
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.moreBtn}
+            style={[styles.moreBtn, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
             onPress={() => {
               setSelectedMenuItem({
                 id: album.id,
                 title: album.title,
-                artist: 'Chantre Boniface',
+                artist: album.artist || 'Chantre Boniface',
                 thumbnail: album.cover,
                 type: 'audio',
               });
@@ -86,93 +91,106 @@ export const AlbumDetailScreen = ({ album, onBack, currentUser, onOpenPaywall, o
             }}
             activeOpacity={0.7}
           >
-            <MoreVertical size={20} color={THEME.colors.textPrimary} />
+            <MoreVertical size={20} color={theme.colors.textPrimary} />
           </TouchableOpacity>
         </View>
 
         {/* Pochette de l'album & Infos */}
         <View style={styles.coverContainer}>
-          <Image source={{ uri: album.cover }} style={styles.coverImage} />
-          <Text style={styles.albumTitle}>{album.title}</Text>
-          <Text style={styles.albumMeta}>
-            Chantre Boniface • {album.year} • {tracks.length} titres • {albumClips.length} clips vidéos
+          <Image source={{ uri: album.cover }} style={[styles.coverImage, { borderColor: theme.colors.border }]} />
+          <Text style={[styles.albumTitle, { color: theme.colors.textPrimary }]}>{album.title}</Text>
+          <Text style={[styles.albumMeta, { color: theme.colors.textSecondary }]}>
+            {album.artist || 'Chantre Boniface'} • {album.year || '2026'} • {tracks.length} titres {albumClips.length > 0 ? `• ${albumClips.length} clips vidéos` : ''}
           </Text>
         </View>
 
         {/* Boutons d'Action (Lecture & Aléatoire) */}
         <View style={styles.actionButtons}>
           <TouchableOpacity
-            style={styles.playAllBtn}
+            style={[styles.playAllBtn, { backgroundColor: theme.colors.gold }]}
             onPress={() => handlePlayTrack({ ...tracks[0], cover: album.cover, album: album.title })}
             activeOpacity={0.85}
           >
-            <Play size={18} color="#FFFFFF" fill="#FFFFFF" />
+            <Play size={18} color="#0D0D0D" fill="#0D0D0D" />
             <Text style={styles.playAllText}>Tout écouter</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.shuffleBtn}
+            style={[styles.shuffleBtn, { backgroundColor: theme.colors.surface, borderColor: theme.colors.gold }]}
             onPress={() => {
               const randomIndex = Math.floor(Math.random() * tracks.length);
               handlePlayTrack({ ...tracks[randomIndex], cover: album.cover, album: album.title });
             }}
             activeOpacity={0.85}
           >
-            <Shuffle size={18} color={THEME.colors.gold} />
+            <Shuffle size={18} color={theme.colors.gold} />
           </TouchableOpacity>
         </View>
 
-        {/* Onglets Pistes Audio vs Clips Vidéos de l'Album */}
-        <View style={styles.tabsRow}>
-          <TouchableOpacity
-            style={[styles.tabChip, activeTab === 'tracks' && styles.tabChipActive]}
-            onPress={() => setActiveTab('tracks')}
-            activeOpacity={0.8}
-          >
-            <Music size={15} color={activeTab === 'tracks' ? '#FFFFFF' : THEME.colors.textSecondary} />
-            <Text style={[styles.tabChipText, activeTab === 'tracks' && styles.tabChipTextActive]}>
-              Pistes Audio ({tracks.length})
-            </Text>
-          </TouchableOpacity>
+        {/* Onglets Pistes Audio vs Clips Vidéos de l'Album (affiché si clips présents) */}
+        {albumClips.length > 0 && (
+          <View style={[styles.tabsRow, { borderBottomColor: theme.colors.border }]}>
+            <TouchableOpacity
+              style={[
+                styles.tabChip,
+                { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+                activeTab === 'tracks' && { backgroundColor: theme.colors.gold, borderColor: theme.colors.gold }
+              ]}
+              onPress={() => setActiveTab('tracks')}
+              activeOpacity={0.8}
+            >
+              <Music size={15} color={activeTab === 'tracks' ? '#0D0D0D' : theme.colors.textSecondary} />
+              <Text style={[styles.tabChipText, { color: activeTab === 'tracks' ? '#0D0D0D' : theme.colors.textSecondary, fontWeight: activeTab === 'tracks' ? '800' : '600' }]}>
+                Pistes Audio ({tracks.length})
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.tabChip, activeTab === 'clips' && styles.tabChipActive]}
-            onPress={() => setActiveTab('clips')}
-            activeOpacity={0.8}
-          >
-            <Film size={15} color={activeTab === 'clips' ? '#FFFFFF' : THEME.colors.textSecondary} />
-            <Text style={[styles.tabChipText, activeTab === 'clips' && styles.tabChipTextActive]}>
-              Clips Vidéos HD ({albumClips.length})
-            </Text>
-          </TouchableOpacity>
-        </View>
+            <TouchableOpacity
+              style={[
+                styles.tabChip,
+                { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+                activeTab === 'clips' && { backgroundColor: theme.colors.gold, borderColor: theme.colors.gold }
+              ]}
+              onPress={() => setActiveTab('clips')}
+              activeOpacity={0.8}
+            >
+              <Film size={15} color={activeTab === 'clips' ? '#0D0D0D' : theme.colors.textSecondary} />
+              <Text style={[styles.tabChipText, { color: activeTab === 'clips' ? '#0D0D0D' : theme.colors.textSecondary, fontWeight: activeTab === 'clips' ? '800' : '600' }]}>
+                Clips Vidéos HD ({albumClips.length})
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* 1. VUE PISTES AUDIO */}
         {activeTab === 'tracks' && (
           <View style={styles.trackList}>
             {tracks.map((track, index) => {
               const trackNumber = (index + 1).toString().padStart(2, '0');
+              const isLiked = isTrackFavorite(track.id);
+
               return (
                 <TouchableOpacity
                   key={track.id}
-                  style={styles.trackItem}
+                  style={[styles.trackItem, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
                   onPress={() => handlePlayTrack({ ...track, cover: album.cover, album: album.title })}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.trackNumber}>{trackNumber}</Text>
+                  <Text style={[styles.trackNumber, { color: theme.colors.gold }]}>{trackNumber}</Text>
                   <View style={styles.trackInfo}>
-                    <Text style={styles.trackTitle}>{track.title}</Text>
-                    <Text style={styles.trackArtist}>Chantre Boniface • {track.duration || '04:30'}</Text>
+                    <Text style={[styles.trackTitle, { color: theme.colors.textPrimary }]}>{track.title}</Text>
+                    <Text style={[styles.trackArtist, { color: theme.colors.textMuted }]}>{album.artist || 'Chantre Boniface'} • {track.duration || '04:30'}</Text>
                   </View>
                   <View style={styles.trackActions}>
                     <TouchableOpacity
                       style={styles.iconAction}
-                      onPress={() => Alert.alert('Favoris', `"${track.title}" ajouté à vos favoris.`)}
+                      onPress={() => toggleFavorite(track)}
+                      activeOpacity={0.7}
                     >
                       <Heart
                         size={18}
-                        color={track.liked ? THEME.colors.gold : THEME.colors.textMuted}
-                        fill={track.liked ? THEME.colors.gold : 'transparent'}
+                        color={isLiked ? '#EF4444' : theme.colors.textMuted}
+                        fill={isLiked ? '#EF4444' : 'transparent'}
                       />
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -181,15 +199,16 @@ export const AlbumDetailScreen = ({ album, onBack, currentUser, onOpenPaywall, o
                         setSelectedMenuItem({
                           id: track.id,
                           title: track.title,
-                          artist: 'Chantre Boniface',
+                          artist: album.artist || 'Chantre Boniface',
                           album: album.title,
                           thumbnail: album.cover,
                           type: 'audio',
                         });
                         setIsMenuVisible(true);
                       }}
+                      activeOpacity={0.7}
                     >
-                      <MoreVertical size={18} color={THEME.colors.textMuted} />
+                      <MoreVertical size={18} color={theme.colors.textMuted} />
                     </TouchableOpacity>
                   </View>
                 </TouchableOpacity>
@@ -204,7 +223,7 @@ export const AlbumDetailScreen = ({ album, onBack, currentUser, onOpenPaywall, o
             {albumClips.map((clip) => (
               <TouchableOpacity
                 key={clip.id}
-                style={styles.clipCard}
+                style={[styles.clipCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
                 onPress={() => handlePlayClip(clip)}
                 activeOpacity={0.85}
               >
@@ -218,8 +237,8 @@ export const AlbumDetailScreen = ({ album, onBack, currentUser, onOpenPaywall, o
                   </View>
                 </View>
                 <View style={styles.clipDetails}>
-                  <Text style={styles.clipTitle} numberOfLines={1}>{clip.title}</Text>
-                  <Text style={styles.clipMeta}>{clip.views || '12K vues'} • Clip Officiel</Text>
+                  <Text style={[styles.clipTitle, { color: theme.colors.textPrimary }]} numberOfLines={1}>{clip.title}</Text>
+                  <Text style={[styles.clipMeta, { color: theme.colors.textMuted }]}>{clip.views || '12K vues'} • Clip Officiel</Text>
                 </View>
                 <TouchableOpacity
                   style={styles.clipOptionsBtn}
@@ -231,14 +250,16 @@ export const AlbumDetailScreen = ({ album, onBack, currentUser, onOpenPaywall, o
                     });
                     setIsMenuVisible(true);
                   }}
+                  activeOpacity={0.7}
                 >
-                  <MoreVertical size={18} color={THEME.colors.textMuted} />
+                  <MoreVertical size={18} color={theme.colors.textMuted} />
                 </TouchableOpacity>
               </TouchableOpacity>
             ))}
           </View>
         )}
 
+        <View style={{ height: 60 }} />
       </ScrollView>
 
       {/* Modal Options 3 points (Téléchargement & Favoris) */}
@@ -253,11 +274,16 @@ export const AlbumDetailScreen = ({ album, onBack, currentUser, onOpenPaywall, o
             handlePlayTrack({ ...item, cover: album.cover, album: album.title });
           }
         }}
-        onToggleDownload={async (item) => {
-          await DownloadService.toggleDownload({ ...item, cover: album.cover, album: album.title });
+        isDownloaded={false}
+        onToggleDownload={async () => {
+          if (selectedMenuItem) {
+            await DownloadService.toggleDownload(selectedMenuItem);
+          }
         }}
-        onToggleFavorite={(item) => {
-          Alert.alert('Favoris', `"${item.title}" ajouté à vos favoris.`);
+        onToggleFavorite={() => {
+          if (selectedMenuItem) {
+            toggleFavorite(selectedMenuItem);
+          }
         }}
       />
     </SafeAreaView>
@@ -267,7 +293,6 @@ export const AlbumDetailScreen = ({ album, onBack, currentUser, onOpenPaywall, o
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: THEME.colors.background,
   },
   container: {
     paddingHorizontal: 20,
@@ -283,9 +308,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -293,9 +316,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -307,7 +328,8 @@ const styles = StyleSheet.create({
     width: 220,
     height: 220,
     borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    backgroundColor: '#1E1E1E',
     marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
@@ -316,13 +338,11 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   albumTitle: {
-    color: THEME.colors.textPrimary,
     fontSize: 22,
     fontWeight: '900',
     textAlign: 'center',
   },
   albumMeta: {
-    color: THEME.colors.textSecondary,
     fontSize: 12.5,
     textAlign: 'center',
     marginTop: 4,
@@ -339,17 +359,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: THEME.colors.gold,
     paddingVertical: 13,
     borderRadius: 25,
-    shadowColor: THEME.colors.gold,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 6,
     elevation: 3,
   },
   playAllText: {
-    color: '#FFFFFF',
+    color: '#0D0D0D',
     fontSize: 14,
     fontWeight: '800',
   },
@@ -357,9 +376,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
-    borderColor: THEME.colors.gold,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -368,7 +385,6 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
     paddingBottom: 10,
   },
   tabChip: {
@@ -378,18 +394,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#F3F4F6',
-  },
-  tabChipActive: {
-    backgroundColor: THEME.colors.gold,
+    borderWidth: 1,
   },
   tabChipText: {
-    color: THEME.colors.textSecondary,
     fontSize: 12.5,
-    fontWeight: '700',
-  },
-  tabChipTextActive: {
-    color: '#FFFFFF',
   },
   trackList: {
     gap: 8,
@@ -397,15 +405,12 @@ const styles = StyleSheet.create({
   trackItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     padding: 12,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
     gap: 12,
   },
   trackNumber: {
-    color: THEME.colors.gold,
     fontSize: 13,
     fontWeight: '800',
     width: 24,
@@ -415,12 +420,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   trackTitle: {
-    color: THEME.colors.textPrimary,
     fontSize: 14,
     fontWeight: '700',
   },
   trackArtist: {
-    color: THEME.colors.textMuted,
     fontSize: 11.5,
     marginTop: 2,
   },
@@ -438,11 +441,9 @@ const styles = StyleSheet.create({
   clipCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     padding: 10,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
     gap: 12,
   },
   clipThumbBox: {
@@ -451,7 +452,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     overflow: 'hidden',
     position: 'relative',
-    backgroundColor: '#000',
   },
   clipThumb: {
     width: '100%',
@@ -459,38 +459,39 @@ const styles = StyleSheet.create({
   },
   playBadge: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    top: '50%',
+    left: '50%',
+    marginTop: -14,
+    marginLeft: -14,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0,0,0,0.6)',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.3)',
   },
   durationBadge: {
     position: 'absolute',
-    bottom: 3,
-    right: 3,
+    bottom: 4,
+    right: 4,
     backgroundColor: 'rgba(0,0,0,0.75)',
     paddingHorizontal: 4,
-    paddingVertical: 1.5,
+    paddingVertical: 2,
     borderRadius: 4,
   },
   durationBadgeText: {
     color: '#FFFFFF',
-    fontSize: 8.5,
+    fontSize: 9,
     fontWeight: '700',
   },
   clipDetails: {
     flex: 1,
   },
   clipTitle: {
-    color: THEME.colors.textPrimary,
-    fontSize: 13.5,
+    fontSize: 13,
     fontWeight: '700',
   },
   clipMeta: {
-    color: THEME.colors.textMuted,
     fontSize: 11,
     marginTop: 2,
   },
