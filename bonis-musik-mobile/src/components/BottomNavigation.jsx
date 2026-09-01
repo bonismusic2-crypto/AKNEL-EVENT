@@ -2,10 +2,11 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Home, Layers, User } from 'lucide-react-native';
-import { THEME } from '../constants/theme';
+import { useAppTheme } from '../constants/theme';
 
 export const BottomNavigation = ({ activeTab, onTabChange }) => {
   const insets = useSafeAreaInsets();
+  const { theme } = useAppTheme();
   
   // Rehaussement généreux au-dessus des touches Android
   const bottomPadding = Math.max(insets.bottom + 14, Platform.OS === 'android' ? 28 : 34);
@@ -17,7 +18,16 @@ export const BottomNavigation = ({ activeTab, onTabChange }) => {
   ];
 
   return (
-    <View style={[styles.container, { paddingBottom: bottomPadding }]}>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: theme.colors.navBg || (theme.isDark ? '#141414' : '#FFFFFF'),
+          borderColor: theme.colors.navBorder || (theme.isDark ? 'rgba(255, 255, 255, 0.08)' : '#E5E7EB'),
+          paddingBottom: bottomPadding,
+        },
+      ]}
+    >
       {tabs.map((tab) => {
         const isActive = activeTab === tab.key;
         const IconComponent = tab.Icon;
@@ -30,13 +40,13 @@ export const BottomNavigation = ({ activeTab, onTabChange }) => {
           >
             <IconComponent
               size={20}
-              color={isActive ? THEME.colors.gold : THEME.colors.inactiveTab}
+              color={isActive ? theme.colors.gold : theme.colors.inactiveTab}
               strokeWidth={isActive ? 2.3 : 1.6}
             />
             <Text
               style={[
                 styles.label,
-                { color: isActive ? THEME.colors.gold : THEME.colors.inactiveTab },
+                { color: isActive ? theme.colors.gold : theme.colors.inactiveTab },
                 isActive && styles.activeLabel,
               ]}
               numberOfLines={1}

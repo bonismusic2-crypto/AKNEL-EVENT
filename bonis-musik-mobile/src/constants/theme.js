@@ -46,17 +46,46 @@ export const DARK_THEME = {
     inputBg: '#262626',
     activeTab: '#E5B93B',
     inactiveTab: '#71717A',
+    navBg: '#141414',
+    navBorder: 'rgba(255, 255, 255, 0.08)',
     success: '#10B981',
     danger: '#EF4444',
   },
 };
 
-// Instance par défaut pour compatibilité
-export let THEME = LIGHT_THEME;
+export const LIGHT_THEME = {
+  isDark: false,
+  colors: {
+    background: '#F9FAFB',      // Fond blanc / ivoire clair
+    surface: '#FFFFFF',         // Cartes blanches
+    card: '#FFFFFF',
+    cardBorder: 'rgba(212, 175, 55, 0.25)',
+    gold: '#C59B27',            // Or riche et visible
+    goldLight: '#E5B93B',
+    goldDark: '#997312',
+    goldGradient: ['#E5B93B', '#C59B27', '#A67C1E'],
+    textPrimary: '#111827',      // Texte noir / foncé
+    textSecondary: '#4B5563',    // Gris anthracite doux
+    textMuted: '#6B7280',
+    border: '#E5E7EB',
+    headerBg: '#FFFFFF',
+    modalBg: '#FFFFFF',
+    inputBg: '#F3F4F6',
+    activeTab: '#C59B27',
+    inactiveTab: '#9CA3AF',
+    navBg: '#FFFFFF',
+    navBorder: '#E5E7EB',
+    success: '#059669',
+    danger: '#DC2626',
+  },
+};
+
+// Instance par défaut (Dark Theme par défaut pour l'expérience streaming)
+export let THEME = DARK_THEME;
 
 const ThemeContext = createContext({
-  theme: LIGHT_THEME,
-  isDarkMode: false,
+  theme: DARK_THEME,
+  isDarkMode: true,
   toggleTheme: () => {},
   setDarkMode: () => {},
 });
@@ -64,7 +93,7 @@ const ThemeContext = createContext({
 const THEME_STORAGE_KEY = '@bonis_theme_mode';
 
 export const ThemeProvider = ({ children }) => {
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(true);
 
   useEffect(() => {
     // Charger la préférence de thème sauvegardée
@@ -75,6 +104,9 @@ export const ThemeProvider = ({ children }) => {
           const dark = JSON.parse(stored);
           setIsDarkMode(dark);
           THEME = dark ? DARK_THEME : LIGHT_THEME;
+        } else {
+          setIsDarkMode(true);
+          THEME = DARK_THEME;
         }
       } catch (e) {
         console.warn('Error loading theme:', e);
@@ -107,14 +139,7 @@ export const ThemeProvider = ({ children }) => {
   const currentTheme = isDarkMode ? DARK_THEME : LIGHT_THEME;
 
   return (
-    <ThemeContext.Provider
-      value={{
-        theme: currentTheme,
-        isDarkMode,
-        toggleTheme,
-        setDarkMode,
-      }}
-    >
+    <ThemeContext.Provider value={{ theme: currentTheme, isDarkMode, toggleTheme, setDarkMode }}>
       {children}
     </ThemeContext.Provider>
   );

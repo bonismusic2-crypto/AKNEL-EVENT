@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, RefreshCon
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Bell, Search, Play, Sparkles, MoreVertical, Calendar, Heart, BookOpen, Film, Music, ShieldCheck } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { THEME } from '../constants/theme';
+import { THEME, useAppTheme } from '../constants/theme';
 import { SAMPLE_DATA } from '../data/sampleData';
 import { MediaService } from '../services/mediaService';
 import { SubscriptionService } from '../services/subscriptionService';
@@ -47,6 +47,7 @@ export const HomeScreen = ({
   onOpenProfile,
   onOpenPaywall
 }) => {
+  const { theme, isDarkMode } = useAppTheme();
   const { playTrack } = useAudio();
   const [albums, setAlbums] = useState(SAMPLE_DATA.audioReleases);
   const [clips, setClips] = useState(SAMPLE_DATA.videoClips);
@@ -290,12 +291,12 @@ export const HomeScreen = ({
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.container}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={THEME.colors.gold} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.gold} />
         }
       >
         {/* ========================================================= */}
@@ -303,14 +304,14 @@ export const HomeScreen = ({
         {/* ========================================================= */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.brandTitle}>Bonis Musik</Text>
-            <Text style={styles.greetingSubtitle}>Bonjour, {firstName} 👋</Text>
+            <Text style={[styles.brandTitle, { color: theme.colors.textPrimary }]}>Bonis Musik</Text>
+            <Text style={[styles.greetingSubtitle, { color: theme.colors.gold }]}>Bonjour, {firstName} 👋</Text>
           </View>
 
           <View style={styles.headerActions}>
             {/* Bouton Doré Inviter Prestation */}
             <TouchableOpacity
-              style={styles.inviteHeaderBtn}
+              style={[styles.inviteHeaderBtn, { backgroundColor: theme.colors.gold }]}
               onPress={onOpenProfile}
               activeOpacity={0.85}
             >
@@ -320,11 +321,11 @@ export const HomeScreen = ({
 
             {/* Bouton Cloche de Notification */}
             <TouchableOpacity
-              style={styles.iconBtn}
+              style={[styles.iconBtn, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
               onPress={() => setIsNotifModalVisible(true)}
               activeOpacity={0.75}
             >
-              <Bell size={20} color="#FFFFFF" />
+              <Bell size={20} color={theme.colors.textPrimary} />
               {unreadCount > 0 && (
                 <View style={styles.bellBadge}>
                   <Text style={styles.bellBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
@@ -337,43 +338,43 @@ export const HomeScreen = ({
         {/* ========================================================= */}
         {/* 2. CARTE "VERSET & CANTIQUE DU JOUR" (MAQUETTE 2) */}
         {/* ========================================================= */}
-        <View style={styles.dailyCard}>
+        <View style={[styles.dailyCard, { borderColor: theme.colors.cardBorder }]}>
           <LinearGradient
-            colors={['#1E1B18', '#141312', '#0D0D0D']}
+            colors={isDarkMode ? ['#1E1B18', '#141312', '#0D0D0D'] : ['#FFFBEB', '#FEF3C7', '#FFFFFF']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.dailyCardGradient}
           >
             <View style={styles.dailyHeaderRow}>
-              <Text style={styles.dailyCardTag}>🕊️ VERSET & CANTIQUE DU JOUR</Text>
+              <Text style={[styles.dailyCardTag, { color: theme.colors.gold }]}>🕊️ VERSET & CANTIQUE DU JOUR</Text>
               <Text style={styles.dailyThemeBadge}>{currentDailyVerse.theme}</Text>
             </View>
 
             <View style={styles.dailyBodyRow}>
               {/* Croix Dorée Lumineuse */}
               <View style={styles.crossGlowContainer}>
-                <View style={styles.crossVertical} />
-                <View style={styles.crossHorizontal} />
+                <View style={[styles.crossVertical, { backgroundColor: theme.colors.gold }]} />
+                <View style={[styles.crossHorizontal, { backgroundColor: theme.colors.gold }]} />
               </View>
 
               {/* Texte du Verset & Référence */}
               <View style={styles.verseTextContainer}>
-                <Text style={styles.verseQuote}>{currentDailyVerse.verse}</Text>
-                <Text style={styles.verseRef}>{currentDailyVerse.ref}</Text>
+                <Text style={[styles.verseQuote, { color: theme.colors.textPrimary }]}>{currentDailyVerse.verse}</Text>
+                <Text style={[styles.verseRef, { color: theme.colors.textMuted }]}>{currentDailyVerse.ref}</Text>
               </View>
             </View>
 
             {/* Raccordement au Chant Recommandé */}
-            <View style={styles.dailyFooterRow}>
+            <View style={[styles.dailyFooterRow, { borderColor: theme.colors.border }]}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.recommendedLabel}>Chant recommandé pour prier :</Text>
-                <Text style={styles.recommendedTitle} numberOfLines={1}>
+                <Text style={[styles.recommendedLabel, { color: theme.colors.textSecondary }]}>Chant recommandé pour prier :</Text>
+                <Text style={[styles.recommendedTitle, { color: theme.colors.textPrimary }]} numberOfLines={1}>
                   🎵 {featuredSong.title} • {featuredSong.duration}
                 </Text>
               </View>
 
               <TouchableOpacity
-                style={styles.meditateBtn}
+                style={[styles.meditateBtn, { backgroundColor: theme.colors.gold }]}
                 onPress={handlePlayFeaturedMeditate}
                 activeOpacity={0.85}
               >
@@ -387,7 +388,7 @@ export const HomeScreen = ({
         {/* ========================================================= */}
         {/* 3. FILTRES D'ATMOSPHÈRE SPIRITUELLE (PILLS DORÉES) */}
         {/* ========================================================= */}
-        <Text style={styles.filterSectionTitle}>Filtrer par atmosphère</Text>
+        <Text style={[styles.filterSectionTitle, { color: theme.colors.textSecondary }]}>Filtrer par atmosphère</Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -404,7 +405,8 @@ export const HomeScreen = ({
               key={tab.id}
               style={[
                 styles.filterPill,
-                activeCategory === tab.id && styles.filterPillActive,
+                { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+                activeCategory === tab.id && { backgroundColor: isDarkMode ? 'rgba(197, 155, 39, 0.2)' : 'rgba(197, 155, 39, 0.15)', borderColor: theme.colors.gold },
               ]}
               onPress={() => setActiveCategory(tab.id)}
               activeOpacity={0.8}
@@ -412,7 +414,8 @@ export const HomeScreen = ({
               <Text
                 style={[
                   styles.filterPillText,
-                  activeCategory === tab.id && styles.filterPillTextActive,
+                  { color: theme.colors.textSecondary },
+                  activeCategory === tab.id && { color: theme.colors.gold, fontWeight: '800' },
                 ]}
               >
                 {tab.label}
@@ -428,10 +431,10 @@ export const HomeScreen = ({
           <View style={styles.sectionBlock}>
             <View style={styles.sectionHeader}>
               <View>
-                <Text style={styles.sectionTitle}>Discographie du Chantre</Text>
-                <Text style={styles.sectionSubtitle}>Albums & Opus prophétiques en streaming VIP</Text>
+                <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Discographie du Chantre</Text>
+                <Text style={[styles.sectionSubtitle, { color: theme.colors.textMuted }]}>Albums & Opus prophétiques en streaming VIP</Text>
               </View>
-              <Text style={styles.countBadge}>{albums.length} albums</Text>
+              <Text style={[styles.countBadge, { color: theme.colors.gold }]}>{albums.length} albums</Text>
             </View>
 
             <ScrollView
@@ -449,18 +452,18 @@ export const HomeScreen = ({
                   }}
                   activeOpacity={0.88}
                 >
-                  <View style={styles.albumCoverWrapper}>
+                  <View style={[styles.albumCoverWrapper, { borderColor: theme.colors.border }]}>
                     <Image source={{ uri: album.cover }} style={styles.albumCover} />
                     <LinearGradient
                       colors={['transparent', 'rgba(0,0,0,0.6)']}
                       style={styles.albumCoverGradient}
                     />
-                    <View style={styles.playButtonCircle}>
+                    <View style={[styles.playButtonCircle, { backgroundColor: theme.colors.gold }]}>
                       <Play size={20} color="#0D0D0D" fill="#0D0D0D" style={{ marginLeft: 3 }} />
                     </View>
                   </View>
-                  <Text style={styles.albumTitle} numberOfLines={1}>{album.title}</Text>
-                  <Text style={styles.albumMeta}>{album.year} • {album.tracks?.length || 10} titres</Text>
+                  <Text style={[styles.albumTitle, { color: theme.colors.textPrimary }]} numberOfLines={1}>{album.title}</Text>
+                  <Text style={[styles.albumMeta, { color: theme.colors.textMuted }]}>{album.year} • {album.tracks?.length || 10} titres</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -474,8 +477,8 @@ export const HomeScreen = ({
           <View style={styles.sectionBlock}>
             <View style={styles.sectionHeader}>
               <View>
-                <Text style={styles.sectionTitle}>Enseignements & Méditations</Text>
-                <Text style={styles.sectionSubtitle}>Paroles d'édification & prières guidées</Text>
+                <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Enseignements & Méditations</Text>
+                <Text style={[styles.sectionSubtitle, { color: theme.colors.textMuted }]}>Paroles d'édification & prières guidées</Text>
               </View>
             </View>
 
@@ -483,7 +486,7 @@ export const HomeScreen = ({
               {teachings.map((teaching) => (
                 <TouchableOpacity
                   key={teaching.id}
-                  style={styles.teachingCard}
+                  style={[styles.teachingCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
                   onPress={() => handleTeachingPress(teaching)}
                   activeOpacity={0.85}
                 >
@@ -505,14 +508,14 @@ export const HomeScreen = ({
                   </View>
 
                   <View style={styles.teachingInfo}>
-                    <Text style={styles.teachingTitle} numberOfLines={2}>{teaching.title}</Text>
-                    <Text style={styles.teachingMeta}>
+                    <Text style={[styles.teachingTitle, { color: theme.colors.textPrimary }]} numberOfLines={2}>{teaching.title}</Text>
+                    <Text style={[styles.teachingMeta, { color: theme.colors.textMuted }]}>
                       ⏱️ {teaching.duration || '20 min'} • {teaching.speaker_or_artist || 'Chantre Boniface'}
                     </Text>
                   </View>
 
-                  <View style={styles.playMiniBtn}>
-                    <Play size={14} color={THEME.colors.gold} fill={THEME.colors.gold} style={{ marginLeft: 2 }} />
+                  <View style={[styles.playMiniBtn, { backgroundColor: 'rgba(197, 155, 39, 0.12)' }]}>
+                    <Play size={14} color={theme.colors.gold} fill={theme.colors.gold} style={{ marginLeft: 2 }} />
                   </View>
                 </TouchableOpacity>
               ))}
@@ -527,8 +530,8 @@ export const HomeScreen = ({
           <View style={styles.sectionBlock}>
             <View style={styles.sectionHeader}>
               <View>
-                <Text style={styles.sectionTitle}>Clips Vidéos HD & 4K</Text>
-                <Text style={styles.sectionSubtitle}>Mises en scène et concerts officiels</Text>
+                <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Clips Vidéos HD & 4K</Text>
+                <Text style={[styles.sectionSubtitle, { color: theme.colors.textMuted }]}>Mises en scène et concerts officiels</Text>
               </View>
             </View>
 
@@ -547,7 +550,7 @@ export const HomeScreen = ({
                   }}
                   activeOpacity={0.88}
                 >
-                  <View style={styles.clipThumbWrapper}>
+                  <View style={[styles.clipThumbWrapper, { borderColor: theme.colors.border }]}>
                     <Image source={{ uri: clip.thumbnail }} style={styles.clipThumb} />
                     <LinearGradient
                       colors={['transparent', 'rgba(0,0,0,0.7)']}
@@ -556,12 +559,12 @@ export const HomeScreen = ({
                     <View style={styles.clipBadge}>
                       <Text style={styles.clipBadgeText}>HD 4K</Text>
                     </View>
-                    <View style={styles.clipPlayBtn}>
+                    <View style={[styles.clipPlayBtn, { backgroundColor: theme.colors.gold }]}>
                       <Play size={18} color="#0D0D0D" fill="#0D0D0D" style={{ marginLeft: 2 }} />
                     </View>
                   </View>
-                  <Text style={styles.clipTitle} numberOfLines={1}>{clip.title}</Text>
-                  <Text style={styles.clipDuration}>⏱️ {clip.duration || '04:30'} • Chantre Boniface</Text>
+                  <Text style={[styles.clipTitle, { color: theme.colors.textPrimary }]} numberOfLines={1}>{clip.title}</Text>
+                  <Text style={[styles.clipDuration, { color: theme.colors.textMuted }]}>⏱️ {clip.duration || '04:30'} • Chantre Boniface</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>

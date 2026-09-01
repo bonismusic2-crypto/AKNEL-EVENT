@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, Play, MoreVertical } from 'lucide-react-native';
-import { THEME } from '../constants/theme';
+import { THEME, useAppTheme } from '../constants/theme';
 import { SAMPLE_DATA } from '../data/sampleData';
 import { MediaService } from '../services/mediaService';
 import { SubscriptionService } from '../services/subscriptionService';
@@ -12,6 +12,7 @@ import { MediaOptionsMenu } from '../components/MediaOptionsMenu';
 import { SearchModal } from '../components/SearchModal';
 
 export const MediaLibraryScreen = ({ onSelectAlbum, onSelectClip, onSelectTeaching, currentUser, onOpenPaywall }) => {
+  const { theme, isDarkMode } = useAppTheme();
   const { playTrack } = useAudio();
   const [activeSection, setActiveSection] = useState('music'); // 'music', 'clips', 'teachings'
   const [teachingFilter, setTeachingFilter] = useState('Tous');
@@ -73,36 +74,38 @@ export const MediaLibraryScreen = ({ onSelectAlbum, onSelectClip, onSelectTeachi
   ];
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      {/* HEADER MÉDIATHÈQUE */}
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Médiathèque</Text>
-        <TouchableOpacity
-          style={styles.iconBtn}
-          onPress={() => setIsSearchModalVisible(true)}
-          activeOpacity={0.75}
-        >
-          <Search size={20} color={THEME.colors.textPrimary} />
+        <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>Médiathèque</Text>
+        <TouchableOpacity style={[styles.searchBtn, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]} onPress={() => setIsSearchModalVisible(true)}>
+          <Search size={20} color={theme.colors.gold} />
         </TouchableOpacity>
       </View>
 
-      {/* Sélecteur d'onglets (Albums / Clips / Enseignements) */}
-      <View style={styles.sectionTabsContainer}>
-        {sections.map((sec) => {
-          const isSelected = activeSection === sec.key;
-          return (
-            <TouchableOpacity
-              key={sec.key}
-              style={[styles.sectionTab, isSelected && styles.sectionTabActive]}
-              onPress={() => setActiveSection(sec.key)}
-              activeOpacity={0.8}
+      {/* Sélecteur de Section (Musique / Clips / Enseignements) */}
+      <View style={styles.tabsContainer}>
+        {['music', 'clips', 'teachings'].map((sec) => (
+          <TouchableOpacity
+            key={sec}
+            style={[
+              styles.tab,
+              { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+              activeSection === sec && { backgroundColor: isDarkMode ? 'rgba(197, 155, 39, 0.2)' : 'rgba(197, 155, 39, 0.15)', borderColor: theme.colors.gold },
+            ]}
+            onPress={() => setActiveSection(sec)}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                { color: theme.colors.textSecondary },
+                activeSection === sec && { color: theme.colors.gold, fontWeight: '800' },
+              ]}
             >
-              <Text style={[styles.sectionTabText, isSelected && styles.sectionTabTextActive]}>
-                {sec.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+              {sec === 'music' ? '🎵 Musique' : sec === 'clips' ? '🎬 Clips Vidéos' : '📖 Enseignements'}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {/* 1. VUE MUSIQUE & ALBUMS */}
