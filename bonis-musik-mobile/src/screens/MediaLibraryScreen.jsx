@@ -33,9 +33,9 @@ export const MediaLibraryScreen = ({ onSelectAlbum, onSelectClip, onSelectTeachi
     return true;
   };
 
-  const [albums, setAlbums] = useState(SAMPLE_DATA.audioReleases);
-  const [clips, setClips] = useState(SAMPLE_DATA.videoClips);
-  const [teachings, setTeachings] = useState(SAMPLE_DATA.teachings);
+  const [albums, setAlbums] = useState([]);
+  const [clips, setClips] = useState([]);
+  const [teachings, setTeachings] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchLiveContent = async () => {

@@ -19,8 +19,8 @@ export const MediaService = {
         .eq('category', 'video_clip')
         .order('created_at', { ascending: false });
 
-      if (error || !albumsData || albumsData.length === 0) {
-        return SAMPLE_DATA.audioReleases;
+      if (error || !albumsData) {
+        return [];
       }
 
       return albumsData.map((album) => {
@@ -55,8 +55,8 @@ export const MediaService = {
         };
       });
     } catch (err) {
-      console.warn('Fallback sample albums:', err);
-      return SAMPLE_DATA.audioReleases;
+      console.warn('Erreur chargement albums Supabase:', err);
+      return [];
     }
   },
 
@@ -71,9 +71,8 @@ export const MediaService = {
       }
 
       const { data, error } = await query;
-      if (error || !data || data.length === 0) {
-        if (category === 'video_clip') return SAMPLE_DATA.videoClips;
-        return SAMPLE_DATA.teachings;
+      if (error || !data) {
+        return [];
       }
 
       return data.map((item) => ({
@@ -89,8 +88,8 @@ export const MediaService = {
         artist: item.speaker_or_artist || 'Chantre Boniface',
       }));
     } catch (err) {
-      console.warn('Fallback sample media:', err);
-      return category === 'video_clip' ? SAMPLE_DATA.videoClips : SAMPLE_DATA.teachings;
+      console.warn('Erreur chargement medias Supabase:', err);
+      return [];
     }
   },
 
