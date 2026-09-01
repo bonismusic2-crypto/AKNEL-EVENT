@@ -11,15 +11,16 @@ export const GeniusPayWebService = {
 
         const successParams = new URLSearchParams({
             ticket: ticket.name,
-            amount: totalAmount.toLocaleString(),
+            amount: totalAmount.toLocaleString('fr-FR'),
             name: customer.name,
+            phone: customer.phone || '',
             event: event.title,
         }).toString();
 
         const payload = {
-            amount: totalAmount,
+            amount: Number(totalAmount),
             currency: 'XOF',
-            description: `Achat Billet : ${ticket.name} - ${event.title}`,
+            description: `Billet Officiel : ${ticket.name} - ${event.title} [Client: ${customer.name}]`,
             customer: {
                 name: customer.name,
                 email: customer.email,
@@ -32,11 +33,13 @@ export const GeniusPayWebService = {
                 customer_email: customer.email,
                 customer_phone: customer.phone,
                 quantity: quantity,
+                type: 'event_ticket',
             },
             custom_data: {
                 ticket_name: ticket.name,
                 customer_email: customer.email,
                 customer_phone: customer.phone,
+                type: 'event_ticket',
             },
             success_url: `${window.location.origin}/payment-success?${successParams}`,
             error_url: `${window.location.origin}/payment-cancel`,
@@ -54,13 +57,24 @@ export const GeniusPayWebService = {
 
         const resData = await response.json().catch(() => null);
 
-        if (!response.ok || (resData && resData.success === false)) {
-            const errorMsg = resData?.message || resData?.error || `Erreur GeniusPay (Code HTTP ${response.status})`;
+        if (!response.ok || !resData || resData.success === false) {
+            const errorMsg =
+                resData?.message ||
+                resData?.error?.message ||
+                resData?.error ||
+                `Erreur GeniusPay (Code HTTP ${response.status})`;
             throw new Error(errorMsg);
         }
 
-        // L'API GeniusPay Merchant renvoie checkout_url dans data.checkout_url
-        const checkoutUrl = resData?.data?.checkout_url || resData?.checkout_url || resData?.payment_url;
+        // L'API GeniusPay Merchant renvoie checkout_url
+        const checkoutUrl =
+            resData?.data?.checkout_url ||
+            resData?.checkout_url ||
+            resData?.payment_url ||
+            resData?.data?.payment_url ||
+            resData?.data?.url ||
+            resData?.url;
+
         const txId = resData?.data?.reference || resData?.data?.id || resData?.id || 'GP_' + Date.now();
 
         return {
