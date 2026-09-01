@@ -314,7 +314,7 @@ export const HomeScreen = ({
         </View>
 
         {/* ========================================================= */}
-        {/* 2. CARTE "VERSET & CANTIQUE DU JOUR" (MAQUETTE 2) */}
+        {/* 2. CARTE "VERSET & MÉDITATION DU JOUR" */}
         {/* ========================================================= */}
         <TouchableOpacity
           style={[styles.dailyCard, { borderColor: theme.colors.cardBorder }]}
@@ -328,7 +328,7 @@ export const HomeScreen = ({
             style={styles.dailyCardGradient}
           >
             <View style={styles.dailyHeaderRow}>
-              <Text style={[styles.dailyCardTag, { color: theme.colors.gold }]}>🕊️ VERSET & CANTIQUE DU JOUR</Text>
+              <Text style={[styles.dailyCardTag, { color: theme.colors.gold }]}>🕊️ VERSET DU JOUR</Text>
               <Text style={styles.dailyThemeBadge}>{currentMeditation.theme}</Text>
             </View>
 
@@ -342,27 +342,20 @@ export const HomeScreen = ({
               {/* Texte du Verset & Référence */}
               <View style={styles.verseTextContainer}>
                 <Text style={[styles.verseQuote, { color: theme.colors.textPrimary }]}>{currentMeditation.verse}</Text>
-                <Text style={[styles.verseRef, { color: theme.colors.textMuted }]}>{currentMeditation.ref} • Toucher pour lire l'explication ➔</Text>
+                <Text style={[styles.verseRef, { color: theme.colors.textMuted }]}>{currentMeditation.ref}</Text>
               </View>
             </View>
 
-            {/* Raccordement au Chant Recommandé */}
+            {/* Pied de carte : Bouton Méditer & Lire l'Explication */}
             <View style={[styles.dailyFooterRow, { borderColor: theme.colors.border }]}>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.recommendedLabel, { color: theme.colors.textSecondary }]}>Chant recommandé pour prier :</Text>
-                <Text style={[styles.recommendedTitle, { color: theme.colors.textPrimary }]} numberOfLines={1}>
-                  🎵 {currentMeditation.songTitle} • {currentMeditation.songDuration}
-                </Text>
-              </View>
+              <Text style={[styles.recommendedLabel, { color: theme.colors.textSecondary }]}>
+                Pensée prophétique & Prière guidée
+              </Text>
 
-              <TouchableOpacity
-                style={[styles.meditateBtn, { backgroundColor: theme.colors.gold }]}
-                onPress={() => setIsMeditationModalVisible(true)}
-                activeOpacity={0.85}
-              >
-                <BookOpen size={14} color="#0D0D0D" style={{ marginRight: 2 }} />
-                <Text style={styles.meditateBtnText}>Méditer</Text>
-              </TouchableOpacity>
+              <View style={[styles.meditateBtn, { backgroundColor: theme.colors.gold }]}>
+                <BookOpen size={14} color="#0D0D0D" style={{ marginRight: 4 }} />
+                <Text style={styles.meditateBtnText}>Méditer le verset</Text>
+              </View>
             </View>
           </LinearGradient>
         </TouchableOpacity>

@@ -127,39 +127,6 @@ export const DailyMeditationModal = ({
             </View>
           </View>
 
-          {/* Section 3 : Cantique Recommandé pour Méditer */}
-          <View style={styles.sectionBlock}>
-            <View style={styles.sectionTitleRow}>
-              <View style={[styles.sectionBullet, { backgroundColor: theme.colors.gold }]} />
-              <Text style={[styles.sectionHeading, { color: theme.colors.textPrimary }]}>
-                Cantique d'Accompagnement Spirituel
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              style={[styles.songCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
-              onPress={() => onPlaySong(meditation)}
-              activeOpacity={0.88}
-            >
-              <View style={[styles.songIconCircle, { backgroundColor: 'rgba(197, 155, 39, 0.15)' }]}>
-                <Volume2 size={20} color={theme.colors.gold} />
-              </View>
-
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.songTitle, { color: theme.colors.textPrimary }]}>
-                  {meditation.songTitle}
-                </Text>
-                <Text style={[styles.songAlbum, { color: theme.colors.textMuted }]}>
-                  Album « {meditation.songAlbum} » • {meditation.songDuration}
-                </Text>
-              </View>
-
-              <View style={[styles.playBtnCircle, { backgroundColor: theme.colors.gold }]}>
-                <Play size={16} color="#0D0D0D" fill="#0D0D0D" style={{ marginLeft: 2 }} />
-              </View>
-            </TouchableOpacity>
-          </View>
-
           <View style={{ height: 40 }} />
         </ScrollView>
       </SafeAreaView>
