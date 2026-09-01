@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Audio } from 'expo-av';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const AudioContext = createContext(null);
+const FAVORITES_STORAGE_KEY = '@bonis_favorite_tracks';
 
 export const AudioProvider = ({ children }) => {
   const [sound, setSound] = useState(null);
@@ -12,22 +14,45 @@ export const AudioProvider = ({ children }) => {
   const [durationMillis, setDurationMillis] = useState(1);
   const [isFullPlayerVisible, setIsFullPlayerVisible] = useState(false);
   const [history, setHistory] = useState([]);
+  
+  // Nouveaux états multimédia professionnels
+  const [isShuffle, setIsShuffle] = useState(false);
+  const [repeatMode, setRepeatMode] = useState('off'); // 'off', 'all', 'one'
+  const [favorites, setFavorites] = useState([]); // Liste des IDs des titres favoris
 
   // Références mutables pour accès immédiat dans onPlaybackStatusUpdate
   const playlistRef = useRef(playlist);
   const currentTrackRef = useRef(currentTrack);
   const isPlayingRef = useRef(isPlaying);
+  const isShuffleRef = useRef(isShuffle);
+  const repeatModeRef = useRef(repeatMode);
+
   playlistRef.current = playlist;
   currentTrackRef.current = currentTrack;
   isPlayingRef.current = isPlaying;
+  isShuffleRef.current = isShuffle;
+  repeatModeRef.current = repeatMode;
 
   useEffect(() => {
-    // Configurer le mode audio pour autoriser la lecture en tâche de fond
+    // 1. Configurer le mode audio pour autoriser la lecture en tâche de fond
     Audio.setAudioModeAsync({
       staysActiveInBackground: true,
       shouldDuckAndroid: true,
       playThroughEarpieceAndroid: false,
     }).catch(console.error);
+
+    // 2. Charger les favoris sauvegardés localement
+    const loadFavorites = async () => {
+      try {
+        const stored = await AsyncStorage.getItem(FAVORITES_STORAGE_KEY);
+        if (stored) {
+          setFavorites(JSON.parse(stored));
+        }
+      } catch (e) {
+        console.warn('Erreur chargement favoris:', e);
+      }
+    };
+    loadFavorites();
 
     return () => {
       if (sound) {
@@ -42,9 +67,14 @@ export const AudioProvider = ({ children }) => {
       setDurationMillis(status.durationMillis || 1);
       setIsPlaying(status.isPlaying);
 
-      // ✅ ENCHAÎNEMENT AUTOMATIQUE : Si le morceau se termine, passer au suivant
+      // ✅ ENCHAÎNEMENT AUTOMATIQUE À LA FIN D'UN MORCEAU
       if (status.didJustFinish) {
-        handlePlayNext();
+        if (repeatModeRef.current === 'one') {
+          // Rejouer le même morceau
+          if (sound) sound.replayAsync().catch(() => {});
+        } else {
+          handlePlayNext();
+        }
       }
     }
   };
@@ -100,7 +130,55 @@ export const AudioProvider = ({ children }) => {
   };
 
   /**
-   * ⏭️ Passer au morceau SUIVANT
+   * 🔀 Toggle Mode Aléatoire (Shuffle)
+   */
+  const toggleShuffle = () => {
+    const nextShuffle = !isShuffle;
+    setIsShuffle(nextShuffle);
+    isShuffleRef.current = nextShuffle;
+  };
+
+  /**
+   * 🔁 Toggle Mode Répétition (Off -> All -> One -> Off)
+   */
+  const toggleRepeat = () => {
+    const modes = ['off', 'all', 'one'];
+    const currentIndex = modes.indexOf(repeatMode);
+    const nextMode = modes[(currentIndex + 1) % modes.length];
+    setRepeatMode(nextMode);
+    repeatModeRef.current = nextMode;
+  };
+
+  /**
+   * ❤️ Toggle Favoris avec persistance locale
+   */
+  const toggleFavorite = async (track) => {
+    if (!track) return false;
+    const trackId = String(track.id);
+    let nextFavorites = [];
+    const isCurrentlyFav = favorites.some((f) => String(f.id || f) === trackId);
+
+    if (isCurrentlyFav) {
+      nextFavorites = favorites.filter((f) => String(f.id || f) !== trackId);
+    } else {
+      nextFavorites = [...favorites, track];
+    }
+
+    setFavorites(nextFavorites);
+    try {
+      await AsyncStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(nextFavorites));
+    } catch (e) {
+      console.warn('Erreur sauvegarde favoris:', e);
+    }
+    return !isCurrentlyFav;
+  };
+
+  const isTrackFavorite = (trackId) => {
+    return favorites.some((f) => String(f.id || f) === String(trackId));
+  };
+
+  /**
+   * ⏭️ Passer au morceau SUIVANT (avec support Shuffle et Repeat)
    */
   const handlePlayNext = async () => {
     const list = playlistRef.current;
@@ -111,12 +189,22 @@ export const AudioProvider = ({ children }) => {
       return;
     }
 
+    // 1. Si mode aléatoire (Shuffle) activé
+    if (isShuffleRef.current && list.length > 1) {
+      const remaining = list.filter((t) => String(t.id) !== String(current.id));
+      const randomIndex = Math.floor(Math.random() * remaining.length);
+      const nextTrack = remaining[randomIndex] || list[0];
+      await playTrack(nextTrack, list);
+      return;
+    }
+
+    // 2. Mode Séquentiel
     const currentIndex = list.findIndex((t) => String(t.id) === String(current.id));
     if (currentIndex !== -1 && currentIndex + 1 < list.length) {
       const nextTrack = list[currentIndex + 1];
       await playTrack(nextTrack, list);
-    } else if (list.length > 0) {
-      // Reboucler au premier morceau si fin d'album
+    } else if (list.length > 0 && repeatModeRef.current !== 'off') {
+      // Reboucler au premier morceau si repeat activé
       const firstTrack = list[0];
       await playTrack(firstTrack, list);
     } else {
@@ -197,6 +285,13 @@ export const AudioProvider = ({ children }) => {
         handlePlayPrevious,
         togglePlayPause,
         seekTo,
+        isShuffle,
+        toggleShuffle,
+        repeatMode,
+        toggleRepeat,
+        favorites,
+        toggleFavorite,
+        isTrackFavorite,
         history,
         clearHistory,
         removeFromHistory,

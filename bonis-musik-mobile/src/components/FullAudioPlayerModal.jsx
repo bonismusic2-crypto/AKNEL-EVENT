@@ -12,15 +12,18 @@ import {
   Download,
   CheckCircle,
   MoreVertical,
-  Sliders,
+  Shuffle,
+  Repeat,
+  Repeat1,
   Volume2
 } from 'lucide-react-native';
-import { THEME } from '../constants/theme';
+import { THEME, useAppTheme } from '../constants/theme';
 import { useAudio } from '../context/AudioContext';
 import { DownloadService } from '../services/downloadService';
 import { MediaOptionsMenu } from './MediaOptionsMenu';
 
 export const FullAudioPlayerModal = () => {
+  const { theme, isDarkMode } = useAppTheme();
   const {
     currentTrack,
     isPlaying,
@@ -31,13 +34,21 @@ export const FullAudioPlayerModal = () => {
     handlePlayPrevious,
     isFullPlayerVisible,
     setIsFullPlayerVisible,
+    isShuffle,
+    toggleShuffle,
+    repeatMode,
+    toggleRepeat,
+    toggleFavorite,
+    isTrackFavorite,
+    seekTo,
   } = useAudio();
 
-  const [isLiked, setIsLiked] = useState(false);
   const [isDownloaded, setIsDownloaded] = useState(false);
   const [isMenuVisible, setIsMenuVisible] = useState(false);
 
   if (!currentTrack) return null;
+
+  const isLiked = isTrackFavorite(currentTrack.id);
 
   const formatTime = (millis) => {
     if (!millis || isNaN(millis)) return '00:00';
@@ -61,10 +72,9 @@ export const FullAudioPlayerModal = () => {
       presentationStyle="fullScreen"
       onRequestClose={() => setIsFullPlayerVisible(false)}
     >
-      <SafeAreaView style={styles.container}>
-        {/* Header avec Bouton Retour Bien Visible & Options */}
+      <SafeAreaView style={[styles.container, { backgroundColor: '#0D0D0D' }]}>
+        {/* 1. Header avec Bouton Retour Bien Visible & Titre */}
         <View style={styles.header}>
-          {/* Bouton Retour Flèche & Réduire */}
           <TouchableOpacity
             onPress={() => setIsFullPlayerVisible(false)}
             style={styles.backBtn}
@@ -74,13 +84,12 @@ export const FullAudioPlayerModal = () => {
           </TouchableOpacity>
 
           <View style={styles.headerTextContainer}>
-            <Text style={styles.headerSubtitle}>EN LECTURE</Text>
+            <Text style={[styles.headerSubtitle, { color: theme.colors.gold }]}>EN LECTURE</Text>
             <Text style={styles.headerAlbum} numberOfLines={1}>
               {currentTrack.album || 'Bonis Musik'}
             </Text>
           </View>
 
-          {/* Bouton 3 Points Options */}
           <TouchableOpacity
             style={styles.optionsBtn}
             onPress={() => setIsMenuVisible(true)}
@@ -90,15 +99,15 @@ export const FullAudioPlayerModal = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Pochette Centrale */}
+        {/* 2. Pochette Centrale HD */}
         <View style={styles.coverWrapper}>
           <Image
-            source={{ uri: currentTrack.cover || 'https://images.unsplash.com/photo-1514525253361-bee8a19740c1?w=800' }}
+            source={{ uri: currentTrack.cover || currentTrack.thumbnail || 'https://images.unsplash.com/photo-1514525253361-bee8a19740c1?w=800' }}
             style={styles.cover}
           />
         </View>
 
-        {/* Titre & Artiste & Boutons d'Action Rapides */}
+        {/* 3. Titre & Artiste & Bouton Favoris / Download */}
         <View style={styles.trackInfoRow}>
           <View style={styles.titleContainer}>
             <Text style={styles.trackTitle} numberOfLines={1}>{currentTrack.title}</Text>
@@ -111,31 +120,32 @@ export const FullAudioPlayerModal = () => {
               activeOpacity={0.7}
             >
               {isDownloaded ? (
-                <CheckCircle size={22} color={THEME.colors.gold} />
+                <CheckCircle size={22} color={theme.colors.gold} />
               ) : (
                 <Download size={22} color="#9CA3AF" />
               )}
             </TouchableOpacity>
 
+            {/* Bouton Favoris Cœur Rouge Réactif */}
             <TouchableOpacity
-              onPress={() => setIsLiked(!isLiked)}
+              onPress={() => toggleFavorite(currentTrack)}
               style={styles.actionIconBtn}
               activeOpacity={0.7}
             >
               <Heart
-                size={22}
-                color={isLiked ? '#DC2626' : '#9CA3AF'}
-                fill={isLiked ? '#DC2626' : 'transparent'}
+                size={24}
+                color={isLiked ? '#EF4444' : '#9CA3AF'}
+                fill={isLiked ? '#EF4444' : 'transparent'}
               />
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Timeline & Progression Temps Réel */}
+        {/* 4. Timeline & Progression Temps Réel */}
         <View style={styles.progressContainer}>
           <View style={styles.progressBarBackground}>
-            <View style={[styles.progressBarFill, { width: `${progressPercent}%` }]} />
-            <View style={[styles.progressKnob, { left: `${progressPercent}%` }]} />
+            <View style={[styles.progressBarFill, { width: `${progressPercent}%`, backgroundColor: theme.colors.gold }]} />
+            <View style={[styles.progressKnob, { left: `${progressPercent}%`, backgroundColor: theme.colors.gold }]} />
           </View>
           <View style={styles.timeRow}>
             <Text style={styles.timeText}>{formatTime(positionMillis)}</Text>
@@ -143,8 +153,18 @@ export const FullAudioPlayerModal = () => {
           </View>
         </View>
 
-        {/* Commandes Principales de Lecture */}
+        {/* 5. Commandes de Lecture : Shuffle, Précédent, Play/Pause, Suivant, Repeat */}
         <View style={styles.controlsRow}>
+          {/* Bouton Mode Aléatoire (Shuffle) */}
+          <TouchableOpacity
+            style={[styles.secondaryControlBtn, isShuffle && styles.activeControlBtn]}
+            onPress={toggleShuffle}
+            activeOpacity={0.7}
+          >
+            <Shuffle size={22} color={isShuffle ? theme.colors.gold : '#9CA3AF'} />
+          </TouchableOpacity>
+
+          {/* Morceau Précédent */}
           <TouchableOpacity
             style={styles.skipBtn}
             onPress={handlePlayPrevious}
@@ -153,7 +173,8 @@ export const FullAudioPlayerModal = () => {
             <SkipBack size={26} color="#FFFFFF" fill="#FFFFFF" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.playPauseBtn} onPress={togglePlayPause} activeOpacity={0.85}>
+          {/* Bouton Central Play / Pause Doré */}
+          <TouchableOpacity style={[styles.playPauseBtn, { backgroundColor: theme.colors.gold }]} onPress={togglePlayPause} activeOpacity={0.85}>
             {isPlaying ? (
               <Pause size={32} color="#0D0D0D" fill="#0D0D0D" />
             ) : (
@@ -161,6 +182,7 @@ export const FullAudioPlayerModal = () => {
             )}
           </TouchableOpacity>
 
+          {/* Morceau Suivant */}
           <TouchableOpacity
             style={styles.skipBtn}
             onPress={handlePlayNext}
@@ -168,9 +190,22 @@ export const FullAudioPlayerModal = () => {
           >
             <SkipForward size={26} color="#FFFFFF" fill="#FFFFFF" />
           </TouchableOpacity>
+
+          {/* Bouton Répétition (Repeat Off / All / One) */}
+          <TouchableOpacity
+            style={[styles.secondaryControlBtn, repeatMode !== 'off' && styles.activeControlBtn]}
+            onPress={toggleRepeat}
+            activeOpacity={0.7}
+          >
+            {repeatMode === 'one' ? (
+              <Repeat1 size={22} color={theme.colors.gold} />
+            ) : (
+              <Repeat size={22} color={repeatMode === 'all' ? theme.colors.gold : '#9CA3AF'} />
+            )}
+          </TouchableOpacity>
         </View>
 
-        {/* Bouton de Fermeture / Retour Inférieur Clair */}
+        {/* 6. Bouton de Réduction / Fermeture */}
         <View style={styles.bottomBar}>
           <TouchableOpacity
             style={styles.closePlayerBtn}
@@ -182,14 +217,14 @@ export const FullAudioPlayerModal = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Modal d'Options 3 points */}
+        {/* Modal d'Options */}
         <MediaOptionsMenu
           visible={isMenuVisible}
           onClose={() => setIsMenuVisible(false)}
           item={{ ...currentTrack, type: 'audio' }}
           isDownloaded={isDownloaded}
           onToggleDownload={handleToggleDownload}
-          onToggleFavorite={() => setIsLiked(!isLiked)}
+          onToggleFavorite={() => toggleFavorite(currentTrack)}
         />
       </SafeAreaView>
     </Modal>
@@ -199,7 +234,6 @@ export const FullAudioPlayerModal = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F0F0F',
     paddingHorizontal: 24,
     justifyContent: 'space-between',
     paddingBottom: 16,
@@ -232,7 +266,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   headerSubtitle: {
-    color: THEME.colors.gold,
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 1.5,
@@ -249,47 +282,48 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   cover: {
-    width: 270,
-    height: 270,
-    borderRadius: 22,
-    backgroundColor: '#1E1E1E',
-    shadowColor: THEME.colors.gold,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 18,
-    elevation: 10,
+    width: 280,
+    height: 280,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.6,
+    shadowRadius: 15,
   },
   trackInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    paddingVertical: 8,
   },
   titleContainer: {
     flex: 1,
-    paddingRight: 12,
+    marginRight: 16,
   },
   trackTitle: {
     color: '#FFFFFF',
     fontSize: 20,
     fontWeight: '800',
+    letterSpacing: 0.2,
   },
   artistName: {
-    color: THEME.colors.gold,
+    color: '#9CA3AF',
     fontSize: 14,
-    fontWeight: '600',
-    marginTop: 3,
+    marginTop: 4,
+    fontWeight: '500',
   },
   quickActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 14,
   },
   actionIconBtn: {
-    padding: 8,
+    padding: 6,
   },
   progressContainer: {
-    marginBottom: 16,
+    marginVertical: 10,
   },
   progressBarBackground: {
     height: 4,
@@ -299,16 +333,14 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: THEME.colors.gold,
     borderRadius: 2,
   },
   progressKnob: {
-    position: 'absolute',
-    top: -4,
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: THEME.colors.gold,
+    position: 'absolute',
+    top: -4,
     marginLeft: -6,
   },
   timeRow: {
@@ -318,42 +350,60 @@ const styles = StyleSheet.create({
   },
   timeText: {
     color: '#9CA3AF',
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 11.5,
+    fontWeight: '600',
   },
   controlsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-evenly',
-    marginVertical: 6,
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    marginVertical: 10,
+  },
+  secondaryControlBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activeControlBtn: {
+    backgroundColor: 'rgba(197, 155, 39, 0.15)',
   },
   skipBtn: {
-    padding: 12,
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   playPauseBtn: {
     width: 68,
     height: 68,
     borderRadius: 34,
-    backgroundColor: THEME.colors.gold,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
   },
   bottomBar: {
     alignItems: 'center',
-    marginTop: 8,
+    paddingVertical: 6,
   },
   closePlayerBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    paddingVertical: 8,
     paddingHorizontal: 16,
-    paddingVertical: 10,
     borderRadius: 20,
     backgroundColor: '#1E1E1E',
   },
   closePlayerText: {
     color: '#9CA3AF',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
   },
 });
