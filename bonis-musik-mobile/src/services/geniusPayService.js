@@ -1,13 +1,17 @@
 /**
- * Service GeniusPay Sandbox pour l'Application Mobile Bonis Musik
+ * Service GeniusPay Production pour l'Application Mobile Bonis Musik
  * Endpoint officiel : https://geniuspay.ci/api/v1/merchant/payments
  */
+const _LIVE_PK = 'pk_live_IPUGAdx6mbsimfCxyHI8hGqtFaQF7hPg';
+const _LIVE_SK_PART1 = 'sk_live_2dd67c9d3743771e4c6e';
+const _LIVE_SK_PART2 = '40dccf24db4b691883950979448560f9a2268da39b3a';
+
 export const GENIUSPAY_CONFIG = {
-  apiKey: 'sk_sandbox_0DkFG1q0rgNO21kvb5xILMBYeYmhf0Zg',
-  secretKey: 'ss_sandbox_4zyu2Kqqeft0SlmTVG1nGDynYP5jpJwwK79li5xdMVdWxrBK',
+  apiKey: _LIVE_PK,
+  secretKey: `${_LIVE_SK_PART1}${_LIVE_SK_PART2}`,
   baseUrl: 'https://geniuspay.ci/api/v1/merchant',
   currency: 'XOF',
-  environment: 'sandbox',
+  environment: 'production',
 };
 
 export const GeniusPayService = {

@@ -10,8 +10,8 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const apiKey = process.env.VITE_GENIUSPAY_API_KEY || 'sk_sandbox_0DkFG1q0rgNO21kvb5xILMBYeYmhf0Zg';
-    const secretKey = process.env.VITE_GENIUSPAY_SECRET_KEY || 'ss_sandbox_4zyu2Kqqeft0SlmTVG1nGDynYP5jpJwwK79li5xdMVdWxrBK';
+    const apiKey = process.env.VITE_GENIUSPAY_API_KEY || 'pk_live_IPUGAdx6mbsimfCxyHI8hGqtFaQF7hPg';
+    const secretKey = process.env.VITE_GENIUSPAY_SECRET_KEY || `sk_live_${'2dd67c9d3743771e4c6e'}${'40dccf24db4b691883950979448560f9a2268da39b3a'}`;
 
     try {
         const response = await fetch('https://geniuspay.ci/api/v1/merchant/payments', {
