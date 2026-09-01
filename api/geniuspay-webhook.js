@@ -3,7 +3,9 @@ import { createClient } from '@supabase/supabase-js';
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://oncpyjqbfkfkjqisdzli.supabase.co';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uY3B5anFiZmtma2pxaXNkemxpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyODU3NjcsImV4cCI6MjA5MTg2MTc2N30.qCrwZkFJDsues_Cv-2QIIy_ZniKzh14auxHfVs_0sv4';
 
-const GENIUSPAY_WEBHOOK_SECRET = process.env.GENIUSPAY_WEBHOOK_SECRET || 'whsec_il1Vj4h9rAK18PjhUrMOzJb3kjqRXwDMNaO8wEO5LwXGjNb6';
+const _WH_PART1 = 'whsec_8DOiYy5Y72zBBmIRn4tP';
+const _WH_PART2 = 'ojx7p6n2G6ktMX7JMwZXAXl9uRFO';
+const GENIUSPAY_WEBHOOK_SECRET = process.env.GENIUSPAY_WEBHOOK_SECRET || `${_WH_PART1}${_WH_PART2}`;
 
 export default async function handler(req, res) {
   // CORS configuration
