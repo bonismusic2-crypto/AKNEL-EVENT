@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, Play, MoreVertical } from 'lucide-react-native';
+import { Search, Play, MoreVertical, Film, BookOpen, Music } from 'lucide-react-native';
 import { THEME, useAppTheme } from '../constants/theme';
 import { SAMPLE_DATA } from '../data/sampleData';
 import { MediaService } from '../services/mediaService';
@@ -68,47 +68,68 @@ export const MediaLibraryScreen = ({ onSelectAlbum, onSelectClip, onSelectTeachi
   };
 
   const sections = [
-    { key: 'music', label: `🎵 Musique (${albums.length})` },
-    { key: 'clips', label: `🎬 Clips (${clips.length})` },
-    { key: 'teachings', label: `📖 Enseignements (${teachings.length})` },
+    { key: 'music', label: '🎵 Musique', count: albums.length },
+    { key: 'clips', label: '🎬 Clips Vidéo', count: clips.length },
+    { key: 'teachings', label: '📖 Enseignements', count: teachings.length },
   ];
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
-      {/* Header */}
+      {/* 1. Header Médiathèque */}
       <View style={styles.header}>
-        <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>Médiathèque</Text>
-        <TouchableOpacity style={[styles.searchBtn, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]} onPress={() => setIsSearchModalVisible(true)}>
-          <Search size={20} color={theme.colors.gold} />
+        <View>
+          <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>Médiathèque</Text>
+          <Text style={[styles.headerSubtitle, { color: theme.colors.textMuted }]}>
+            Tout le catalogue officiel du Chantre Boniface
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={[styles.searchBtn, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
+          onPress={() => setIsSearchModalVisible(true)}
+          activeOpacity={0.75}
+        >
+          <Search size={18} color={theme.colors.gold} />
         </TouchableOpacity>
       </View>
 
-      {/* Sélecteur de Section (Musique / Clips / Enseignements) */}
-      <View style={styles.tabsContainer}>
-        {['music', 'clips', 'teachings'].map((sec) => (
-          <TouchableOpacity
-            key={sec}
-            style={[
-              styles.tab,
-              { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
-              activeSection === sec && { backgroundColor: isDarkMode ? 'rgba(197, 155, 39, 0.2)' : 'rgba(197, 155, 39, 0.15)', borderColor: theme.colors.gold },
-            ]}
-            onPress={() => setActiveSection(sec)}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                { color: theme.colors.textSecondary },
-                activeSection === sec && { color: theme.colors.gold, fontWeight: '800' },
-              ]}
-            >
-              {sec === 'music' ? '🎵 Musique' : sec === 'clips' ? '🎬 Clips Vidéos' : '📖 Enseignements'}
-            </Text>
-          </TouchableOpacity>
-        ))}
+      {/* 2. Onglets de Navigation Supérieurs Soignés */}
+      <View style={styles.tabsWrapper}>
+        <View style={[styles.tabsPillContainer, { backgroundColor: isDarkMode ? '#1E1E1E' : '#E5E7EB' }]}>
+          {sections.map((sec) => {
+            const isSelected = activeSection === sec.key;
+            return (
+              <TouchableOpacity
+                key={sec.key}
+                style={[
+                  styles.tabItem,
+                  isSelected && {
+                    backgroundColor: isDarkMode ? '#2D2D2D' : '#FFFFFF',
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: isDarkMode ? 0.4 : 0.08,
+                    shadowRadius: 4,
+                    elevation: 3,
+                  },
+                ]}
+                onPress={() => setActiveSection(sec.key)}
+                activeOpacity={0.8}
+              >
+                <Text
+                  style={[
+                    styles.tabItemText,
+                    { color: theme.colors.textSecondary },
+                    isSelected && { color: theme.colors.gold, fontWeight: '800' },
+                  ]}
+                >
+                  {sec.label} ({sec.count})
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </View>
 
-      {/* 1. VUE MUSIQUE & ALBUMS */}
+      {/* 3. VUE MUSIQUE & ALBUMS (GRILLE 2 COLONNES HARMONIEUSE) */}
       {activeSection === 'music' && (
         <FlatList
           data={albums}
@@ -117,66 +138,81 @@ export const MediaLibraryScreen = ({ onSelectAlbum, onSelectClip, onSelectTeachi
           columnWrapperStyle={styles.columnWrapper}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={THEME.colors.gold} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.gold} />}
           renderItem={({ item }) => (
             <TouchableOpacity
-              style={styles.gridItem}
+              style={[styles.albumGridCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
               onPress={async () => {
                 const allowed = await checkVipAccess();
                 if (allowed) onSelectAlbum(item);
               }}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
             >
-              <Image source={{ uri: item.cover }} style={styles.coverImage} />
-              <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
-              <Text style={styles.year}>{item.year} • {item.tracks?.length || 0} titres</Text>
+              <View style={styles.coverWrapper}>
+                <Image source={{ uri: item.cover }} style={styles.coverImage} />
+                <View style={[styles.albumPlayBadge, { backgroundColor: theme.colors.gold }]}>
+                  <Play size={16} color="#0D0D0D" fill="#0D0D0D" style={{ marginLeft: 2 }} />
+                </View>
+              </View>
+              <View style={styles.albumMetaBox}>
+                <Text style={[styles.albumTitle, { color: theme.colors.textPrimary }]} numberOfLines={1}>
+                  {item.title}
+                </Text>
+                <Text style={[styles.albumYear, { color: theme.colors.textMuted }]}>
+                  {item.year || '2026'} • {item.tracks?.length || 0} titres
+                </Text>
+              </View>
             </TouchableOpacity>
           )}
         />
       )}
 
-      {/* 2. VUE CLIPS VIDÉOS */}
+      {/* 4. VUE CLIPS VIDÉOS (CARTES 16:9 PROPRES) */}
       {activeSection === 'clips' && (
         <FlatList
           data={clips}
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={THEME.colors.gold} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.gold} />}
           renderItem={({ item }) => (
             <TouchableOpacity
-              style={styles.clipCard}
+              style={[styles.clipCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
               onPress={async () => {
                 const allowed = await checkVipAccess();
                 if (allowed) onSelectClip(item);
               }}
-              activeOpacity={0.85}
+              activeOpacity={0.88}
             >
               <View style={styles.thumbnailContainer}>
                 <Image source={{ uri: item.thumbnail }} style={styles.thumbnail} />
                 <View style={styles.playOverlay}>
-                  <View style={styles.playCircle}>
-                    <Play size={22} color="#FFFFFF" fill="#FFFFFF" />
+                  <View style={[styles.playCircle, { backgroundColor: theme.colors.gold }]}>
+                    <Play size={22} color="#0D0D0D" fill="#0D0D0D" style={{ marginLeft: 2 }} />
                   </View>
                 </View>
                 <View style={styles.durationTag}>
-                  <Text style={styles.durationText}>{item.duration}</Text>
+                  <Text style={styles.durationText}>{item.duration || '04:30'}</Text>
                 </View>
               </View>
-              <View style={styles.infoRow}>
+              <View style={styles.clipInfoRow}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.clipTitle}>{item.title}</Text>
-                  <Text style={styles.meta}>{item.date || 'Récemment'} • {item.views}</Text>
+                  <Text style={[styles.clipTitle, { color: theme.colors.textPrimary }]} numberOfLines={1}>
+                    {item.title}
+                  </Text>
+                  <Text style={[styles.clipMeta, { color: theme.colors.textMuted }]}>
+                    HD 4K • {item.date || 'Sortie Officielle'} • Chantre Boniface
+                  </Text>
                 </View>
                 <TouchableOpacity
                   onPress={() => {
                     setSelectedMenuItem({ ...item, type: 'video' });
                     setIsMenuVisible(true);
                   }}
-                  style={{ padding: 6 }}
+                  style={styles.moreBtn}
                   activeOpacity={0.7}
                 >
-                  <MoreVertical size={18} color={THEME.colors.textMuted} />
+                  <MoreVertical size={18} color={theme.colors.textMuted} />
                 </TouchableOpacity>
               </View>
             </TouchableOpacity>
@@ -184,36 +220,49 @@ export const MediaLibraryScreen = ({ onSelectAlbum, onSelectClip, onSelectTeachi
         />
       )}
 
-      {/* 3. VUE ENSEIGNEMENTS */}
+      {/* 5. VUE ENSEIGNEMENTS & PODCASTS */}
       {activeSection === 'teachings' && (
         <View style={{ flex: 1 }}>
+          {/* Sous-filtres Audio / Vidéo */}
           <View style={styles.subFiltersRow}>
             {['Tous', 'Audio', 'Vidéo'].map((sub) => (
               <TouchableOpacity
                 key={sub}
-                style={[styles.subFilterChip, teachingFilter === sub && styles.subFilterChipActive]}
+                style={[
+                  styles.subFilterChip,
+                  { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+                  teachingFilter === sub && { backgroundColor: theme.colors.gold, borderColor: theme.colors.gold },
+                ]}
                 onPress={() => setTeachingFilter(sub)}
+                activeOpacity={0.8}
               >
-                <Text style={[styles.subFilterText, teachingFilter === sub && styles.subFilterTextActive]}>
-                  {sub}
+                <Text
+                  style={[
+                    styles.subFilterText,
+                    { color: theme.colors.textSecondary },
+                    teachingFilter === sub && { color: '#0D0D0D', fontWeight: '800' },
+                  ]}
+                >
+                  {sub === 'Tous' ? '✨ Tous' : sub === 'Audio' ? '🎙️ Audio' : '🎥 Vidéo'}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
+
           <FlatList
             data={teachings.filter((t) => {
               if (teachingFilter === 'Tous') return true;
-              if (teachingFilter === 'Audio') return t.type === 'audio';
-              if (teachingFilter === 'Vidéo') return t.type === 'video';
+              if (teachingFilter === 'Audio') return t.type === 'audio' || t.category === 'teaching_audio';
+              if (teachingFilter === 'Vidéo') return t.type === 'video' || t.category === 'teaching_video';
               return true;
             })}
             keyExtractor={(item) => item.id.toString()}
             contentContainerStyle={styles.listContainer}
             showsVerticalScrollIndicator={false}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={THEME.colors.gold} />}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.gold} />}
             renderItem={({ item }) => (
               <TouchableOpacity
-                style={styles.teachingCard}
+                style={[styles.teachingCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
                 onPress={async () => {
                   const allowed = await checkVipAccess();
                   if (!allowed) return;
@@ -233,29 +282,28 @@ export const MediaLibraryScreen = ({ onSelectAlbum, onSelectClip, onSelectTeachi
                     onSelectTeaching(item);
                   }
                 }}
-                activeOpacity={0.75}
+                activeOpacity={0.8}
               >
-                <Image source={{ uri: item.thumbnail }} style={styles.teachingThumb} />
+                <View style={styles.teachingThumbWrapper}>
+                  <Image source={{ uri: item.thumbnail }} style={styles.teachingThumb} />
+                  <View style={styles.teachingTypeBadge}>
+                    <Text style={styles.teachingTypeBadgeText}>
+                      {item.type === 'video' || item.category === 'teaching_video' ? '🎥 Vidéo' : '🎙️ Audio'}
+                    </Text>
+                  </View>
+                </View>
+
                 <View style={styles.teachingInfo}>
-                  <Text style={styles.teachingTitle} numberOfLines={2}>{item.title}</Text>
-                  <Text style={styles.meta}>
-                    {item.type === 'audio' ? '🎙️ Audio' : '🎥 Vidéo'} • {item.duration}
+                  <Text style={[styles.teachingTitle, { color: theme.colors.textPrimary }]} numberOfLines={2}>
+                    {item.title}
+                  </Text>
+                  <Text style={[styles.teachingMeta, { color: theme.colors.textMuted }]}>
+                    ⏱️ {item.duration || '20 min'} • {item.speaker_or_artist || 'Chantre Boniface'}
                   </Text>
                 </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <View style={styles.playMiniBtn}>
-                    <Play size={16} color={THEME.colors.gold} fill={THEME.colors.gold} />
-                  </View>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setSelectedMenuItem(item);
-                      setIsMenuVisible(true);
-                    }}
-                    style={{ padding: 6 }}
-                    activeOpacity={0.7}
-                  >
-                    <MoreVertical size={18} color={THEME.colors.textMuted} />
-                  </TouchableOpacity>
+
+                <View style={[styles.playMiniBtn, { backgroundColor: 'rgba(197, 155, 39, 0.15)' }]}>
+                  <Play size={14} color={theme.colors.gold} fill={theme.colors.gold} style={{ marginLeft: 2 }} />
                 </View>
               </TouchableOpacity>
             )}
@@ -263,40 +311,34 @@ export const MediaLibraryScreen = ({ onSelectAlbum, onSelectClip, onSelectTeachi
         </View>
       )}
 
-      {/* Modal Options 3 points (Téléchargement & Favoris) */}
+      {/* Menu d'options des médias */}
       <MediaOptionsMenu
         visible={isMenuVisible}
-        onClose={() => setIsMenuVisible(false)}
+        onClose={() => {
+          setIsMenuVisible(false);
+          setSelectedMenuItem(null);
+        }}
         item={selectedMenuItem}
-        onPlayDirect={(item) => {
-          if (item.type === 'video') {
-            onSelectClip(item);
-          } else {
-            playTrack(item);
-          }
-        }}
-        onToggleDownload={async (item) => {
-          await DownloadService.toggleDownload(item);
-        }}
-        onToggleFavorite={(item) => {
-          Alert.alert('Favoris', `"${item.title}" a été ajouté à vos favoris.`);
-        }}
       />
 
-      {/* Modal Recherche Complète */}
+      {/* Modal de recherche globale */}
       <SearchModal
         visible={isSearchModalVisible}
         onClose={() => setIsSearchModalVisible(false)}
         albums={albums}
         clips={clips}
         teachings={teachings}
-        onSelectAlbum={onSelectAlbum}
-        onSelectClip={onSelectClip}
-        onPlayTrack={playTrack}
-        onSelectTeaching={onSelectTeaching}
-        onOpenOptions={(item) => {
-          setSelectedMenuItem(item);
-          setIsMenuVisible(true);
+        onSelectAlbum={(album) => {
+          setIsSearchModalVisible(false);
+          onSelectAlbum(album);
+        }}
+        onSelectClip={(clip) => {
+          setIsSearchModalVisible(false);
+          onSelectClip(clip);
+        }}
+        onSelectTeaching={(teaching) => {
+          setIsSearchModalVisible(false);
+          onSelectTeaching(teaching);
         }}
       />
     </SafeAreaView>
@@ -306,112 +348,126 @@ export const MediaLibraryScreen = ({ onSelectAlbum, onSelectClip, onSelectTeachi
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: THEME.colors.background,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 16,
+    paddingTop: 12,
+    paddingBottom: 14,
   },
   headerTitle: {
-    color: THEME.colors.textPrimary,
-    fontSize: 22,
+    fontSize: 24,
+    fontFamily: 'serif',
     fontWeight: '800',
+    letterSpacing: 0.3,
   },
-  iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+  headerSubtitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  searchBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
-  sectionTabsContainer: {
+  tabsWrapper: {
+    marginBottom: 16,
+  },
+  tabsPillContainer: {
     flexDirection: 'row',
-    backgroundColor: '#E5E7EB',
     borderRadius: 25,
     padding: 4,
-    marginBottom: 20,
   },
-  sectionTab: {
+  tabItem: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 9,
     alignItems: 'center',
-    borderRadius: 22,
+    justifyContent: 'center',
+    borderRadius: 21,
   },
-  sectionTabActive: {
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  sectionTabText: {
-    color: THEME.colors.textSecondary,
-    fontSize: 11,
+  tabItemText: {
+    fontSize: 11.5,
     fontWeight: '600',
   },
-  sectionTabTextActive: {
-    color: THEME.colors.gold,
-    fontWeight: '800',
-  },
   listContainer: {
-    paddingBottom: 24,
-    gap: 16,
+    paddingBottom: 28,
+    gap: 14,
   },
   columnWrapper: {
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 14,
   },
-  gridItem: {
-    width: '47%',
-  },
-  coverImage: {
-    width: '100%',
-    aspectRatio: 1,
-    borderRadius: 16,
-    backgroundColor: '#F3F4F6',
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  title: {
-    color: THEME.colors.textPrimary,
-    fontSize: 14,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-  },
-  year: {
-    color: THEME.colors.textMuted,
-    fontSize: 12,
-    marginTop: 2,
-    fontWeight: '500',
-  },
-  clipCard: {
-    backgroundColor: '#FFFFFF',
+
+  /* ALBUMS GRID */
+  albumGridCard: {
+    width: '48%',
     borderRadius: 18,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 4,
     elevation: 2,
   },
+  coverWrapper: {
+    width: '100%',
+    aspectRatio: 1,
+    position: 'relative',
+  },
+  coverImage: {
+    width: '100%',
+    height: '100%',
+  },
+  albumPlayBadge: {
+    position: 'absolute',
+    right: 8,
+    bottom: 8,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  albumMetaBox: {
+    padding: 10,
+  },
+  albumTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  albumYear: {
+    fontSize: 11,
+    marginTop: 2,
+    fontWeight: '500',
+  },
+
+  /* CLIPS */
+  clipCard: {
+    borderRadius: 18,
+    overflow: 'hidden',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 5,
+    elevation: 3,
+  },
   thumbnailContainer: {
     width: '100%',
     aspectRatio: 16 / 9,
     position: 'relative',
-    backgroundColor: '#F3F4F6',
   },
   thumbnail: {
     width: '100%',
@@ -419,113 +475,125 @@ const styles = StyleSheet.create({
   },
   playOverlay: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    inset: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.2)',
+    backgroundColor: 'rgba(0,0,0,0.25)',
   },
   playCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: THEME.colors.gold,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingLeft: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
   },
   durationTag: {
     position: 'absolute',
-    bottom: 10,
-    right: 10,
+    bottom: 8,
+    right: 8,
     backgroundColor: 'rgba(0,0,0,0.75)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
     borderRadius: 6,
   },
   durationText: {
     color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 10.5,
+    fontWeight: '700',
   },
-  infoRow: {
-    padding: 14,
-    gap: 4,
+  clipInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
   },
   clipTitle: {
-    color: THEME.colors.textPrimary,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
   },
-  meta: {
-    color: THEME.colors.textMuted,
-    fontSize: 12,
+  clipMeta: {
+    fontSize: 11.5,
+    marginTop: 2,
   },
+  moreBtn: {
+    padding: 6,
+  },
+
+  /* ENSEIGNEMENTS */
   subFiltersRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 16,
+    gap: 8,
+    marginBottom: 12,
   },
   subFilterChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
     borderRadius: 18,
-    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  subFilterChipActive: {
-    backgroundColor: THEME.colors.gold,
-    borderColor: THEME.colors.gold,
   },
   subFilterText: {
-    color: THEME.colors.textSecondary,
     fontSize: 12,
     fontWeight: '600',
-  },
-  subFilterTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '700',
   },
   teachingCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 12,
-    gap: 14,
+    padding: 10,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    gap: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 3,
     elevation: 2,
   },
-  teachingThumb: {
+  teachingThumbWrapper: {
     width: 58,
     height: 58,
     borderRadius: 12,
-    backgroundColor: '#F3F4F6',
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  teachingThumb: {
+    width: '100%',
+    height: '100%',
+  },
+  teachingTypeBadge: {
+    position: 'absolute',
+    bottom: 2,
+    left: 2,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  teachingTypeBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 8.5,
+    fontWeight: '700',
   },
   teachingInfo: {
     flex: 1,
-    gap: 4,
   },
   teachingTitle: {
-    color: THEME.colors.textPrimary,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
+    lineHeight: 18,
+  },
+  teachingMeta: {
+    fontSize: 11,
+    marginTop: 3,
   },
   playMiniBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(197, 155, 39, 0.12)',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingLeft: 2,
   },
 });
