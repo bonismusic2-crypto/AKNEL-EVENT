@@ -51,10 +51,10 @@ export const GeniusPayService = {
         user_email: userEmail,
         plan_type: isAnnual ? 'annual' : 'monthly',
       },
-      success_url: 'https://bonismusik.vercel.app/payment-success',
-      error_url: 'https://bonismusik.vercel.app/payment-cancel',
-      return_url: 'https://bonismusik.vercel.app/payment-success',
-      cancel_url: 'https://bonismusik.vercel.app/payment-cancel',
+      success_url: `https://bonismusik.vercel.app/payment-success?platform=mobile&user_id=${userId || ''}`,
+      error_url: 'https://bonismusik.vercel.app/payment-cancel?platform=mobile',
+      return_url: `https://bonismusik.vercel.app/payment-success?platform=mobile&user_id=${userId || ''}`,
+      cancel_url: 'https://bonismusik.vercel.app/payment-cancel?platform=mobile',
     };
 
     const response = await fetch(`${GENIUSPAY_CONFIG.baseUrl}/payments`, {

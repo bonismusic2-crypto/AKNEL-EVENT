@@ -130,6 +130,59 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
     };
   }, [currentUser?.id, currentTxId]);
 
+  // 🔄 POLLING AUTOMATIQUE : Vérification du paiement auprès de GeniusPay et Supabase toutes les 3s tant que le guichet est ouvert
+  useEffect(() => {
+    let intervalId = null;
+
+    if (showWebview && currentTxId) {
+      console.log('🔄 Démarrage du polling automatique pour la transaction:', currentTxId);
+
+      intervalId = setInterval(async () => {
+        if (completedRef.current) {
+          if (intervalId) clearInterval(intervalId);
+          return;
+        }
+
+        try {
+          // 1. Vérification directe de l'API GeniusPay
+          const statusData = await GeniusPayService.checkPaymentStatus(currentTxId);
+          const status = statusData?.data?.status || statusData?.status;
+          const isPaid = status === 'successful' || status === 'completed' || status === 'paid' || status === 'approved';
+
+          if (isPaid) {
+            console.log('🎉 Polling GeniusPay: Paiement validé avec succès !');
+            if (intervalId) clearInterval(intervalId);
+            completeSuccess(currentTxId);
+            return;
+          }
+
+          // 2. Vérification de secours dans la base Supabase (si le webhook s'est exécuté)
+          if (currentUser?.id) {
+            const { data: subs } = await supabase
+              .from('subscriptions')
+              .select('id, status')
+              .eq('user_id', currentUser.id)
+              .in('status', ['active', 'completed', 'paid'])
+              .limit(1);
+
+            if (subs && subs.length > 0) {
+              console.log('🎉 Polling Supabase: Abonnement actif détecté !');
+              if (intervalId) clearInterval(intervalId);
+              completeSuccess(currentTxId || subs[0].id);
+              return;
+            }
+          }
+        } catch (pollErr) {
+          console.warn('Polling vérification:', pollErr);
+        }
+      }, 3000);
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [showWebview, currentTxId, currentUser?.id]);
+
   // Vérification auprès de l'API GeniusPay avant validation manuelle
   const verifyAndComplete = async () => {
     if (!currentTxId) {
@@ -142,28 +195,47 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
 
     setVerifying(true);
     try {
+      // 1. Vérifier d'abord auprès de GeniusPay
       const statusData = await GeniusPayService.checkPaymentStatus(currentTxId);
-      setVerifying(false);
-
       const status = statusData?.data?.status || statusData?.status;
       const isPaid = status === 'successful' || status === 'completed' || status === 'paid' || status === 'approved';
 
       if (isPaid) {
+        setVerifying(false);
         completeSuccess(currentTxId);
-      } else {
-        Alert.alert(
-          'Paiement non finalisé',
-          `GeniusPay indique que le paiement est "${status || 'en attente'}". Veuillez renseigner votre numéro Mobile Money ou carte sur le guichet et valider avant de cliquer ici.`,
-          [
-            { text: 'Continuer le paiement', style: 'default' },
-            {
-              text: 'Fermer',
-              style: 'cancel',
-              onPress: () => setShowWebview(false),
-            }
-          ]
-        );
+        return;
       }
+
+      // 2. Vérifier aussi dans Supabase au cas où le Webhook l'a déjà validé
+      if (currentUser?.id) {
+        const { data: subs } = await supabase
+          .from('subscriptions')
+          .select('id, status')
+          .eq('user_id', currentUser.id)
+          .in('status', ['active', 'completed', 'paid'])
+          .limit(1);
+
+        if (subs && subs.length > 0) {
+          setVerifying(false);
+          completeSuccess(currentTxId || subs[0].id);
+          return;
+        }
+      }
+
+      setVerifying(false);
+      Alert.alert(
+        'Paiement en cours de confirmation',
+        `GeniusPay indique que le paiement est "${status || 'en attente'}". Dès que vous validez l'autorisation Mobile Money sur votre téléphone, le retour se fera automatiquement. Vous pouvez également réessayer dans quelques secondes.`,
+        [
+          { text: 'Réessayer dans 5s', onPress: () => setTimeout(verifyAndComplete, 5000) },
+          { text: 'Continuer le paiement', style: 'default' },
+          {
+            text: 'Fermer le guichet',
+            style: 'cancel',
+            onPress: () => setShowWebview(false),
+          }
+        ]
+      );
     } catch (e) {
       setVerifying(false);
       Alert.alert(
@@ -204,20 +276,27 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
     }
   };
 
-  // 2. Intercepter le retour de GeniusPay uniquement sur les URL de callback officiel de succès
+  // 2. Intercepter le retour de GeniusPay sur toute URL de succès ou de callback
   const handleNavigationStateChange = (navState) => {
     const { url } = navState;
     if (!url) return;
 
-    // GeniusPay redirige vers success_url uniquement après confirmation du prélèvement
+    const lowerUrl = url.toLowerCase();
+
+    // Détection universelle de succès (URL web, deep link app, ou confirmation GeniusPay)
     if (
-      url.includes('bonismusik.vercel.app/payment-success') ||
-      url.includes('bonismusik://payment-success')
+      lowerUrl.includes('payment-success') ||
+      lowerUrl.includes('bonismusik://payment-success') ||
+      lowerUrl.includes('/status/success') ||
+      lowerUrl.includes('status=successful') ||
+      lowerUrl.includes('status=completed') ||
+      lowerUrl.includes('status=paid')
     ) {
       completeSuccess(currentTxId);
     } else if (
-      url.includes('bonismusik.vercel.app/payment-cancel') ||
-      url.includes('bonismusik://payment-cancel')
+      lowerUrl.includes('payment-cancel') ||
+      lowerUrl.includes('bonismusik://payment-cancel') ||
+      lowerUrl.includes('status=cancelled')
     ) {
       setShowWebview(false);
       Alert.alert('Paiement annulé', 'La transaction a été annulée sur le guichet.');
@@ -226,12 +305,16 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
 
   // Interception anticipée des requêtes WebView
   const handleShouldStartLoadWithRequest = (request) => {
-    const url = request.url;
+    const url = request.url || '';
+    const lowerUrl = url.toLowerCase();
+
     if (
-      url.includes('payment-success') ||
-      url.includes('success') ||
-      url.includes('bonismusik://payment-success') ||
-      url.includes('/status/success')
+      lowerUrl.includes('payment-success') ||
+      lowerUrl.includes('bonismusik://payment-success') ||
+      lowerUrl.includes('/status/success') ||
+      lowerUrl.includes('status=successful') ||
+      lowerUrl.includes('status=completed') ||
+      lowerUrl.includes('status=paid')
     ) {
       completeSuccess(currentTxId);
       return false;
@@ -239,14 +322,68 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
     return true;
   };
 
+  // Écoute des messages envoyés par le script injecté dans le WebView
+  const handleWebViewMessage = (event) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data?.action === 'payment_success' || data?.status === 'successful' || data?.type === 'SUCCESS') {
+        console.log('📩 Message reçu depuis WebView:', data);
+        completeSuccess(data?.tx_id || currentTxId);
+      }
+    } catch (e) {
+      // Message texte simple
+      const text = event.nativeEvent?.data || '';
+      if (text.includes('success') || text.includes('payment_success')) {
+        completeSuccess(currentTxId);
+      }
+    }
+  };
+
+  // Script JS injecté pour surveiller les redirections et les boutons "Retour" ou "Terminer"
+  const injectedJS = `
+    (function() {
+      // 1. Détection de changement d'URL SPA (pushState & replaceState)
+      var pushState = history.pushState;
+      history.pushState = function() {
+        pushState.apply(history, arguments);
+        checkUrl();
+      };
+      var replaceState = history.replaceState;
+      history.replaceState = function() {
+        replaceState.apply(history, arguments);
+        checkUrl();
+      };
+      window.addEventListener('popstate', checkUrl);
+
+      function checkUrl() {
+        var currentUrl = window.location.href;
+        if (currentUrl.indexOf('payment-success') !== -1 || currentUrl.indexOf('success') !== -1) {
+          window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify({ action: 'payment_success' }));
+        }
+      }
+
+      // 2. Interception des clics sur les boutons de fin de paiement
+      document.addEventListener('click', function(e) {
+        var el = e.target;
+        var text = (el && (el.innerText || el.textContent || '')) + '';
+        var lower = text.toLowerCase();
+        if (lower.indexOf('retourner') !== -1 || lower.indexOf('terminer') !== -1 || lower.indexOf('revenir') !== -1) {
+          window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify({ action: 'payment_success' }));
+        }
+      }, true);
+    })();
+    true;
+  `;
+
   // Bouton pour fermer le WebView
   const handleCloseWebview = () => {
     Alert.alert(
       'Fermer le guichet',
-      'Voulez-vous fermer le guichet de paiement ?',
+      'Si vous avez déjà validé votre paiement Mobile Money ou Carte, cliquez sur "Vérifier mon paiement". Voulez-vous quitter ?',
       [
-        { text: 'Non, continuer', style: 'cancel' },
-        { text: 'Fermer', style: 'destructive', onPress: () => setShowWebview(false) }
+        { text: 'Vérifier mon paiement', onPress: verifyAndComplete },
+        { text: 'Continuer le paiement', style: 'cancel' },
+        { text: 'Quitter sans payer', style: 'destructive', onPress: () => setShowWebview(false) }
       ]
     );
   };
@@ -426,11 +563,31 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
               onLoadEnd={() => setWebviewLoading(false)}
               onNavigationStateChange={handleNavigationStateChange}
               onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
+              injectedJavaScript={injectedJS}
+              onMessage={handleWebViewMessage}
               javaScriptEnabled={true}
               domStorageEnabled={true}
               startInLoadingState={true}
             />
           )}
+
+          {/* Barre inférieure de sécurisation et confirmation de retour immédiat */}
+          <View style={styles.webviewBottomBar}>
+            <TouchableOpacity
+              style={styles.confirmPaidBtn}
+              onPress={verifyAndComplete}
+              disabled={verifying}
+              activeOpacity={0.8}
+            >
+              {verifying ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text style={styles.confirmPaidBtnText}>
+                  ✅ J'ai validé mon paiement (Vérifier & Débloquer)
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
         </SafeAreaView>
       </Modal>
 

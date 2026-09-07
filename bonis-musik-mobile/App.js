@@ -290,6 +290,7 @@ const MainContent = ({
         <PaymentSuccessScreen
           txId={lastTxId}
           planType={selectedPlanType}
+          currentUser={currentUser}
           onContinue={() => setAppState('main')}
         />
       )}
