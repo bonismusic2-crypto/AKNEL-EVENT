@@ -224,14 +224,13 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
 
       setVerifying(false);
       Alert.alert(
-        'Paiement en cours de confirmation',
-        `GeniusPay indique que le paiement est "${status || 'en attente'}". Dès que vous validez l'autorisation Mobile Money sur votre téléphone, le retour se fera automatiquement. Vous pouvez également réessayer dans quelques secondes.`,
+        '⛔ Paiement non validé',
+        `GeniusPay indique que la transaction n'est pas encore payée (statut : "${status || 'en attente'}").\n\nVous devez valider le prélèvement Mobile Money sur votre téléphone (ou renseigner votre carte) sur le guichet avant de pouvoir débloquer l'accès.`,
         [
-          { text: 'Réessayer dans 5s', onPress: () => setTimeout(verifyAndComplete, 5000) },
-          { text: 'Continuer le paiement', style: 'default' },
+          { text: 'Continuer sur le guichet', style: 'default' },
           {
             text: 'Fermer le guichet',
-            style: 'cancel',
+            style: 'destructive',
             onPress: () => setShowWebview(false),
           }
         ]
