@@ -183,19 +183,19 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
     };
   }, [showWebview, currentTxId, currentUser?.id]);
 
-  // Vérification auprès de l'API GeniusPay avant validation manuelle
+  // Vérification auprès du guichet sécurisé avant validation manuelle
   const verifyAndComplete = async () => {
     if (!currentTxId) {
       Alert.alert(
         'Transaction introuvable',
-        'Veuillez d\'abord finaliser votre paiement sur le guichet GeniusPay.'
+        'Veuillez d\'abord finaliser votre paiement sur le guichet de règlement.'
       );
       return;
     }
 
     setVerifying(true);
     try {
-      // 1. Vérifier d'abord auprès de GeniusPay
+      // 1. Vérifier d'abord auprès de l'API de paiement
       const statusData = await GeniusPayService.checkPaymentStatus(currentTxId);
       const status = statusData?.data?.status || statusData?.status;
       const isPaid = status === 'successful' || status === 'completed' || status === 'paid' || status === 'approved';
@@ -224,8 +224,8 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
 
       setVerifying(false);
       Alert.alert(
-        '⛔ Paiement non validé',
-        `GeniusPay indique que la transaction n'est pas encore payée (statut : "${status || 'en attente'}").\n\nVous devez valider le prélèvement Mobile Money sur votre téléphone (ou renseigner votre carte) sur le guichet avant de pouvoir débloquer l'accès.`,
+        '⛔ Paiement non finalisé',
+        `Le règlement n'est pas encore confirmé (statut : "${status || 'en attente'}").\n\nVeuillez valider l'autorisation Mobile Money sur votre téléphone (ou renseigner vos coordonnées bancaires) sur le guichet avant de débloquer votre accès.`,
         [
           { text: 'Continuer sur le guichet', style: 'default' },
           {
@@ -239,7 +239,7 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
       setVerifying(false);
       Alert.alert(
         'Vérification impossible',
-        'Impossible de joindre le serveur GeniusPay pour confirmer le paiement. Veuillez réessayer dans un instant.'
+        'Impossible de joindre le serveur de paiement pour confirmer le règlement. Veuillez réessayer dans un instant.'
       );
     }
   };
@@ -259,7 +259,7 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
       setLoading(false);
 
       if (!paymentResult || !paymentResult.checkoutUrl) {
-        throw new Error("L'API GeniusPay n'a pas retourné l'URL de paiement.");
+        throw new Error("Impossible d'obtenir l'accès au guichet sécurisé.");
       }
 
       setPaymentUrl(paymentResult.checkoutUrl);
@@ -269,7 +269,7 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
     } catch (err) {
       setLoading(false);
       Alert.alert(
-        'Erreur GeniusPay',
+        'Paiement sécurisé',
         err.message || 'Impossible d\'initialiser le paiement sécurisé. Veuillez réessayer.'
       );
     }
@@ -398,7 +398,7 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
           </TouchableOpacity>
           <View style={styles.secureHeaderBadge}>
             <ShieldCheck size={16} color={THEME.colors.gold} />
-            <Text style={styles.secureHeaderText}>GeniusPay Sécurisé</Text>
+            <Text style={styles.secureHeaderText}>Paiement Sécurisé</Text>
           </View>
         </View>
 
@@ -522,7 +522,7 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
 
         {/* Note de Réassurance */}
         <Text style={styles.reassuranceText}>
-          🔒 Paiement 100% In-App sécurisé via GeniusPay (Mobile Money & Carte).
+          🔒 Paiement 100% In-App sécurisé (Mobile Money & Carte).
         </Text>
 
       </ScrollView>
@@ -539,7 +539,7 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
           <View style={styles.webviewHeader}>
             <View style={styles.webviewHeaderLeft}>
               <Lock size={16} color={THEME.colors.gold} />
-              <Text style={styles.webviewHeaderTitle}>Guichet GeniusPay Sécurisé</Text>
+              <Text style={styles.webviewHeaderTitle}>Guichet de Paiement Sécurisé</Text>
             </View>
             <TouchableOpacity onPress={handleCloseWebview} style={styles.webviewCloseBtn}>
               <X size={20} color="#FFFFFF" />

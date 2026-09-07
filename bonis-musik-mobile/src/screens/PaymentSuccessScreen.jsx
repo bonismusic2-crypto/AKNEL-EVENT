@@ -196,7 +196,7 @@ export const PaymentSuccessScreen = ({ txId, planType = 'monthly', onContinue, c
               <div class="header">
                 <div class="brand">BONIS <span>MUSIK</span></div>
                 <div class="type">REÇU OFFICIEL D'ABONNEMENT</div>
-                <div class="badge">TRANSACTION VALIDÉE VIA GENIUSPAY</div>
+                <div class="badge">TRANSACTION SÉCURISÉE VALIDÉE</div>
               </div>
               <div class="body">
                 <div class="amount-row">
@@ -216,7 +216,7 @@ export const PaymentSuccessScreen = ({ txId, planType = 'monthly', onContinue, c
                 </div>
                 <div class="row">
                   <span class="label">Moyen de Règlement :</span>
-                  <span class="val">Mobile Money / GeniusPay</span>
+                  <span class="val">Mobile Money / Carte Bancaire</span>
                 </div>
                 <div class="row">
                   <span class="label">Référence Transaction :</span>
@@ -274,7 +274,7 @@ export const PaymentSuccessScreen = ({ txId, planType = 'monthly', onContinue, c
           </View>
           <View style={styles.badgeSuccess}>
             <ShieldCheck size={14} color="#059669" />
-            <Text style={styles.badgeSuccessText}>TRANSACTION VALIDÉE VIA GENIUSPAY</Text>
+            <Text style={styles.badgeSuccessText}>TRANSACTION SÉCURISÉE VALIDÉE</Text>
           </View>
           <Text style={styles.title}>Abonnement Confirmé !</Text>
           <Text style={styles.subtitle}>
@@ -331,11 +331,11 @@ export const PaymentSuccessScreen = ({ txId, planType = 'monthly', onContinue, c
                 <Text style={styles.detailLabel}>Moyen de Règlement</Text>
                 <View style={styles.paymentMethodTag}>
                   <Smartphone size={12} color="#059669" />
-                  <Text style={styles.paymentMethodText}>Mobile Money / GeniusPay</Text>
+                  <Text style={styles.paymentMethodText}>Mobile Money / Carte Bancaire</Text>
                 </View>
               </View>
 
-              {/* Ligne 4 : Référence GeniusPay */}
+              {/* Ligne 4 : Référence Transaction */}
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Réf. Transaction</Text>
                 <Text style={styles.monoValue}>{referenceCode}</Text>

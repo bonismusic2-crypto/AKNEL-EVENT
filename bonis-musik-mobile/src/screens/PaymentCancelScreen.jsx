@@ -25,7 +25,7 @@ export const PaymentCancelScreen = ({ onRetry, onBack, onHome }) => {
 
         <Text style={styles.title}>Abonnement Interrompu</Text>
         <Text style={styles.subtitle}>
-          Vous avez annulé ou interrompu la transaction sur GeniusPay. Aucun montant n'a été prélevé sur votre compte Mobile Money ou carte bancaire.
+          Vous avez interrompu la transaction sur le guichet de paiement. Aucun montant n'a été prélevé sur votre compte Mobile Money ou carte bancaire.
         </Text>
 
         {/* Encadré d'Aide */}

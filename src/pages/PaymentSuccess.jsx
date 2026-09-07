@@ -32,7 +32,7 @@ const PaymentSuccess = () => {
                             <CheckCircle2 size={44} />
                         </div>
                         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-green-100 border border-green-200 text-green-800 text-xs font-bold uppercase tracking-widest mb-3">
-                            <ShieldCheck size={14} className="text-green-600" /> Paiement Sécurisé Validé via GeniusPay
+                            <ShieldCheck size={14} className="text-green-600" /> Paiement Sécurisé Validé
                         </div>
                         <h1 className="text-3xl md:text-5xl font-serif font-black text-dark tracking-wide uppercase">
                             Votre Pass Officiel est Prêt
