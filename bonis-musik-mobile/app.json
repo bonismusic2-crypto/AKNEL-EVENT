@@ -20,12 +20,22 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.bonismusik.app"
+      "bundleIdentifier": "com.bonismusik.app",
+      "splash": {
+        "image": "./assets/splash.png",
+        "resizeMode": "cover",
+        "backgroundColor": "#0D0D0D"
+      }
     },
     "android": {
       "package": "com.bonismusik.app",
+      "splash": {
+        "image": "./assets/splash.png",
+        "resizeMode": "cover",
+        "backgroundColor": "#0D0D0D"
+      },
       "adaptiveIcon": {
-        "backgroundColor": "#FFFFFF",
+        "backgroundColor": "#0D0D0D",
         "foregroundImage": "./assets/android-icon-foreground.png"
       },
       "permissions": [
@@ -44,6 +54,15 @@
     "plugins": [
       "expo-web-browser",
       "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0D0D0D",
+          "image": "./assets/splash.png",
+          "imageWidth": 200,
+          "resizeMode": "cover"
+        }
+      ],
       [
         "expo-notifications",
         {

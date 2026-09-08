@@ -9,10 +9,14 @@ import { BottomNavigation } from './src/components/BottomNavigation';
 import { MiniPlayer } from './src/components/MiniPlayer';
 import { FullAudioPlayerModal } from './src/components/FullAudioPlayerModal';
 import { YouTubeStyleVideoPlayer } from './src/components/YouTubeStyleVideoPlayer';
+import * as SplashScreen from 'expo-splash-screen';
 import { supabase } from './src/lib/supabase';
 import { SubscriptionService } from './src/services/subscriptionService';
 import { DownloadService } from './src/services/downloadService';
 import { SAMPLE_DATA } from './src/data/sampleData';
+
+// Maintenir le vrai splash natif visible pendant le chargement initial pour éviter l'écran blanc
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 // Écrans
 import { WelcomeScreen } from './src/screens/WelcomeScreen';
@@ -91,13 +95,31 @@ export default function App() {
     }
   };
 
-  // Vérifier la session active et configurer les listeners globaux une seule fois au montage
+  // État de préparation de l'application
+  const [isAppReady, setIsAppReady] = useState(false);
+
+  // Charger la session active, les téléchargements et cacher le Splash Screen une fois prêt
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        routeUserAfterAuth(session.user);
+    let isMounted = true;
+
+    const prepareApp = async () => {
+      try {
+        await refreshDownloads();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user && isMounted) {
+          await routeUserAfterAuth(session.user);
+        }
+      } catch (e) {
+        console.warn('Erreur initialisation app:', e);
+      } finally {
+        if (isMounted) {
+          setIsAppReady(true);
+          await SplashScreen.hideAsync().catch(() => {});
+        }
       }
-    });
+    };
+
+    prepareApp();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
@@ -134,6 +156,7 @@ export default function App() {
     });
 
     return () => {
+      isMounted = false;
       subscription?.unsubscribe();
       linkSub.remove();
     };
@@ -240,7 +263,17 @@ const MainContent = ({
   const { theme, isDarkMode } = useAppTheme();
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor:
+            appState === 'welcome' || appState === 'auth'
+              ? '#0D0D0D'
+              : theme.colors.background,
+        },
+      ]}
+    >
       <StatusBar style={isDarkMode ? 'light' : 'dark'} />
 
       {/* 1. Écran de Bienvenue Onboarding */}
