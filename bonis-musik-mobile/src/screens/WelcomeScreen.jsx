@@ -33,7 +33,7 @@ export const WelcomeScreen = ({ onStart, onLogin }) => {
             <View style={styles.topHeader}>
               <View style={styles.brandBadge}>
                 <Sparkles size={13} color={THEME.colors.gold} />
-                <Text style={styles.brandBadgeText}>BONIS MUSIK • OFFICIEL</Text>
+                <Text style={styles.brandBadgeText}>BONS MUSIK • OFFICIEL</Text>
               </View>
             </View>
 

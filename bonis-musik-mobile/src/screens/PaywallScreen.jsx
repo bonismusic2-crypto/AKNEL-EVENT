@@ -448,7 +448,7 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
         </View>
 
         {/* Titre Principal */}
-        <Text style={styles.title}>Abonnement Bonis Musik</Text>
+        <Text style={styles.title}>Abonnement BONS MUSIK</Text>
         <Text style={styles.subtitle}>
           Accédez en illimité à tous les albums, singles, clips et enseignements du Chantre Boniface.
         </Text>

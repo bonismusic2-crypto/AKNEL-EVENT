@@ -484,7 +484,7 @@ _Envoyé depuis l'application officielle Bonis Musik_`
           <Text style={styles.logoutText}>Se déconnecter</Text>
         </TouchableOpacity>
 
-        <Text style={[styles.versionText, { color: theme.colors.textMuted }]}>Bonis Musik v1.2.0 • Ministère du Chantre Boniface</Text>
+        <Text style={[styles.versionText, { color: theme.colors.textMuted }]}>BONS MUSIK v1.2.0 • Ministère du Chantre Boniface</Text>
         <View style={{ height: 40 }} />
 
       </ScrollView>

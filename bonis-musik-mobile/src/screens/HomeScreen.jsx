@@ -282,7 +282,7 @@ export const HomeScreen = ({
         {/* ========================================================= */}
         <View style={styles.header}>
           <View>
-            <Text style={[styles.brandTitle, { color: theme.colors.textPrimary }]}>Bonis Musik</Text>
+            <Text style={[styles.brandTitle, { color: theme.colors.textPrimary }]}>BONS MUSIK</Text>
             <Text style={[styles.greetingSubtitle, { color: theme.colors.gold }]}>Bonjour, {firstName} 👋</Text>
           </View>
 

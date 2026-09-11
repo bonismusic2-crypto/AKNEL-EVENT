@@ -24,8 +24,8 @@ export const GeniusPayService = {
     const isAnnual = planType === 'annual' || Number(amount) >= 10000;
     const finalAmount = isAnnual ? 10000 : 1000;
     const planDescription = isAnnual
-      ? 'Abonnement Bonis Musik - Accès Intégral 1 An (10 000 FCFA / ~15 €)'
-      : 'Abonnement Bonis Musik - Accès Intégral 1 Mois (1 000 FCFA / ~1,50 €)';
+      ? 'Abonnement BONS MUSIK - Accès Intégral 1 An (10 000 FCFA / ~15 €)'
+      : 'Abonnement BONS MUSIK - Accès Intégral 1 Mois (1 000 FCFA / ~1,50 €)';
 
     const userId = user?.id || null;
     const userEmail = user?.email || 'abonne@bonismusik.com';

@@ -109,7 +109,7 @@ export const AuthScreen = ({ onSuccess, onBack }) => {
               style={styles.appIcon}
               resizeMode="contain"
             />
-            <Text style={styles.brandTitle}>BONIS <Text style={{ color: THEME.colors.gold }}>MUSIK</Text></Text>
+            <Text style={styles.brandTitle}>BONS <Text style={{ color: THEME.colors.gold }}>MUSIK</Text></Text>
             <Text style={styles.title}>{isLogin ? 'Connexion' : 'Créer un compte'}</Text>
             <Text style={styles.subtitle}>
               {isLogin ? 'Entrez vos identifiants pour continuer' : 'Remplissez vos informations pour vous inscrire'}

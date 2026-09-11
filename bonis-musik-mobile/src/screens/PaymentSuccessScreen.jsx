@@ -294,7 +294,7 @@ export const PaymentSuccessScreen = ({ txId, planType = 'monthly', onContinue, c
                   resizeMode="contain"
                 />
                 <View>
-                  <Text style={styles.receiptBrand}>BONIS <Text style={{ color: THEME.colors.gold }}>MUSIK</Text></Text>
+                  <Text style={styles.receiptBrand}>BONS <Text style={{ color: THEME.colors.gold }}>MUSIK</Text></Text>
                   <Text style={styles.receiptType}>REÇU D'ABONNEMENT OFFICIEL</Text>
                 </View>
               </View>
