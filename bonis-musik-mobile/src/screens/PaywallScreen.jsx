@@ -8,7 +8,8 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
-  Platform
+  Platform,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
@@ -299,14 +300,45 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
     ) {
       setShowWebview(false);
       Alert.alert('Paiement annulé', 'La transaction a été annulée sur le guichet.');
+    } else if (
+      lowerUrl.startsWith('wave://') ||
+      lowerUrl.startsWith('intent://') ||
+      (lowerUrl.includes('wave.com') && (lowerUrl.includes('/pay') || lowerUrl.includes('client_type=mobile')))
+    ) {
+      openWaveExternal(url);
     }
   };
 
-  // Interception anticipée des requêtes WebView
+  // Helper pour basculer vers l'application native Wave ou les applications Mobile Money
+  const openWaveExternal = (url) => {
+    let targetUrl = url;
+    if (url.startsWith('intent://')) {
+      // Extraction du schéma de l'intent Android (ex: intent://...#Intent;scheme=wave;package=com.wave.personal;end)
+      const schemeMatch = url.match(/scheme=([^;]+)/);
+      if (schemeMatch && schemeMatch[1]) {
+        targetUrl = url.replace(/^intent:\/\//, `${schemeMatch[1]}://`).replace(/#Intent;.*$/, '');
+      }
+    }
+
+    Linking.canOpenURL(targetUrl)
+      .then((supported) => {
+        if (supported) {
+          return Linking.openURL(targetUrl);
+        } else {
+          return Linking.openURL(url);
+        }
+      })
+      .catch(() => {
+        Linking.openURL(url).catch(() => {});
+      });
+  };
+
+  // Interception anticipée des requêtes WebView & redirection directe vers les applications natives (Wave, etc.)
   const handleShouldStartLoadWithRequest = (request) => {
     const url = request.url || '';
     const lowerUrl = url.toLowerCase();
 
+    // 1. Détection de succès
     if (
       lowerUrl.includes('payment-success') ||
       lowerUrl.includes('bonismusik://payment-success') ||
@@ -318,6 +350,19 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
       completeSuccess(currentTxId);
       return false;
     }
+
+    // 2. Liens vers l'application Wave ou Mobile Money (wave://, intent://, pay.wave.com)
+    if (
+      lowerUrl.startsWith('wave://') ||
+      lowerUrl.startsWith('intent://') ||
+      lowerUrl.startsWith('market://') ||
+      lowerUrl.startsWith('tel:') ||
+      (lowerUrl.includes('wave.com') && (lowerUrl.includes('/pay') || lowerUrl.includes('client_type=mobile')))
+    ) {
+      openWaveExternal(url);
+      return false;
+    }
+
     return true;
   };
 
@@ -559,6 +604,7 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
             <WebView
               source={{ uri: paymentUrl }}
               style={styles.webview}
+              originWhitelist={['*']}
               onLoadEnd={() => setWebviewLoading(false)}
               onNavigationStateChange={handleNavigationStateChange}
               onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
@@ -567,6 +613,8 @@ export const PaywallScreen = ({ onBack, onSuccess, currentUser }) => {
               javaScriptEnabled={true}
               domStorageEnabled={true}
               startInLoadingState={true}
+              allowsInlineMediaPlayback={true}
+              mixedContentMode="always"
             />
           )}
 
