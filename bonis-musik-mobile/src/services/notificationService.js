@@ -7,11 +7,16 @@ try {
   NotificationsModule = require('expo-notifications');
   if (NotificationsModule && NotificationsModule.setNotificationHandler) {
     NotificationsModule.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-      }),
+      handleNotification: async (notification) => {
+        const isPlayback =
+          notification?.request?.identifier === 'bons_playback_notification' ||
+          notification?.request?.content?.data?.type === 'playback';
+        return {
+          shouldShowAlert: true,
+          shouldPlaySound: !isPlayback,
+          shouldSetBadge: !isPlayback,
+        };
+      },
     });
   }
 } catch (e) {
@@ -28,11 +33,23 @@ export const NotificationService = {
 
     try {
       if (Platform.OS === 'android' && NotificationsModule.setNotificationChannelAsync) {
+        // 1. Canal général des notifications d'événements et alertes
         await NotificationsModule.setNotificationChannelAsync('default', {
-          name: 'Bonis Musik Notifications',
+          name: 'BONS MUSIK Notifications',
           importance: NotificationsModule.AndroidImportance ? NotificationsModule.AndroidImportance.MAX : 5,
           vibrationPattern: [0, 250, 250, 250],
           lightColor: '#C59B27',
+        });
+
+        // 2. Canal dédié au lecteur multimédia en arrière-plan (silencieux, permanent dans le volet)
+        await NotificationsModule.setNotificationChannelAsync('playback', {
+          name: 'BONS MUSIK - Lecture en cours',
+          importance: NotificationsModule.AndroidImportance ? NotificationsModule.AndroidImportance.LOW : 2,
+          sound: null,
+          vibrationPattern: null,
+          enableVibrate: false,
+          showBadge: false,
+          lockscreenVisibility: NotificationsModule.AndroidNotificationVisibility ? NotificationsModule.AndroidNotificationVisibility.PUBLIC : 1,
         });
       }
 
@@ -58,6 +75,54 @@ export const NotificationService = {
     }
 
     return token;
+  },
+
+  /**
+   * Affiche ou met à jour la notification persistante de lecture multimédia (volet déroulant / écran de verrouillage)
+   */
+  async showPlaybackNotification(track, isPlaying = true) {
+    if (!NotificationsModule?.scheduleNotificationAsync || !track) return;
+    try {
+      if (Platform.OS === 'android' && NotificationsModule.setNotificationChannelAsync) {
+        await NotificationsModule.setNotificationChannelAsync('playback', {
+          name: 'BONS MUSIK - Lecture en cours',
+          importance: NotificationsModule.AndroidImportance ? NotificationsModule.AndroidImportance.LOW : 2,
+          sound: null,
+          vibrationPattern: null,
+          enableVibrate: false,
+          showBadge: false,
+          lockscreenVisibility: NotificationsModule.AndroidNotificationVisibility ? NotificationsModule.AndroidNotificationVisibility.PUBLIC : 1,
+        });
+      }
+
+      await NotificationsModule.scheduleNotificationAsync({
+        identifier: 'bons_playback_notification',
+        content: {
+          channelId: 'playback',
+          title: track.title || 'BONS MUSIK',
+          body: `${track.artist || 'Chantre Boniface'} • ${isPlaying ? '▶ En cours de lecture' : '⏸ En pause'}`,
+          sound: false,
+          priority: NotificationsModule.AndroidImportance ? NotificationsModule.AndroidImportance.LOW : 'low',
+          color: '#C59B27',
+          sticky: isPlaying,
+          autoDismiss: false,
+          data: { type: 'playback', trackId: track.id },
+        },
+        trigger: null, // Affichage immédiat
+      });
+    } catch (e) {
+      console.log('Info playback notif:', e?.message || e);
+    }
+  },
+
+  /**
+   * Supprime la notification de lecture quand la musique s'arrête
+   */
+  async dismissPlaybackNotification() {
+    if (!NotificationsModule?.dismissNotificationAsync) return;
+    try {
+      await NotificationsModule.dismissNotificationAsync('bons_playback_notification');
+    } catch (e) {}
   },
 
   /**
@@ -92,7 +157,7 @@ export const NotificationService = {
         type: type || 'general',
         title: title,
         message: message,
-        badge: badge || 'Bonis Musik',
+        badge: badge || 'BONS MUSIK',
         badge_bg: badgeBg || '#FEF3C7',
         badge_text_color: badgeTextColor || '#92400E',
         action_type: actionType || 'home',
@@ -184,7 +249,7 @@ export const NotificationService = {
    */
   async notifyNewMediaRelease(title, artistOrSpeaker, category = 'clip') {
     const notifTitle = category === 'clip' ? '🎬 Nouveau Clip Vidéo HD !' : '📖 Nouvel Enseignement Disponible';
-    const message = `Découvrez "${title}" par ${artistOrSpeaker || 'le Chantre Boniface'} sur Bonis Musik.`;
+    const message = `Découvrez "${title}" par ${artistOrSpeaker || 'le Chantre Boniface'} sur BONS MUSIK.`;
 
     await this.sendLocalNotification(notifTitle, message, { type: category, action: 'media' });
 

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Audio } from 'expo-av';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { NotificationService } from '../services/notificationService';
 
 const AudioContext = createContext(null);
 const FAVORITES_STORAGE_KEY = '@bonis_favorite_tracks';
@@ -26,6 +27,7 @@ export const AudioProvider = ({ children }) => {
   const isPlayingRef = useRef(isPlaying);
   const isShuffleRef = useRef(isShuffle);
   const repeatModeRef = useRef(repeatMode);
+  const lastNotifStateRef = useRef({ trackId: null, isPlaying: null });
 
   playlistRef.current = playlist;
   currentTrackRef.current = currentTrack;
@@ -58,6 +60,7 @@ export const AudioProvider = ({ children }) => {
       if (sound) {
         sound.unloadAsync().catch(() => {});
       }
+      NotificationService.dismissPlaybackNotification();
     };
   }, []);
 
@@ -66,6 +69,20 @@ export const AudioProvider = ({ children }) => {
       setPositionMillis(status.positionMillis || 0);
       setDurationMillis(status.durationMillis || 1);
       setIsPlaying(status.isPlaying);
+
+      // 🔔 Synchroniser la notification système (barre déroulante / écran de verrouillage)
+      if (currentTrackRef.current) {
+        if (
+          lastNotifStateRef.current.isPlaying !== status.isPlaying ||
+          lastNotifStateRef.current.trackId !== currentTrackRef.current.id
+        ) {
+          lastNotifStateRef.current = {
+            trackId: currentTrackRef.current.id,
+            isPlaying: status.isPlaying,
+          };
+          NotificationService.showPlaybackNotification(currentTrackRef.current, status.isPlaying);
+        }
+      }
 
       // ✅ ENCHAÎNEMENT AUTOMATIQUE À LA FIN D'UN MORCEAU
       if (status.didJustFinish) {
@@ -98,6 +115,10 @@ export const AudioProvider = ({ children }) => {
       setIsPlaying(true);
       setPositionMillis(0);
 
+      // 🔔 Afficher immédiatement la notification système de lecture
+      lastNotifStateRef.current = { trackId: track.id, isPlaying: true };
+      NotificationService.showPlaybackNotification(track, true);
+
       // Ajouter à l'historique d'écoute
       const historyItem = {
         id: track.id || Date.now(),
@@ -126,6 +147,8 @@ export const AudioProvider = ({ children }) => {
     } catch (error) {
       console.warn('Erreur lecture audio expo-av:', error);
       setIsPlaying(false);
+      lastNotifStateRef.current = { trackId: null, isPlaying: null };
+      NotificationService.dismissPlaybackNotification();
     }
   };
 
@@ -186,6 +209,8 @@ export const AudioProvider = ({ children }) => {
 
     if (!list || list.length === 0 || !current) {
       setIsPlaying(false);
+      lastNotifStateRef.current = { trackId: null, isPlaying: null };
+      NotificationService.dismissPlaybackNotification();
       return;
     }
 
@@ -209,6 +234,8 @@ export const AudioProvider = ({ children }) => {
       await playTrack(firstTrack, list);
     } else {
       setIsPlaying(false);
+      lastNotifStateRef.current = { trackId: null, isPlaying: null };
+      NotificationService.dismissPlaybackNotification();
     }
   };
 
@@ -239,8 +266,16 @@ export const AudioProvider = ({ children }) => {
       if (sound) {
         if (isPlaying) {
           await sound.pauseAsync();
+          if (currentTrackRef.current) {
+            lastNotifStateRef.current = { trackId: currentTrackRef.current.id, isPlaying: false };
+            NotificationService.showPlaybackNotification(currentTrackRef.current, false);
+          }
         } else {
           await sound.playAsync();
+          if (currentTrackRef.current) {
+            lastNotifStateRef.current = { trackId: currentTrackRef.current.id, isPlaying: true };
+            NotificationService.showPlaybackNotification(currentTrackRef.current, true);
+          }
         }
       } else if (currentTrack) {
         await playTrack(currentTrack);
@@ -298,6 +333,8 @@ export const AudioProvider = ({ children }) => {
         closeCurrentTrack: () => {
           if (sound) sound.stopAsync().catch(() => {});
           setCurrentTrack(null);
+          lastNotifStateRef.current = { trackId: null, isPlaying: null };
+          NotificationService.dismissPlaybackNotification();
         },
       }}
     >

@@ -13,6 +13,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { supabase } from './src/lib/supabase';
 import { SubscriptionService } from './src/services/subscriptionService';
 import { DownloadService } from './src/services/downloadService';
+import { NotificationService } from './src/services/notificationService';
 import { SAMPLE_DATA } from './src/data/sampleData';
 
 // Maintenir le vrai splash natif visible pendant le chargement initial pour éviter l'écran blanc
@@ -105,6 +106,8 @@ export default function App() {
     const prepareApp = async () => {
       try {
         await refreshDownloads();
+        // Initialiser et autoriser les notifications push et de lecture BONS MUSIK
+        NotificationService.registerForPushNotificationsAsync().catch(() => {});
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user && isMounted) {
           await routeUserAfterAuth(session.user);
